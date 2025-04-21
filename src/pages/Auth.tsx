@@ -17,24 +17,45 @@ import {
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [isLogin, setIsLogin] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: { full_name: fullName }
-        }
-      });
-      if (error) throw error;
-      toast({
-        title: "Magic link sent!",
-        description: "Check your email for the login link"
-      });
+      if (isLogin) {
+        // Login flow
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: window.location.origin,
+          }
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Login Magic Link Sent",
+          description: "Check your email for the login link"
+        });
+      } else {
+        // Sign-up flow
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: { full_name: fullName }
+          }
+        });
+        
+        if (error) throw error;
+        
+        toast({
+          title: "Sign Up Magic Link Sent",
+          description: "Check your email for the sign-up link"
+        });
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -48,24 +69,30 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Welcome to Family Schedule</CardTitle>
+          <CardTitle>
+            {isLogin ? "Welcome Back" : "Join Family Schedule"}
+          </CardTitle>
           <CardDescription>
-            Sign in or sign up with your email to get started
+            {isLogin 
+              ? "Log in to access your family schedule" 
+              : "Sign up with your email to get started"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-              />
-            </div>
+          <form onSubmit={handleAuth} className="space-y-4">
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required={!isLogin}
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -78,8 +105,19 @@ const Auth = () => {
               />
             </div>
             <Button type="submit" className="w-full">
-              Send Magic Link
+              {isLogin ? "Send Login Link" : "Send Sign Up Link"}
             </Button>
+            <div className="text-center">
+              <Button 
+                type="button" 
+                variant="link" 
+                onClick={() => setIsLogin(!isLogin)}
+              >
+                {isLogin 
+                  ? "Need an account? Sign Up" 
+                  : "Already have an account? Log In"}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
@@ -88,3 +126,4 @@ const Auth = () => {
 };
 
 export default Auth;
+
