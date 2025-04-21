@@ -25,26 +25,36 @@ const Auth = () => {
     e.preventDefault();
     try {
       if (isLogin) {
-        // Login flow
-        const { error } = await supabase.auth.signInWithOtp({
+        // Simple login flow - just store the email in session
+        const { data, error } = await supabase.auth.signInWithEmail({
           email,
-          options: {
-            emailRedirectTo: window.location.origin,
+          password: email, // Using email as password for now
+        });
+        
+        if (error) {
+          // If user doesn't exist, show error
+          if (error.message.includes("Invalid login credentials")) {
+            toast({
+              variant: "destructive",
+              title: "Account not found",
+              description: "Please sign up first or check your email"
+            });
+            return;
           }
-        });
-        
-        if (error) throw error;
-        
+          throw error;
+        }
+
         toast({
-          title: "Login Magic Link Sent",
-          description: "Check your email for the login link"
+          title: "Welcome back!",
+          description: "Successfully logged in"
         });
+        navigate("/");
       } else {
         // Sign-up flow
-        const { error } = await supabase.auth.signInWithOtp({
+        const { data, error } = await supabase.auth.signUp({
           email,
+          password: email, // Using email as password for now
           options: {
-            emailRedirectTo: window.location.origin,
             data: { full_name: fullName }
           }
         });
@@ -52,9 +62,10 @@ const Auth = () => {
         if (error) throw error;
         
         toast({
-          title: "Sign Up Magic Link Sent",
-          description: "Check your email for the sign-up link"
+          title: "Account created!",
+          description: "You can now log in with your email"
         });
+        setIsLogin(true); // Switch to login view after successful signup
       }
     } catch (error: any) {
       toast({
@@ -126,4 +137,3 @@ const Auth = () => {
 };
 
 export default Auth;
-
