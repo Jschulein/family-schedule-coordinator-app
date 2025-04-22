@@ -1,14 +1,30 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Calendar, Users } from "lucide-react"
+import { Calendar, Users, Settings } from "lucide-react"
 import { Link } from "react-router-dom"
+import { useEffect, useState } from "react"
 
 const Index = () => {
+  const [appTitle, setAppTitle] = useState("Family Schedule Coordinator");
+  const [titleColor, setTitleColor] = useState("#000000");
+
+  useEffect(() => {
+    // Retrieve saved title and color from localStorage
+    const savedTitle = localStorage.getItem('familyScheduleTitle');
+    const savedColor = localStorage.getItem('titleColor');
+
+    if (savedTitle) setAppTitle(savedTitle);
+    if (savedColor) setTitleColor(savedColor);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
-        <h1 className="text-4xl font-bold text-center text-gray-900 mb-8">
-          Family Schedule Coordinator
+        <h1 
+          className="text-4xl font-bold text-center mb-8"
+          style={{ color: titleColor }}
+        >
+          {appTitle}
         </h1>
         
         <div className="flex flex-col space-y-6 max-w-md mx-auto">
@@ -49,6 +65,25 @@ const Index = () => {
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/settings">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-6 w-6" />
+                  App Settings
+                </CardTitle>
+                <CardDescription>
+                  Customize your family schedule application
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Modify app title and other settings
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </div>
@@ -56,3 +91,4 @@ const Index = () => {
 }
 
 export default Index
+
