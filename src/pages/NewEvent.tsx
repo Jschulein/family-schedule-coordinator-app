@@ -1,6 +1,8 @@
 
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 
 const NewEvent = () => {
@@ -18,12 +20,26 @@ const NewEvent = () => {
     navigate("/calendar");
   };
 
+  const handleReturn = () => {
+    navigate("/");
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-center text-gray-900 mb-8">
-          Add New Event
-        </h1>
+        <div className="flex items-center mb-8">
+          <Button 
+            variant="outline" 
+            className="mr-4" 
+            onClick={handleReturn}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Return
+          </Button>
+          <h1 className="text-4xl font-bold text-gray-900">
+            Add New Event
+          </h1>
+        </div>
         <div className="flex justify-center">
           <AddEventForm onSubmit={handleSubmit} />
         </div>
@@ -33,3 +49,4 @@ const NewEvent = () => {
 };
 
 export default NewEvent;
+
