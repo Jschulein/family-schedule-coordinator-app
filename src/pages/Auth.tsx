@@ -45,7 +45,7 @@ const Auth = () => {
         }
 
         toast({
-          title: "Welcome back!",
+          title: "Welcome!",
           description: "Successfully logged in"
         });
         navigate("/");
@@ -85,7 +85,7 @@ const Auth = () => {
           </CardTitle>
           <CardDescription>
             {isLogin 
-              ? "Log in to access your family schedule" 
+              ? "Enter your email to access your family schedule" 
               : "Sign up with your email to get started"}
           </CardDescription>
         </CardHeader>
@@ -116,7 +116,7 @@ const Auth = () => {
               />
             </div>
             <Button type="submit" className="w-full">
-              {isLogin ? "Send Login Link" : "Send Sign Up Link"}
+              {isLogin ? "Enter Application" : "Create Account"}
             </Button>
             <div className="text-center">
               <Button 
