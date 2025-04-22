@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, isAfter, startOfDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -77,7 +77,13 @@ const CalendarPage = () => {
     },
   };
 
-  const eventsByFamilyMember = events.reduce((groups: { [key: string]: Event[] }, event) => {
+  const today = startOfDay(new Date());
+  const upcomingEvents = events.filter(event => 
+    isAfter(startOfDay(event.date), today) || 
+    format(startOfDay(event.date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")
+  );
+
+  const eventsByFamilyMember = upcomingEvents.reduce((groups: { [key: string]: Event[] }, event) => {
     if (!groups[event.familyMember]) {
       groups[event.familyMember] = [];
     }
