@@ -1,0 +1,58 @@
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { Event } from "@/contexts/EventContext";
+
+interface SelectedDateEventsProps {
+  selectedDate: Date | undefined;
+  events: Event[];
+  calendarColor: string;
+}
+
+const SelectedDateEvents = ({ selectedDate, events, calendarColor }: SelectedDateEventsProps) => {
+  const selectedDateEvents = selectedDate
+    ? events.filter(
+        (event) => format(event.date, "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd")
+      )
+    : [];
+
+  return (
+    <Card className="md:col-span-2">
+      <CardHeader>
+        <CardTitle>
+          {selectedDate 
+            ? `Events on ${format(selectedDate, "MMMM d, yyyy")}`
+            : "Select a date to view events"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {selectedDateEvents.length > 0 ? (
+          <div className="space-y-4">
+            {selectedDateEvents.map((event, index) => (
+              <div key={index} className="border-b last:border-0 pb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" style={{ borderColor: calendarColor }}>
+                      {event.familyMember}
+                    </Badge>
+                    <span className="font-medium">{event.name}</span>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">{event.description}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">
+            {selectedDate 
+              ? "No events scheduled for this date."
+              : "Click on a date in the calendar to view events."}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default SelectedDateEvents;
