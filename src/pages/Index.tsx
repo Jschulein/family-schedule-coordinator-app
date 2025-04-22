@@ -1,23 +1,9 @@
 
-import { useState } from "react";
-import AddEventForm from "@/components/AddEventForm";
-import EventCalendar from "@/components/EventCalendar";
-import UpcomingEvents from "@/components/UpcomingEvents";
-
-interface Event {
-  name: string;
-  date: Date;
-  description: string;
-  familyMember: string;
-}
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Calendar, Users } from "lucide-react"
+import { Link } from "react-router-dom"
 
 const Index = () => {
-  const [events, setEvents] = useState<Event[]>([]);
-
-  const handleAddEvent = (newEvent: Event) => {
-    setEvents([...events, newEvent]);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -26,17 +12,47 @@ const Index = () => {
         </h1>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <AddEventForm onSubmit={handleAddEvent} />
-            <UpcomingEvents events={events} />
-          </div>
-          <div>
-            <EventCalendar events={events} />
-          </div>
+          <Link to="/calendar">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-6 w-6" />
+                  View Calendar
+                </CardTitle>
+                <CardDescription>
+                  See all scheduled family events and activities
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Access the family calendar to view and manage all scheduled events.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/events/new">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-6 w-6" />
+                  Add New Event
+                </CardTitle>
+                <CardDescription>
+                  Schedule a new family event
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Create and schedule new events for the family calendar.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Index;
+export default Index
