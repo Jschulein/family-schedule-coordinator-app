@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useEffect, useState } from "react";
 
 interface Event {
   name: string;
@@ -16,6 +17,15 @@ interface EventCalendarProps {
 }
 
 const EventCalendar = ({ events }: EventCalendarProps) => {
+  const [calendarColor, setCalendarColor] = useState("#8B5CF6");
+
+  useEffect(() => {
+    const savedColor = localStorage.getItem('calendarColor');
+    if (savedColor) {
+      setCalendarColor(savedColor);
+    }
+  }, []);
+
   const modifiers = {
     event: (date: Date) =>
       events.some((event) => format(event.date, "yyyy-MM-dd") === format(date, "yyyy-MM-dd")),
@@ -23,7 +33,7 @@ const EventCalendar = ({ events }: EventCalendarProps) => {
 
   const modifiersStyles = {
     event: {
-      backgroundColor: "#8B5CF6",
+      backgroundColor: calendarColor,
       color: "white",
       borderRadius: "50%",
     },
@@ -50,7 +60,9 @@ const EventCalendar = ({ events }: EventCalendarProps) => {
             )
             .map((event, index) => (
               <div key={index} className="flex items-center gap-2">
-                <Badge variant="outline">{event.familyMember}</Badge>
+                <Badge variant="outline" style={{ borderColor: calendarColor }}>
+                  {event.familyMember}
+                </Badge>
                 <span>{event.name}</span>
               </div>
             ))}

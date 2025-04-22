@@ -10,13 +10,12 @@ import { HexColorPicker } from "react-colorful";
 
 const Settings = () => {
   const [familyScheduleTitle, setFamilyScheduleTitle] = useState("Family Schedule Coordinator");
-  const [titleColor, setTitleColor] = useState("#000000");
+  const [calendarColor, setCalendarColor] = useState("#8B5CF6"); // Default to our vivid purple
   const navigate = useNavigate();
 
   const handleSave = () => {
-    // In a real app, this would be saved to persistent storage or database
     localStorage.setItem('familyScheduleTitle', familyScheduleTitle);
-    localStorage.setItem('titleColor', titleColor);
+    localStorage.setItem('calendarColor', calendarColor);
     
     toast.success("Settings saved successfully!");
   };
@@ -53,9 +52,9 @@ const Settings = () => {
           </div>
 
           <div>
-            <Label>Title Color</Label>
+            <Label>Calendar Event Color</Label>
             <div className="mt-2">
-              <HexColorPicker color={titleColor} onChange={setTitleColor} />
+              <HexColorPicker color={calendarColor} onChange={setCalendarColor} />
             </div>
           </div>
 
@@ -69,4 +68,3 @@ const Settings = () => {
 };
 
 export default Settings;
-
