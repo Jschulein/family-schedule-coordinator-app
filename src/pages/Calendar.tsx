@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,6 +17,7 @@ interface Event {
 const CalendarPage = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [calendarColor, setCalendarColor] = useState("#8B5CF6");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -85,6 +85,12 @@ const CalendarPage = () => {
     return groups;
   }, {});
 
+  const selectedDateEvents = selectedDate
+    ? events.filter(
+        (event) => format(event.date, "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd")
+      )
+    : [];
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
@@ -108,12 +114,14 @@ const CalendarPage = () => {
               <CardTitle>Calendar</CardTitle>
             </CardHeader>
             <CardContent className="flex justify-center">
-              <div className="w-full max-w-md"> {/* Added container for centering and width control */}
+              <div className="w-full max-w-md">
                 <Calendar
                   mode="single"
                   modifiers={modifiers}
                   modifiersStyles={modifiersStyles}
                   className="pointer-events-auto w-full"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
                   components={{
                     DayContent: ({ date }) => (
                       <div className="flex flex-col items-center">
@@ -154,6 +162,41 @@ const CalendarPage = () => {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>
+                {selectedDate 
+                  ? `Events on ${format(selectedDate, "MMMM d, yyyy")}`
+                  : "Select a date to view events"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedDateEvents.length > 0 ? (
+                <div className="space-y-4">
+                  {selectedDateEvents.map((event, index) => (
+                    <div key={index} className="border-b last:border-0 pb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" style={{ borderColor: calendarColor }}>
+                            {event.familyMember}
+                          </Badge>
+                          <span className="font-medium">{event.name}</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{event.description}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  {selectedDate 
+                    ? "No events scheduled for this date."
+                    : "Click on a date in the calendar to view events."}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
