@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -106,21 +107,23 @@ const CalendarPage = () => {
             <CardHeader>
               <CardTitle>Calendar</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Calendar
-                mode="single"
-                modifiers={modifiers}
-                modifiersStyles={modifiersStyles}
-                className="pointer-events-auto"
-                components={{
-                  DayContent: ({ date }) => (
-                    <div className="flex flex-col items-center">
-                      <span>{date.getDate()}</span>
-                      {getDayContent(date)}
-                    </div>
-                  ),
-                }}
-              />
+            <CardContent className="flex justify-center">
+              <div className="w-full max-w-md"> {/* Added container for centering and width control */}
+                <Calendar
+                  mode="single"
+                  modifiers={modifiers}
+                  modifiersStyles={modifiersStyles}
+                  className="pointer-events-auto w-full"
+                  components={{
+                    DayContent: ({ date }) => (
+                      <div className="flex flex-col items-center">
+                        <span>{date.getDate()}</span>
+                        {getDayContent(date)}
+                      </div>
+                    ),
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
 
