@@ -11,7 +11,26 @@ const Index = () => {
           Family Schedule Coordinator
         </h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col space-y-6 max-w-md mx-auto">
+          <Link to="/events/new">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-6 w-6" />
+                  Add New Event
+                </CardTitle>
+                <CardDescription>
+                  Please enter in your planned trips, events, and adventures
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Create and schedule new events for the family calendar.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link to="/calendar">
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
@@ -26,25 +45,6 @@ const Index = () => {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Access the family calendar to view and manage all scheduled events.
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/events/new">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-6 w-6" />
-                  Add New Event
-                </CardTitle>
-                <CardDescription>
-                  Schedule a new family event
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Create and schedule new events for the family calendar.
                 </p>
               </CardContent>
             </Card>
