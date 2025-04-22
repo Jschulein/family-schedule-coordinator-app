@@ -26,7 +26,7 @@ const Auth = () => {
     try {
       if (isLogin) {
         // Simple login flow - just store the email in session
-        const { data, error } = await supabase.auth.signInWithEmail({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password: email, // Using email as password for now
         });
