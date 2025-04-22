@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
@@ -21,7 +20,6 @@ const CalendarPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // TODO: Replace with actual event fetching logic
     const mockEvents: Event[] = [
       {
         name: "Family Dinner",
@@ -44,6 +42,28 @@ const CalendarPage = () => {
     }
   }, []);
 
+  const getDayContent = (day: Date) => {
+    const dayEvents = events.filter(
+      (event) => format(event.date, "yyyy-MM-dd") === format(day, "yyyy-MM-dd")
+    );
+
+    if (dayEvents.length === 0) return null;
+
+    const uniqueFamilyMembers = [...new Set(dayEvents.map(event => event.familyMember))];
+
+    return (
+      <div className="flex gap-1 justify-center mt-1">
+        {uniqueFamilyMembers.map((member, index) => (
+          <div
+            key={index}
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: calendarColor }}
+          />
+        ))}
+      </div>
+    );
+  };
+
   const modifiers = {
     event: (date: Date) =>
       events.some((event) => format(event.date, "yyyy-MM-dd") === format(date, "yyyy-MM-dd")),
@@ -51,13 +71,11 @@ const CalendarPage = () => {
 
   const modifiersStyles = {
     event: {
-      backgroundColor: calendarColor,
-      color: "white",
-      borderRadius: "50%",
+      color: "black",
+      backgroundColor: "transparent",
     },
   };
 
-  // Group events by family member
   const eventsByFamilyMember = events.reduce((groups: { [key: string]: Event[] }, event) => {
     if (!groups[event.familyMember]) {
       groups[event.familyMember] = [];
@@ -94,6 +112,14 @@ const CalendarPage = () => {
                 modifiers={modifiers}
                 modifiersStyles={modifiersStyles}
                 className="pointer-events-auto"
+                components={{
+                  DayContent: ({ date }) => (
+                    <div className="flex flex-col items-center">
+                      <span>{date.getDate()}</span>
+                      {getDayContent(date)}
+                    </div>
+                  ),
+                }}
               />
             </CardContent>
           </Card>
