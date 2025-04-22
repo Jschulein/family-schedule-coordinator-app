@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
@@ -6,42 +6,13 @@ import { format, isAfter, startOfDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-interface Event {
-  name: string;
-  date: Date;
-  description: string;
-  familyMember: string;
-}
+import { useEvents } from '@/contexts/EventContext';
 
 const CalendarPage = () => {
-  const [events, setEvents] = useState<Event[]>([]);
+  const { events } = useEvents();
   const [calendarColor, setCalendarColor] = useState("#8B5CF6");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const mockEvents: Event[] = [
-      {
-        name: "Family Dinner",
-        date: new Date(2024, 3, 15),
-        description: "Weekly family dinner",
-        familyMember: "Mom"
-      },
-      {
-        name: "Soccer Practice",
-        date: new Date(2024, 3, 20),
-        description: "Jimmy's soccer practice",
-        familyMember: "Jimmy"
-      }
-    ];
-    setEvents(mockEvents);
-
-    const savedColor = localStorage.getItem('calendarColor');
-    if (savedColor) {
-      setCalendarColor(savedColor);
-    }
-  }, []);
 
   const getDayContent = (day: Date) => {
     const dayEvents = events.filter(

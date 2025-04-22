@@ -1,21 +1,17 @@
-
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
+import { useEvents } from "@/contexts/EventContext";
+import { Event } from "@/contexts/EventContext";
 
 const NewEvent = () => {
   const navigate = useNavigate();
+  const { addEvent } = useEvents();
 
-  const handleSubmit = (event: {
-    name: string;
-    date: Date;
-    description: string;
-    familyMember: string;
-  }) => {
-    // For now we'll just show a success message and redirect
-    // We'll implement actual data storage later
+  const handleSubmit = (event: Event) => {
+    addEvent(event);
     toast.success("Event created successfully!");
     navigate("/calendar");
   };
@@ -49,4 +45,3 @@ const NewEvent = () => {
 };
 
 export default NewEvent;
-
