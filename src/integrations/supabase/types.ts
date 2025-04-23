@@ -127,28 +127,34 @@ export type Database = {
       }
       events: {
         Row: {
+          all_day: boolean | null
           created_at: string
           creator_id: string
           date: string
           description: string | null
+          end_date: string | null
           id: string
           name: string
           time: string
         }
         Insert: {
+          all_day?: boolean | null
           created_at?: string
           creator_id: string
           date: string
           description?: string | null
+          end_date?: string | null
           id?: string
           name: string
           time: string
         }
         Update: {
+          all_day?: boolean | null
           created_at?: string
           creator_id?: string
           date?: string
           description?: string | null
+          end_date?: string | null
           id?: string
           name?: string
           time?: string

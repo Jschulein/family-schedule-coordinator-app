@@ -1,18 +1,20 @@
+
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
-import { supabase } from "@/integrations/supabase/client";
 
 interface EventFormData {
   name: string;
   date: Date;
+  end_date?: Date;
   time: string;
   description: string;
   creatorId: string;
   familyMembers: string[];
+  all_day: boolean;
 }
 
 const NewEvent = () => {
@@ -24,10 +26,12 @@ const NewEvent = () => {
       const event = {
         name: eventData.name,
         date: eventData.date,
+        end_date: eventData.end_date || eventData.date,
         time: eventData.time,
         description: eventData.description,
         creatorId: eventData.creatorId,
-        familyMembers: eventData.familyMembers
+        familyMembers: eventData.familyMembers,
+        all_day: eventData.all_day
       };
       
       await addEvent(event);

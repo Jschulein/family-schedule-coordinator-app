@@ -13,23 +13,29 @@ import { EventDateInput } from './events/EventDateInput';
 import { EventTimeInput } from './events/EventTimeInput';
 import { EventDescriptionInput } from './events/EventDescriptionInput';
 import { EventFamilyMembersInput } from './events/EventFamilyMembersInput';
+import { EventEndDateInput } from './events/EventEndDateInput';
+import { EventAllDayToggle } from './events/EventAllDayToggle';
 import { supabase } from "@/integrations/supabase/client";
 
 interface Event {
   name: string;
   date: Date;
+  end_date?: Date;
   time: string;
   description: string;
   creatorId: string;
   familyMembers: string[];
+  all_day: boolean;
 }
 
 const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
   const [name, setName] = useState('');
   const [date, setDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
   const [time, setTime] = useState('12:00');
   const [description, setDescription] = useState('');
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
+  const [allDay, setAllDay] = useState(false);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,17 +47,21 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
         onSubmit({ 
           name, 
           date, 
+          end_date: endDate || date,
           time,
           description, 
           creatorId: userId,
-          familyMembers 
+          familyMembers,
+          all_day: allDay
         });
         
         setName('');
         setDate(undefined);
+        setEndDate(undefined);
         setTime('12:00');
         setDescription('');
         setFamilyMembers([]);
+        setAllDay(false);
       }
     }
   };
@@ -72,10 +82,21 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
             value={date} 
             onSelect={setDate} 
           />
-          <EventTimeInput
-            value={time}
-            onChange={setTime}
+          <EventEndDateInput 
+            value={endDate} 
+            onSelect={setEndDate}
+            startDate={date}
           />
+          <EventAllDayToggle
+            value={allDay}
+            onChange={setAllDay}
+          />
+          {!allDay && (
+            <EventTimeInput
+              value={time}
+              onChange={setTime}
+            />
+          )}
           <EventDescriptionInput 
             value={description} 
             onChange={setDescription} 
