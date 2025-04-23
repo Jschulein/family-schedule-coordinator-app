@@ -1,10 +1,6 @@
 
 import { useState } from 'react';
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -12,14 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { EventNameInput } from './events/EventNameInput';
+import { EventDateInput } from './events/EventDateInput';
+import { EventDescriptionInput } from './events/EventDescriptionInput';
+import { EventFamilyMemberInput } from './events/EventFamilyMemberInput';
 
 interface Event {
   name: string;
@@ -53,66 +45,22 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Event Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Birthday Party"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Event details..."
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="familyMember">Family Member</Label>
-            <Input
-              id="familyMember"
-              value={familyMember}
-              onChange={(e) => setFamilyMember(e.target.value)}
-              placeholder="Your name"
-              required
-            />
-          </div>
-
+          <EventNameInput 
+            value={name} 
+            onChange={setName} 
+          />
+          <EventDateInput 
+            value={date} 
+            onSelect={setDate} 
+          />
+          <EventDescriptionInput 
+            value={description} 
+            onChange={setDescription} 
+          />
+          <EventFamilyMemberInput 
+            value={familyMember} 
+            onChange={setFamilyMember} 
+          />
           <Button type="submit" className="w-full">Add Event</Button>
         </form>
       </CardContent>
