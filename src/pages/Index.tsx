@@ -1,6 +1,6 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Calendar, Users, Settings } from "lucide-react"
+import { Calendar, Users, Settings, Home } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useEffect, useState } from "react"
 
@@ -84,6 +84,26 @@ const Index = () => {
               </CardContent>
             </Card>
           </Link>
+
+          <Link to="/families">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Home className="h-6 w-6" />
+                  Families Page
+                </CardTitle>
+                <CardDescription>
+                  View and manage your family groups.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Switch between families or create new ones to organize your events.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+          
         </div>
       </div>
     </div>
@@ -91,4 +111,3 @@ const Index = () => {
 }
 
 export default Index
-

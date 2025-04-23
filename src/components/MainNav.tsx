@@ -8,9 +8,8 @@ import {
   SidebarMenuItem,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
-import { Home, Calendar, Users } from "lucide-react";
+import { Home, Calendar, Users, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const NAV_ITEMS = [
@@ -28,6 +27,11 @@ const NAV_ITEMS = [
     name: "Families",
     icon: Users,
     path: "/families",
+  },
+  {
+    name: "Settings",
+    icon: Settings,
+    path: "/settings",
   },
 ];
 
