@@ -6,7 +6,7 @@ import {
   SidebarTrigger,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { Home, Calendar } from "lucide-react"
+import { Home, Calendar, Users } from "lucide-react"
 
 export function MainNav() {
   return (
@@ -23,6 +23,10 @@ export function MainNav() {
           <a href="/calendar" className="flex items-center space-x-2 p-2 hover:bg-accent rounded-md">
             <Calendar className="h-5 w-5" />
             <span>Calendar</span>
+          </a>
+          <a href="/families" className="flex items-center space-x-2 p-2 hover:bg-accent rounded-md">
+            <Users className="h-5 w-5" />
+            <span>Families</span>
           </a>
         </nav>
       </SidebarContent>

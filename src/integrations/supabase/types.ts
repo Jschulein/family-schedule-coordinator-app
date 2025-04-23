@@ -9,6 +9,83 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      email_preferences: {
+        Row: {
+          family_id: string
+          id: string
+          reminder_days_threshold: number
+          reminder_enabled: boolean
+          summary_frequency: Database["public"]["Enums"]["email_frequency"]
+          summary_months_ahead: number
+          updated_at: string
+        }
+        Insert: {
+          family_id: string
+          id?: string
+          reminder_days_threshold?: number
+          reminder_enabled?: boolean
+          summary_frequency?: Database["public"]["Enums"]["email_frequency"]
+          summary_months_ahead?: number
+          updated_at?: string
+        }
+        Update: {
+          family_id?: string
+          id?: string
+          reminder_days_threshold?: number
+          reminder_enabled?: boolean
+          summary_frequency?: Database["public"]["Enums"]["email_frequency"]
+          summary_months_ahead?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_preferences_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: true
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_families: {
+        Row: {
+          event_id: string
+          family_id: string
+          id: string
+          shared_at: string
+          shared_by: string | null
+        }
+        Insert: {
+          event_id: string
+          family_id: string
+          id?: string
+          shared_at?: string
+          shared_by?: string | null
+        }
+        Update: {
+          event_id?: string
+          family_id?: string
+          id?: string
+          shared_at?: string
+          shared_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_families_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_families_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_invites: {
         Row: {
           created_at: string
@@ -83,6 +160,103 @@ export type Database = {
           },
         ]
       }
+      families: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      family_members: {
+        Row: {
+          email: string
+          family_id: string
+          id: string
+          joined_at: string | null
+          role: Database["public"]["Enums"]["family_role"]
+          user_id: string
+        }
+        Insert: {
+          email: string
+          family_id: string
+          id?: string
+          joined_at?: string | null
+          role?: Database["public"]["Enums"]["family_role"]
+          user_id: string
+        }
+        Update: {
+          email?: string
+          family_id?: string
+          id?: string
+          joined_at?: string | null
+          role?: Database["public"]["Enums"]["family_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_members_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitations: {
+        Row: {
+          email: string
+          family_id: string
+          id: string
+          invited_at: string
+          invited_by: string | null
+          role: Database["public"]["Enums"]["family_role"]
+          status: string
+        }
+        Insert: {
+          email: string
+          family_id: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["family_role"]
+          status?: string
+        }
+        Update: {
+          email?: string
+          family_id?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["family_role"]
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -142,7 +316,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      email_frequency: "daily" | "weekly" | "biweekly" | "monthly" | "never"
       event_status: "Pending" | "Accepted" | "Declined"
+      family_role: "admin" | "member" | "child"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -258,7 +434,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      email_frequency: ["daily", "weekly", "biweekly", "monthly", "never"],
       event_status: ["Pending", "Accepted", "Declined"],
+      family_role: ["admin", "member", "child"],
     },
   },
 } as const
