@@ -1,19 +1,17 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
-// Updated Event interface to align with form data
 export interface Event {
   name: string;
   date: Date;
+  time: string;
   description: string;
-  familyMembers?: string[]; // Make this optional for existing events
+  familyMembers?: string[]; // Made optional
   creatorId: string;
   familyMember?: string; // Keep this for backward compatibility
 }
 
-// Optional profiling interface
 interface UserProfile {
   id: string;
   full_name?: string | null;
@@ -35,7 +33,6 @@ export function EventProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper to convert from Supabase DB row to Event
   function fromDbEvent(row: any, userMap: Record<string, UserProfile | undefined>): Event {
     const userProfile = userMap[row.creator_id];
     const familyMember =
@@ -46,6 +43,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
     return {
       name: row.name,
       date: new Date(row.date),
+      time: row.time,
       description: row.description ?? "",
       familyMember,
       creatorId: row.creator_id,
@@ -56,7 +54,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
     async function fetchEvents() {
       setLoading(true);
       setError(null);
-      // First, fetch events with creator_id
+
       const { data: eventRows, error: eventError } = await supabase
         .from('events')
         .select('*')
@@ -69,12 +67,10 @@ export function EventProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Now, fetch user profiles by creator_id (if any events exist)
       const creatorIds = Array.from(new Set((eventRows || []).map((row: any) => row.creator_id))).filter(Boolean);
       let userMap: Record<string, UserProfile | undefined> = {};
 
       if (creatorIds.length > 0) {
-        // Try profiles table first
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, full_name, Email')
@@ -95,19 +91,18 @@ export function EventProvider({ children }: { children: ReactNode }) {
     fetchEvents();
   }, []);
 
-  // Add event to Supabase
   const addEvent = async (newEvent: Event) => {
     setLoading(true);
     setError(null);
 
     try {
-      // First insert the event
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .insert([
           {
             name: newEvent.name,
             date: newEvent.date.toISOString(),
+            time: newEvent.time,
             description: newEvent.description,
             creator_id: newEvent.creatorId,
           }
@@ -117,9 +112,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
       
       if (eventError) throw eventError;
       
-      // If we have family members, associate them with the event
       if (newEvent.familyMembers && newEvent.familyMembers.length > 0) {
-        // Insert family member associations
         const familyMemberAssociations = newEvent.familyMembers.map(memberId => ({
           event_id: eventData.id,
           family_id: memberId,
@@ -132,11 +125,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
           
         if (associationError) {
           console.error("Error associating family members:", associationError);
-          // We still created the event, so we won't throw here
         }
       }
 
-      // Optimistically update state
       setEvents(prevEvents => [...prevEvents, { ...newEvent }]);
       
     } catch (error) {

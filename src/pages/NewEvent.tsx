@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
@@ -7,10 +6,10 @@ import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { supabase } from "@/integrations/supabase/client";
 
-// Update the interface to match with AddEventForm and EventContext
 interface EventFormData {
   name: string;
   date: Date;
+  time: string;
   description: string;
   creatorId: string;
   familyMembers: string[];
@@ -22,10 +21,10 @@ const NewEvent = () => {
 
   const handleSubmit = async (eventData: EventFormData) => {
     try {
-      // Transform the event data to match what EventContext expects
       const event = {
         name: eventData.name,
         date: eventData.date,
+        time: eventData.time,
         description: eventData.description,
         creatorId: eventData.creatorId,
         familyMembers: eventData.familyMembers

@@ -10,14 +10,15 @@ import {
 } from "@/components/ui/card";
 import { EventNameInput } from './events/EventNameInput';
 import { EventDateInput } from './events/EventDateInput';
+import { EventTimeInput } from './events/EventTimeInput';
 import { EventDescriptionInput } from './events/EventDescriptionInput';
 import { EventFamilyMembersInput } from './events/EventFamilyMembersInput';
 import { supabase } from "@/integrations/supabase/client";
 
-// Update interface to match the EventContext interface
 interface Event {
   name: string;
   date: Date;
+  time: string;
   description: string;
   creatorId: string;
   familyMembers: string[];
@@ -26,13 +27,13 @@ interface Event {
 const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
   const [name, setName] = useState('');
   const [date, setDate] = useState<Date>();
+  const [time, setTime] = useState('12:00');
   const [description, setDescription] = useState('');
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && date && familyMembers.length > 0) {
-      // Get the current user's ID
+    if (name && date) {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user.id;
       
@@ -40,6 +41,7 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
         onSubmit({ 
           name, 
           date, 
+          time,
           description, 
           creatorId: userId,
           familyMembers 
@@ -47,6 +49,7 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
         
         setName('');
         setDate(undefined);
+        setTime('12:00');
         setDescription('');
         setFamilyMembers([]);
       }
@@ -69,6 +72,10 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
             value={date} 
             onSelect={setDate} 
           />
+          <EventTimeInput
+            value={time}
+            onChange={setTime}
+          />
           <EventDescriptionInput 
             value={description} 
             onChange={setDescription} 
@@ -80,7 +87,7 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={!name || !date || familyMembers.length === 0}
+            disabled={!name || !date}
           >
             Add Event
           </Button>
