@@ -5,14 +5,32 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
-import { Event } from "@/contexts/EventContext";
+import { supabase } from "@/integrations/supabase/client";
+
+// Update the interface to match with AddEventForm and EventContext
+interface EventFormData {
+  name: string;
+  date: Date;
+  description: string;
+  creatorId: string;
+  familyMembers: string[];
+}
 
 const NewEvent = () => {
   const navigate = useNavigate();
   const { addEvent } = useEvents();
 
-  const handleSubmit = async (event: Event) => {
+  const handleSubmit = async (eventData: EventFormData) => {
     try {
+      // Transform the event data to match what EventContext expects
+      const event = {
+        name: eventData.name,
+        date: eventData.date,
+        description: eventData.description,
+        creatorId: eventData.creatorId,
+        familyMembers: eventData.familyMembers
+      };
+      
       await addEvent(event);
       toast.success("Event created successfully!");
       navigate("/calendar");

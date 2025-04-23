@@ -12,11 +12,15 @@ import { EventNameInput } from './events/EventNameInput';
 import { EventDateInput } from './events/EventDateInput';
 import { EventDescriptionInput } from './events/EventDescriptionInput';
 import { EventFamilyMembersInput } from './events/EventFamilyMembersInput';
+import { useAuth } from '@supabase/auth-helpers-react';
+import { supabase } from "@/integrations/supabase/client";
 
+// Update interface to match the EventContext interface
 interface Event {
   name: string;
   date: Date;
   description: string;
+  creatorId: string;
   familyMembers: string[];
 }
 
@@ -25,20 +29,28 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
   const [date, setDate] = useState<Date>();
   const [description, setDescription] = useState('');
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (name && date && familyMembers.length > 0) {
-      onSubmit({ 
-        name, 
-        date, 
-        description, 
-        familyMembers 
-      });
-      setName('');
-      setDate(undefined);
-      setDescription('');
-      setFamilyMembers([]);
+      // Get the current user's ID
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user.id;
+      
+      if (userId) {
+        onSubmit({ 
+          name, 
+          date, 
+          description, 
+          creatorId: userId,
+          familyMembers 
+        });
+        
+        setName('');
+        setDate(undefined);
+        setDescription('');
+        setFamilyMembers([]);
+      }
     }
   };
 

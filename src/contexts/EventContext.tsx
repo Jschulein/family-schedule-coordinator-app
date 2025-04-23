@@ -3,13 +3,14 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
-// Extend Event to give clarity
+// Updated Event interface to align with form data
 export interface Event {
   name: string;
   date: Date;
   description: string;
-  familyMember: string; // will now be resolved from profile/user
-  creatorId: string; // add this for explicit mapping
+  familyMembers?: string[]; // Make this optional for existing events
+  creatorId: string;
+  familyMember?: string; // Keep this for backward compatibility
 }
 
 // Optional profiling interface
@@ -99,28 +100,52 @@ export function EventProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
 
-    const { data, error } = await supabase
-      .from('events')
-      .insert([
-        {
-          name: newEvent.name,
-          date: newEvent.date.toISOString(),
-          description: newEvent.description,
-          creator_id: newEvent.creatorId,
-        },
-      ]);
+    try {
+      // First insert the event
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .insert([
+          {
+            name: newEvent.name,
+            date: newEvent.date.toISOString(),
+            description: newEvent.description,
+            creator_id: newEvent.creatorId,
+          }
+        ])
+        .select()
+        .single();
+      
+      if (eventError) throw eventError;
+      
+      // If we have family members, associate them with the event
+      if (newEvent.familyMembers && newEvent.familyMembers.length > 0) {
+        // Insert family member associations
+        const familyMemberAssociations = newEvent.familyMembers.map(memberId => ({
+          event_id: eventData.id,
+          family_id: memberId,
+          shared_by: newEvent.creatorId
+        }));
+        
+        const { error: associationError } = await supabase
+          .from('event_families')
+          .insert(familyMemberAssociations);
+          
+        if (associationError) {
+          console.error("Error associating family members:", associationError);
+          // We still created the event, so we won't throw here
+        }
+      }
 
-    if (error) {
+      // Optimistically update state
+      setEvents(prevEvents => [...prevEvents, { ...newEvent }]);
+      
+    } catch (error) {
+      console.error("Error adding event:", error);
       setError("Failed to add event");
-      toast.error("Unable to add event.");
+      throw error;
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Optimistically update state
-    setEvents(prevEvents => [...prevEvents, { ...newEvent }]);
-    setLoading(false);
-    toast.success("Event created successfully!");
   };
 
   return (
@@ -137,4 +162,3 @@ export function useEvents() {
   }
   return context;
 }
-
