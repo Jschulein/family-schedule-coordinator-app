@@ -3,41 +3,66 @@ import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { Home, Calendar, Users } from "lucide-react"
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+} from "@/components/ui/sidebar";
+import { Home, Calendar, Users } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+
+const NAV_ITEMS = [
+  {
+    name: "Home",
+    icon: Home,
+    path: "/",
+  },
+  {
+    name: "Calendar",
+    icon: Calendar,
+    path: "/calendar",
+  },
+  {
+    name: "Families",
+    icon: Users,
+    path: "/families",
+  },
+];
 
 export function MainNav() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4 bg-sidebar-primary text-sidebar-primary-foreground">
-        <h2 className="text-lg font-semibold">Family Schedule</h2>
+    <Sidebar className="bg-sidebar min-h-screen border-r border-sidebar-border">
+      <SidebarHeader className="px-0 py-2 border-b border-sidebar-border flex flex-col items-center">
+        <span className="text-lg font-bold tracking-tight text-sidebar-foreground">FS</span>
       </SidebarHeader>
-      <SidebarContent>
-        <nav className="space-y-2 p-2">
-          <a 
-            href="/" 
-            className="flex items-center space-x-2 p-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors group"
-          >
-            <Home className="h-5 w-5 group-hover:text-sidebar-accent-foreground" />
-            <span>Home</span>
-          </a>
-          <a 
-            href="/calendar" 
-            className="flex items-center space-x-2 p-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors group"
-          >
-            <Calendar className="h-5 w-5 group-hover:text-sidebar-accent-foreground" />
-            <span>Calendar</span>
-          </a>
-          <a 
-            href="/families" 
-            className="flex items-center space-x-2 p-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors group"
-          >
-            <Users className="h-5 w-5 group-hover:text-sidebar-accent-foreground" />
-            <span>Families</span>
-          </a>
-        </nav>
+      <SidebarContent className="flex flex-col items-center px-0 py-6">
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV_ITEMS.map(({ name, icon: Icon, path }) => (
+                <SidebarMenuItem key={name} className="flex justify-center">
+                  <SidebarMenuButton
+                    size="lg"
+                    variant={location.pathname === path ? "outline" : "default"}
+                    isActive={location.pathname === path}
+                    tooltip={name}
+                    onClick={() => navigate(path)}
+                    className="flex flex-col items-center justify-center w-12 h-12"
+                  >
+                    <Icon className="w-6 h-6 mx-auto" />
+                    <span className="sr-only">{name}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

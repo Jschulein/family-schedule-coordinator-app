@@ -10,6 +10,7 @@ import Settings from "./pages/Settings";
 import Calendar from "./pages/Calendar";
 import NotFound from "./pages/NotFound";
 import Families from "./pages/Families";
+import AppLayout from "@/components/AppLayout";
 
 const queryClient = new QueryClient();
 
@@ -22,10 +23,14 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/events/new" element={<NewEvent />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/families" element={<Families />} />
+
+            <Route element={<AppLayout><Outlet /></AppLayout>}>
+              <Route path="/events/new" element={<NewEvent />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/families" element={<Families />} />
+            </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
