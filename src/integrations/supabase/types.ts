@@ -322,7 +322,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_event_owner: {
+        Args: { event_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       email_frequency: "daily" | "weekly" | "biweekly" | "monthly" | "never"

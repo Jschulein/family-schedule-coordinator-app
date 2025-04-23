@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EventFormData {
   name: string;
@@ -20,13 +21,36 @@ interface EventFormData {
 
 const NewEvent = () => {
   const navigate = useNavigate();
-  const { addEvent } = useEvents();
+  const { addEvent, loading: contextLoading } = useEvents();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check authentication status
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      setIsAuthenticated(!!data.session);
+      
+      if (!data.session) {
+        toast.error("You need to be logged in to create events");
+        navigate("/auth");
+      }
+    };
+    
+    checkAuth();
+  }, [navigate]);
 
   const handleSubmit = async (eventData: EventFormData) => {
     try {
       setIsSubmitting(true);
       console.log("Form submission data:", eventData);
+      
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        toast.error("You need to be logged in to create events");
+        navigate("/auth");
+        return;
+      }
       
       const event = {
         name: eventData.name,
@@ -34,12 +58,13 @@ const NewEvent = () => {
         end_date: eventData.end_date || eventData.date,
         time: eventData.time,
         description: eventData.description,
-        creatorId: eventData.creatorId,
+        creatorId: data.session.user.id,
         familyMembers: eventData.familyMembers,
         all_day: eventData.all_day
       };
       
       await addEvent(event);
+      toast.success("Event created successfully!");
       navigate("/calendar");
     } catch (error: any) {
       console.error("Error in handleSubmit:", error);
@@ -52,6 +77,10 @@ const NewEvent = () => {
   const handleReturn = () => {
     navigate("/");
   };
+
+  if (!isAuthenticated) {
+    return <div className="p-8 text-center">Checking authentication...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -72,7 +101,7 @@ const NewEvent = () => {
         <div className="flex justify-center">
           <AddEventForm 
             onSubmit={handleSubmit} 
-            isSubmitting={isSubmitting}
+            isSubmitting={isSubmitting || contextLoading}
           />
         </div>
       </div>

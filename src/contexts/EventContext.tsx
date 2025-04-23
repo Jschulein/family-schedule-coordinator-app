@@ -63,6 +63,15 @@ export function EventProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       try {
+        // Get the current session to verify authentication
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) {
+          console.log("No active session found");
+          setEvents([]);
+          setLoading(false);
+          return;
+        }
+
         const { data: eventRows, error: eventError } = await supabase
           .from('events')
           .select('*')
@@ -104,6 +113,21 @@ export function EventProvider({ children }: { children: ReactNode }) {
     }
 
     fetchEvents();
+
+    // Set up a subscription for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        fetchEvents();
+      } else if (event === 'SIGNED_OUT') {
+        setEvents([]);
+      }
+    });
+
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const addEvent = async (newEvent: Event) => {
@@ -113,14 +137,23 @@ export function EventProvider({ children }: { children: ReactNode }) {
     try {
       console.log("Adding event:", newEvent);
       
-      // Prepare the data object for insertion
+      // Verify user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in to create events");
+        setError("Authentication required");
+        setLoading(false);
+        return;
+      }
+      
+      // Format dates for Supabase
       const eventData = {
         name: newEvent.name,
-        date: newEvent.date.toISOString().split('T')[0],
-        end_date: newEvent.end_date ? newEvent.end_date.toISOString().split('T')[0] : newEvent.date.toISOString().split('T')[0],
+        date: newEvent.date.toISOString(),
+        end_date: newEvent.end_date ? newEvent.end_date.toISOString() : newEvent.date.toISOString(),
         time: newEvent.time,
         description: newEvent.description || "",
-        creator_id: newEvent.creatorId,
+        creator_id: session.user.id,
         all_day: newEvent.all_day || false
       };
       
@@ -145,7 +178,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         const familyMemberAssociations = newEvent.familyMembers.map(memberId => ({
           event_id: eventResult.id,
           family_id: memberId,
-          shared_by: newEvent.creatorId
+          shared_by: session.user.id
         }));
         
         console.log("Associating with family members:", familyMemberAssociations);
@@ -160,10 +193,19 @@ export function EventProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Get the user profile for display
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name, Email')
+        .eq('id', session.user.id)
+        .single();
+
       // Create a complete event object with the returned data for the UI
-      const createdEvent = {
+      const createdEvent: Event = {
         ...newEvent,
-        id: eventResult?.id
+        id: eventResult?.id,
+        creatorId: session.user.id,
+        familyMember: profileData?.full_name || profileData?.Email || session.user.id.slice(0, 8) || "Unknown"
       };
       
       setEvents(prevEvents => [...prevEvents, createdEvent]);
