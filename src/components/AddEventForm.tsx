@@ -11,29 +11,34 @@ import {
 import { EventNameInput } from './events/EventNameInput';
 import { EventDateInput } from './events/EventDateInput';
 import { EventDescriptionInput } from './events/EventDescriptionInput';
-import { EventFamilyMemberInput } from './events/EventFamilyMemberInput';
+import { EventFamilyMembersInput } from './events/EventFamilyMembersInput';
 
 interface Event {
   name: string;
   date: Date;
   description: string;
-  familyMember: string;
+  familyMembers: string[];
 }
 
 const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
   const [name, setName] = useState('');
   const [date, setDate] = useState<Date>();
   const [description, setDescription] = useState('');
-  const [familyMember, setFamilyMember] = useState('');
+  const [familyMembers, setFamilyMembers] = useState<string[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name && date && description && familyMember) {
-      onSubmit({ name, date, description, familyMember });
+    if (name && date && familyMembers.length > 0) {
+      onSubmit({ 
+        name, 
+        date, 
+        description, 
+        familyMembers 
+      });
       setName('');
       setDate(undefined);
       setDescription('');
-      setFamilyMember('');
+      setFamilyMembers([]);
     }
   };
 
@@ -57,11 +62,17 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
             value={description} 
             onChange={setDescription} 
           />
-          <EventFamilyMemberInput 
-            value={familyMember} 
-            onChange={setFamilyMember} 
+          <EventFamilyMembersInput 
+            value={familyMembers} 
+            onChange={setFamilyMembers} 
           />
-          <Button type="submit" className="w-full">Add Event</Button>
+          <Button 
+            type="submit" 
+            className="w-full"
+            disabled={!name || !date || familyMembers.length === 0}
+          >
+            Add Event
+          </Button>
         </form>
       </CardContent>
     </Card>

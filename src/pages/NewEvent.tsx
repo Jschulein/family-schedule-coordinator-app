@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
@@ -10,10 +11,14 @@ const NewEvent = () => {
   const navigate = useNavigate();
   const { addEvent } = useEvents();
 
-  const handleSubmit = (event: Event) => {
-    addEvent(event);
-    toast.success("Event created successfully!");
-    navigate("/calendar");
+  const handleSubmit = async (event: Event) => {
+    try {
+      await addEvent(event);
+      toast.success("Event created successfully!");
+      navigate("/calendar");
+    } catch (error) {
+      toast.error("Failed to create event");
+    }
   };
 
   const handleReturn = () => {
