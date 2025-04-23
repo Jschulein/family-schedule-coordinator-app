@@ -3,11 +3,21 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
+// Extend Event to give clarity
 export interface Event {
   name: string;
   date: Date;
   description: string;
-  familyMember: string;
+  familyMember: string; // will now be resolved from profile/user
+  creatorId: string; // add this for explicit mapping
+}
+
+// Optional profiling interface
+interface UserProfile {
+  id: string;
+  full_name?: string | null;
+  Email?: string | null;
+  // add more fields as needed
 }
 
 interface EventContextType {
@@ -25,34 +35,59 @@ export function EventProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   // Helper to convert from Supabase DB row to Event
-  function fromDbEvent(row: any): Event {
+  function fromDbEvent(row: any, userMap: Record<string, UserProfile | undefined>): Event {
+    const userProfile = userMap[row.creator_id];
+    const familyMember =
+      userProfile?.full_name ||
+      userProfile?.Email ||
+      row.creator_id?.slice(0, 8) || // fallback: truncated uuid
+      "Unknown";
     return {
       name: row.name,
       date: new Date(row.date),
       description: row.description ?? "",
-      familyMember: row.creator_id ?? "Unknown", // This can be replaced with more meaningful data if you have member profiles
+      familyMember,
+      creatorId: row.creator_id,
     };
   }
 
-  // Fetch events from Supabase
   useEffect(() => {
     async function fetchEvents() {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase
+      // First, fetch events with creator_id
+      const { data: eventRows, error: eventError } = await supabase
         .from('events')
         .select('*')
         .order('date', { ascending: true });
 
-      if (error) {
+      if (eventError) {
         setError("Failed to load events");
         toast.error("Unable to fetch events from server.");
         setLoading(false);
         return;
       }
 
-      // Map DB rows to Event objects
-      setEvents((data || []).map(fromDbEvent));
+      // Now, fetch user profiles by creator_id (if any events exist)
+      const creatorIds = Array.from(new Set((eventRows || []).map((row: any) => row.creator_id))).filter(Boolean);
+      let userMap: Record<string, UserProfile | undefined> = {};
+
+      if (creatorIds.length > 0) {
+        // Try profiles table first
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, Email')
+          .in('id', creatorIds);
+
+        if (profiles) {
+          profiles.forEach((profile: UserProfile) => {
+            userMap[profile.id] = profile;
+          });
+        }
+      }
+
+      const mappedEvents = (eventRows || []).map((row: any) => fromDbEvent(row, userMap));
+      setEvents(mappedEvents);
       setLoading(false);
     }
 
@@ -71,7 +106,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           name: newEvent.name,
           date: newEvent.date.toISOString(),
           description: newEvent.description,
-          creator_id: newEvent.familyMember, // Still using familyMember field; you should wire to real user/family in further steps.
+          creator_id: newEvent.creatorId,
         },
       ]);
 
@@ -82,13 +117,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Optimistically update state (fetch again for 100% consistency could also be done)
-    setEvents(prevEvents => [
-      ...prevEvents,
-      {
-        ...newEvent,
-      },
-    ]);
+    // Optimistically update state
+    setEvents(prevEvents => [...prevEvents, { ...newEvent }]);
     setLoading(false);
     toast.success("Event created successfully!");
   };
@@ -107,3 +137,4 @@ export function useEvents() {
   }
   return context;
 }
+
