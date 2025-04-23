@@ -21,13 +21,12 @@ export const EventDescriptionInput = ({ value, onChange }: EventDescriptionInput
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="description">Description</Label>
+      <Label htmlFor="description">Description (optional)</Label>
       <Textarea
         id="description"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Event details..."
-        required
+        placeholder="Description, location, attire, notes, etc..."
         className={error ? "border-red-500" : ""}
       />
       {error && <p className="text-sm text-red-500">{error}</p>}
