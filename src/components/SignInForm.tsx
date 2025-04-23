@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Loader } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,13 +24,15 @@ export function SignInForm() {
         email,
         password,
       });
+      
       if (error) throw error;
+      
       navigate("/");
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message,
+        title: "Authentication Error",
+        description: error.message || "Failed to sign in. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -46,7 +49,9 @@ export function SignInForm() {
           placeholder="m@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          disabled={isLoading}
           required
+          className="bg-background"
         />
       </div>
       <div className="space-y-2">
@@ -56,11 +61,20 @@ export function SignInForm() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          disabled={isLoading}
           required
+          className="bg-background"
         />
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Loading..." : "Sign In"}
+        {isLoading ? (
+          <>
+            <Loader className="mr-2 h-4 w-4 animate-spin" />
+            Signing in...
+          </>
+        ) : (
+          "Sign In"
+        )}
       </Button>
     </form>
   );

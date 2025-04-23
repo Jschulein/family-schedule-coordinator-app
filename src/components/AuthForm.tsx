@@ -13,7 +13,7 @@ export function AuthForm() {
       <Button
         type="button"
         variant="link"
-        className="w-full"
+        className="w-full font-normal text-muted-foreground hover:text-primary"
         onClick={() => setIsSignUp(!isSignUp)}
       >
         {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}

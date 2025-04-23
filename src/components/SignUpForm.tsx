@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { Loader } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,9 @@ export function SignUpForm() {
         email,
         password,
       });
+      
       if (error) throw error;
+      
       toast({
         title: "Success!",
         description: "Please check your email to verify your account.",
@@ -29,8 +32,8 @@ export function SignUpForm() {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message,
+        title: "Registration Error",
+        description: error.message || "Failed to sign up. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -47,7 +50,9 @@ export function SignUpForm() {
           placeholder="m@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          disabled={isLoading}
           required
+          className="bg-background"
         />
       </div>
       <div className="space-y-2">
@@ -57,11 +62,20 @@ export function SignUpForm() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          disabled={isLoading}
           required
+          className="bg-background"
         />
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Loading..." : "Sign Up"}
+        {isLoading ? (
+          <>
+            <Loader className="mr-2 h-4 w-4 animate-spin" />
+            Creating account...
+          </>
+        ) : (
+          "Sign Up"
+        )}
       </Button>
     </form>
   );
