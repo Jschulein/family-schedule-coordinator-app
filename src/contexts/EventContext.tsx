@@ -27,6 +27,7 @@ interface EventContextType {
   addEvent: (event: Event) => Promise<void>;
   loading: boolean;
   error: string | null;
+  refetchEvents: () => Promise<void>;
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
@@ -57,61 +58,69 @@ export function EventProvider({ children }: { children: ReactNode }) {
     };
   }
 
-  useEffect(() => {
-    async function fetchEvents() {
-      setLoading(true);
-      setError(null);
+  const fetchEvents = async () => {
+    setLoading(true);
+    setError(null);
 
-      try {
-        // Get the current session to verify authentication
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
-          console.log("No active session found");
-          setEvents([]);
-          setLoading(false);
-          return;
-        }
-
-        const { data: eventRows, error: eventError } = await supabase
-          .from('events')
-          .select('*')
-          .order('date', { ascending: true });
-
-        if (eventError) {
-          console.error("Error fetching events:", eventError);
-          setError("Failed to load events");
-          toast.error("Unable to fetch events from server.");
-          setLoading(false);
-          return;
-        }
-
-        const creatorIds = Array.from(new Set((eventRows || []).map((row: any) => row.creator_id))).filter(Boolean);
-        let userMap: Record<string, UserProfile | undefined> = {};
-
-        if (creatorIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, full_name, Email')
-            .in('id', creatorIds);
-
-          if (profiles) {
-            profiles.forEach((profile: UserProfile) => {
-              userMap[profile.id] = profile;
-            });
-          }
-        }
-
-        const mappedEvents = (eventRows || []).map((row: any) => fromDbEvent(row, userMap));
-        setEvents(mappedEvents);
-      } catch (e) {
-        console.error("Error in fetchEvents:", e);
-        setError("An unexpected error occurred");
-        toast.error("Failed to load events");
-      } finally {
+    try {
+      // Get the current session to verify authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        console.log("No active session found");
+        setEvents([]);
         setLoading(false);
+        return;
       }
-    }
 
+      const { data: eventRows, error: eventError } = await supabase
+        .from('events')
+        .select('*')
+        .order('date', { ascending: true });
+
+      if (eventError) {
+        console.error("Error fetching events:", eventError);
+        setError(`Failed to load events: ${eventError.message}`);
+        toast.error("Unable to fetch events from server.");
+        setLoading(false);
+        return;
+      }
+
+      const creatorIds = Array.from(new Set((eventRows || []).map((row: any) => row.creator_id))).filter(Boolean);
+      let userMap: Record<string, UserProfile | undefined> = {};
+
+      if (creatorIds.length > 0) {
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, full_name, Email')
+          .in('id', creatorIds);
+
+        if (profileError) {
+          console.error("Error fetching profiles:", profileError);
+          // Continue with what we have - don't block event display due to profile errors
+        }
+
+        if (profiles) {
+          profiles.forEach((profile: UserProfile) => {
+            userMap[profile.id] = profile;
+          });
+        }
+      }
+
+      const mappedEvents = (eventRows || []).map((row: any) => fromDbEvent(row, userMap));
+      setEvents(mappedEvents);
+      if (mappedEvents.length === 0) {
+        console.log("No events found");
+      }
+    } catch (e) {
+      console.error("Error in fetchEvents:", e);
+      setError("An unexpected error occurred");
+      toast.error("Failed to load events");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchEvents();
 
     // Set up a subscription for auth state changes
@@ -167,8 +176,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
       
       if (eventError) {
         console.error("Error adding event:", eventError);
-        toast.error("Failed to add event: " + eventError.message);
-        setError("Failed to add event: " + eventError.message);
+        toast.error(`Failed to add event: ${eventError.message}`);
+        setError(`Failed to add event: ${eventError.message}`);
         return;
       }
       
@@ -220,8 +229,12 @@ export function EventProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refetchEvents = async () => {
+    await fetchEvents();
+  };
+
   return (
-    <EventContext.Provider value={{ events, addEvent, loading, error }}>
+    <EventContext.Provider value={{ events, addEvent, loading, error, refetchEvents }}>
       {children}
     </EventContext.Provider>
   );

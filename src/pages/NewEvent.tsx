@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { useState, useEffect } from "react";
@@ -21,9 +21,10 @@ interface EventFormData {
 
 const NewEvent = () => {
   const navigate = useNavigate();
-  const { addEvent, loading: contextLoading } = useEvents();
+  const { addEvent, loading: contextLoading, error: contextError, refetchEvents } = useEvents();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     // Check authentication status
@@ -77,6 +78,18 @@ const NewEvent = () => {
   const handleReturn = () => {
     navigate("/");
   };
+  
+  const handleRetry = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchEvents();
+      toast.success("Data refreshed successfully");
+    } catch (error) {
+      toast.error("Failed to refresh data");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (!isAuthenticated) {
     return <div className="p-8 text-center">Checking authentication...</div>;
@@ -85,19 +98,43 @@ const NewEvent = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center mb-8">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <Button 
+              variant="outline" 
+              className="mr-4" 
+              onClick={handleReturn}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Return
+            </Button>
+            <h1 className="text-4xl font-bold text-gray-900">
+              Add New Event
+            </h1>
+          </div>
           <Button 
             variant="outline" 
-            className="mr-4" 
-            onClick={handleReturn}
+            onClick={handleRetry}
+            disabled={isRefreshing}
+            className="flex items-center"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Return
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh Data
           </Button>
-          <h1 className="text-4xl font-bold text-gray-900">
-            Add New Event
-          </h1>
         </div>
+        
+        {contextError && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 rounded">
+            <div className="flex">
+              <div className="ml-3">
+                <p className="text-sm text-red-700">
+                  Error: {contextError}. Please try refreshing the data or contact support.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="flex justify-center">
           <AddEventForm 
             onSubmit={handleSubmit} 
