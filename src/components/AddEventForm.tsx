@@ -12,7 +12,6 @@ import { EventNameInput } from './events/EventNameInput';
 import { EventDateInput } from './events/EventDateInput';
 import { EventDescriptionInput } from './events/EventDescriptionInput';
 import { EventFamilyMembersInput } from './events/EventFamilyMembersInput';
-import { useAuth } from '@supabase/auth-helpers-react';
 import { supabase } from "@/integrations/supabase/client";
 
 // Update interface to match the EventContext interface
