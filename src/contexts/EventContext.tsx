@@ -1,15 +1,19 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
 export interface Event {
+  id?: string;
   name: string;
   date: Date;
+  end_date?: Date;
   time: string;
   description: string;
-  familyMembers?: string[]; // Made optional
+  familyMembers?: string[];
   creatorId: string;
-  familyMember?: string; // Keep this for backward compatibility
+  familyMember?: string;
+  all_day?: boolean;
 }
 
 interface UserProfile {
@@ -40,13 +44,17 @@ export function EventProvider({ children }: { children: ReactNode }) {
       userProfile?.Email ||
       row.creator_id?.slice(0, 8) || // fallback: truncated uuid
       "Unknown";
+    
     return {
+      id: row.id,
       name: row.name,
       date: new Date(row.date),
+      end_date: row.end_date ? new Date(row.end_date) : undefined,
       time: row.time,
       description: row.description ?? "",
       familyMember,
       creatorId: row.creator_id,
+      all_day: row.all_day || false
     };
   }
 
@@ -55,37 +63,45 @@ export function EventProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
 
-      const { data: eventRows, error: eventError } = await supabase
-        .from('events')
-        .select('*')
-        .order('date', { ascending: true });
+      try {
+        const { data: eventRows, error: eventError } = await supabase
+          .from('events')
+          .select('*')
+          .order('date', { ascending: true });
 
-      if (eventError) {
-        setError("Failed to load events");
-        toast.error("Unable to fetch events from server.");
-        setLoading(false);
-        return;
-      }
-
-      const creatorIds = Array.from(new Set((eventRows || []).map((row: any) => row.creator_id))).filter(Boolean);
-      let userMap: Record<string, UserProfile | undefined> = {};
-
-      if (creatorIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, Email')
-          .in('id', creatorIds);
-
-        if (profiles) {
-          profiles.forEach((profile: UserProfile) => {
-            userMap[profile.id] = profile;
-          });
+        if (eventError) {
+          console.error("Error fetching events:", eventError);
+          setError("Failed to load events");
+          toast.error("Unable to fetch events from server.");
+          setLoading(false);
+          return;
         }
-      }
 
-      const mappedEvents = (eventRows || []).map((row: any) => fromDbEvent(row, userMap));
-      setEvents(mappedEvents);
-      setLoading(false);
+        const creatorIds = Array.from(new Set((eventRows || []).map((row: any) => row.creator_id))).filter(Boolean);
+        let userMap: Record<string, UserProfile | undefined> = {};
+
+        if (creatorIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, Email')
+            .in('id', creatorIds);
+
+          if (profiles) {
+            profiles.forEach((profile: UserProfile) => {
+              userMap[profile.id] = profile;
+            });
+          }
+        }
+
+        const mappedEvents = (eventRows || []).map((row: any) => fromDbEvent(row, userMap));
+        setEvents(mappedEvents);
+      } catch (e) {
+        console.error("Error in fetchEvents:", e);
+        setError("An unexpected error occurred");
+        toast.error("Failed to load events");
+      } finally {
+        setLoading(false);
+      }
     }
 
     fetchEvents();
@@ -96,25 +112,31 @@ export function EventProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const { data: eventData, error: eventError } = await supabase
+      // Prepare the data object for insertion
+      const eventData = {
+        name: newEvent.name,
+        date: newEvent.date.toISOString(),
+        end_date: newEvent.end_date ? newEvent.end_date.toISOString() : newEvent.date.toISOString(),
+        time: newEvent.time,
+        description: newEvent.description,
+        creator_id: newEvent.creatorId,
+        all_day: newEvent.all_day || false
+      };
+      
+      const { data: eventResult, error: eventError } = await supabase
         .from('events')
-        .insert([
-          {
-            name: newEvent.name,
-            date: newEvent.date.toISOString(),
-            time: newEvent.time,
-            description: newEvent.description,
-            creator_id: newEvent.creatorId,
-          }
-        ])
+        .insert([eventData])
         .select()
         .single();
       
-      if (eventError) throw eventError;
+      if (eventError) {
+        console.error("Error adding event:", eventError);
+        throw eventError;
+      }
       
-      if (newEvent.familyMembers && newEvent.familyMembers.length > 0) {
+      if (newEvent.familyMembers && newEvent.familyMembers.length > 0 && eventResult) {
         const familyMemberAssociations = newEvent.familyMembers.map(memberId => ({
-          event_id: eventData.id,
+          event_id: eventResult.id,
           family_id: memberId,
           shared_by: newEvent.creatorId
         }));
@@ -128,7 +150,13 @@ export function EventProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      setEvents(prevEvents => [...prevEvents, { ...newEvent }]);
+      // Create a complete event object with the returned data for the UI
+      const createdEvent = {
+        ...newEvent,
+        id: eventResult?.id
+      };
+      
+      setEvents(prevEvents => [...prevEvents, createdEvent]);
       
     } catch (error) {
       console.error("Error adding event:", error);
