@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
+import { useState } from "react";
 
 interface EventFormData {
   name: string;
@@ -20,9 +21,13 @@ interface EventFormData {
 const NewEvent = () => {
   const navigate = useNavigate();
   const { addEvent } = useEvents();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (eventData: EventFormData) => {
     try {
+      setIsSubmitting(true);
+      console.log("Form submission data:", eventData);
+      
       const event = {
         name: eventData.name,
         date: eventData.date,
@@ -35,10 +40,12 @@ const NewEvent = () => {
       };
       
       await addEvent(event);
-      toast.success("Event created successfully!");
       navigate("/calendar");
-    } catch (error) {
-      toast.error("Failed to create event");
+    } catch (error: any) {
+      console.error("Error in handleSubmit:", error);
+      toast.error(`Failed to create event: ${error.message || "Unknown error"}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -63,7 +70,10 @@ const NewEvent = () => {
           </h1>
         </div>
         <div className="flex justify-center">
-          <AddEventForm onSubmit={handleSubmit} />
+          <AddEventForm 
+            onSubmit={handleSubmit} 
+            isSubmitting={isSubmitting}
+          />
         </div>
       </div>
     </div>

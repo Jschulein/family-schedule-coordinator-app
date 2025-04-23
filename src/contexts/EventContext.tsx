@@ -20,7 +20,6 @@ interface UserProfile {
   id: string;
   full_name?: string | null;
   Email?: string | null;
-  // add more fields as needed
 }
 
 interface EventContextType {
@@ -42,7 +41,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
     const familyMember =
       userProfile?.full_name ||
       userProfile?.Email ||
-      row.creator_id?.slice(0, 8) || // fallback: truncated uuid
+      row.creator_id?.slice(0, 8) || 
       "Unknown";
     
     return {
@@ -112,16 +111,20 @@ export function EventProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
+      console.log("Adding event:", newEvent);
+      
       // Prepare the data object for insertion
       const eventData = {
         name: newEvent.name,
-        date: newEvent.date.toISOString(),
-        end_date: newEvent.end_date ? newEvent.end_date.toISOString() : newEvent.date.toISOString(),
+        date: newEvent.date.toISOString().split('T')[0],
+        end_date: newEvent.end_date ? newEvent.end_date.toISOString().split('T')[0] : newEvent.date.toISOString().split('T')[0],
         time: newEvent.time,
-        description: newEvent.description,
+        description: newEvent.description || "",
         creator_id: newEvent.creatorId,
         all_day: newEvent.all_day || false
       };
+      
+      console.log("Event data for insert:", eventData);
       
       const { data: eventResult, error: eventError } = await supabase
         .from('events')
@@ -131,8 +134,12 @@ export function EventProvider({ children }: { children: ReactNode }) {
       
       if (eventError) {
         console.error("Error adding event:", eventError);
-        throw eventError;
+        toast.error("Failed to add event: " + eventError.message);
+        setError("Failed to add event: " + eventError.message);
+        return;
       }
+      
+      console.log("Event created successfully:", eventResult);
       
       if (newEvent.familyMembers && newEvent.familyMembers.length > 0 && eventResult) {
         const familyMemberAssociations = newEvent.familyMembers.map(memberId => ({
@@ -141,12 +148,15 @@ export function EventProvider({ children }: { children: ReactNode }) {
           shared_by: newEvent.creatorId
         }));
         
+        console.log("Associating with family members:", familyMemberAssociations);
+        
         const { error: associationError } = await supabase
           .from('event_families')
           .insert(familyMemberAssociations);
           
         if (associationError) {
           console.error("Error associating family members:", associationError);
+          toast.warning("Event created but failed to associate with family members");
         }
       }
 
@@ -157,11 +167,12 @@ export function EventProvider({ children }: { children: ReactNode }) {
       };
       
       setEvents(prevEvents => [...prevEvents, createdEvent]);
+      toast.success("Event created successfully!");
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding event:", error);
-      setError("Failed to add event");
-      throw error;
+      setError("Failed to add event: " + (error.message || "Unknown error"));
+      toast.error("Failed to add event: " + (error.message || "Unknown error"));
     } finally {
       setLoading(false);
     }

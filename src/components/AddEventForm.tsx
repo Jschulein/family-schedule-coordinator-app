@@ -16,6 +16,7 @@ import { EventFamilyMembersInput } from './events/EventFamilyMembersInput';
 import { EventEndDateInput } from './events/EventEndDateInput';
 import { EventAllDayToggle } from './events/EventAllDayToggle';
 import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 interface Event {
   name: string;
@@ -28,7 +29,12 @@ interface Event {
   all_day: boolean;
 }
 
-const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
+interface AddEventFormProps {
+  onSubmit: (event: Event) => void;
+  isSubmitting?: boolean;
+}
+
+const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => {
   const [name, setName] = useState('');
   const [date, setDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
@@ -39,11 +45,17 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (name && date) {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user.id;
-      
-      if (userId) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user.id;
+        
+        if (!userId) {
+          console.error("No authenticated user found");
+          return;
+        }
+        
         onSubmit({ 
           name, 
           date, 
@@ -54,17 +66,13 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
           familyMembers,
           all_day: allDay
         });
-        
-        setName('');
-        setDate(undefined);
-        setEndDate(undefined);
-        setTime('12:00');
-        setDescription('');
-        setFamilyMembers([]);
-        setAllDay(false);
+      } catch (error) {
+        console.error("Error in form submission:", error);
       }
     }
   };
+
+  const isFormValid = name && name.length >= 3 && date;
 
   return (
     <Card className="w-full max-w-md">
@@ -108,9 +116,16 @@ const AddEventForm = ({ onSubmit }: { onSubmit: (event: Event) => void }) => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={!name || !date}
+            disabled={!isFormValid || isSubmitting}
           >
-            Add Event
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Event...
+              </>
+            ) : (
+              'Add Event'
+            )}
           </Button>
         </form>
       </CardContent>
