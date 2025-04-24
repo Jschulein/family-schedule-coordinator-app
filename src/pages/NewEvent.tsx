@@ -7,6 +7,7 @@ import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Event } from "@/types/eventTypes";
 
 interface EventFormData {
   name: string;
@@ -29,12 +30,25 @@ const NewEvent = () => {
   useEffect(() => {
     // Check authentication status
     const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsAuthenticated(!!data.session);
-      
-      if (!data.session) {
-        toast.error("You need to be logged in to create events");
-        navigate("/auth");
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Auth error:", error);
+          toast.error("Authentication error. Please try logging in again.");
+          navigate("/auth");
+          return;
+        }
+        
+        setIsAuthenticated(!!data.session);
+        
+        if (!data.session) {
+          toast.error("You need to be logged in to create events");
+          navigate("/auth");
+        }
+      } catch (err) {
+        console.error("Error checking auth:", err);
+        toast.error("Failed to verify authentication status");
       }
     };
     
@@ -46,14 +60,21 @@ const NewEvent = () => {
       setIsSubmitting(true);
       console.log("Form submission data:", eventData);
       
-      const { data } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        toast.error("Authentication error. Please try logging in again.");
+        navigate("/auth");
+        return;
+      }
+      
       if (!data.session) {
         toast.error("You need to be logged in to create events");
         navigate("/auth");
         return;
       }
       
-      const event = {
+      const event: Event = {
         name: eventData.name,
         date: eventData.date,
         end_date: eventData.end_date || eventData.date,
