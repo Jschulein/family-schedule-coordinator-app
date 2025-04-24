@@ -29,10 +29,27 @@ export const useFamilies = () => {
         return;
       }
 
-      // Direct query to families table - RLS policies will handle the filtering
+      // Use the user_families function to get all family IDs for the current user
+      const { data: familyIds, error: familyIdsError } = await supabase
+        .rpc('user_families');
+      
+      if (familyIdsError) {
+        console.error("Error fetching family IDs:", familyIdsError);
+        throw familyIdsError;
+      }
+      
+      if (!familyIds || familyIds.length === 0) {
+        console.log("User has no families");
+        setFamilies([]);
+        setLoading(false);
+        return;
+      }
+
+      // Now fetch the actual family details using the IDs we retrieved
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
+        .in('id', familyIds)
         .order('name');
       
       if (familiesError) {
