@@ -93,6 +93,8 @@ export const useFamilies = () => {
         return;
       }
 
+      console.log("User authenticated, creating family with user ID:", user.id);
+      
       // Create just the family record, the database trigger will handle creating the family_member
       const { data: familyData, error: familyError } = await supabase
         .from("families")
@@ -110,6 +112,7 @@ export const useFamilies = () => {
       }
       
       console.log("Family created successfully:", familyData);
+      toast.success("Family created successfully!");
       
       // Fetch all families again to make sure we have the latest data
       await fetchFamilies();
@@ -128,6 +131,7 @@ export const useFamilies = () => {
   };
 
   const handleSelectFamily = (familyId: string) => {
+    console.log("Selecting family:", familyId);
     setActiveFamilyId(familyId);
     localStorage.setItem("activeFamilyId", familyId);
   };
