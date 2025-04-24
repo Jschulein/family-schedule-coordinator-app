@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, isAfter, startOfDay } from "date-fns";
 import { Event } from "@/types/eventTypes";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import EventActions from "./EventActions";
 
 interface UpcomingFamilyEventsProps {
   events: Event[];
@@ -10,6 +13,17 @@ interface UpcomingFamilyEventsProps {
 }
 
 const UpcomingFamilyEvents = ({ events, calendarColor }: UpcomingFamilyEventsProps) => {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data } = await supabase.auth.getSession();
+      setCurrentUserId(data.session?.user.id || null);
+    };
+    
+    fetchUserId();
+  }, []);
+  
   const today = startOfDay(new Date());
   const upcomingEvents = events.filter(event => 
     isAfter(startOfDay(event.date), today) || 
@@ -42,16 +56,24 @@ const UpcomingFamilyEvents = ({ events, calendarColor }: UpcomingFamilyEventsPro
               {memberEvents.map((event, index) => (
                 <div key={index} className="border-b last:border-0 pb-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium">{event.name}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {format(event.date, "PPP")}
-                    </span>
+                    <div>
+                      <span className="font-medium">{event.name}</span>
+                      <span className="text-sm text-muted-foreground ml-2">
+                        {format(event.date, "MMM d")}
+                      </span>
+                    </div>
+                    {event.creatorId === currentUserId && (
+                      <EventActions event={event} compact={true} />
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">{event.description}</p>
                 </div>
               ))}
             </div>
           ))}
+          {Object.keys(eventsByFamilyMember).length === 0 && (
+            <p className="text-muted-foreground">No upcoming events scheduled.</p>
+          )}
         </div>
       </CardContent>
     </Card>

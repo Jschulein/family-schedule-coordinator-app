@@ -21,6 +21,8 @@ export interface UserProfile {
 export interface EventContextType {
   events: Event[];
   addEvent: (event: Event) => Promise<void>;
+  updateEvent: (event: Event) => Promise<void>;
+  deleteEvent: (eventId: string) => Promise<void>;
   loading: boolean;
   error: string | null;
   refetchEvents: () => Promise<void>;

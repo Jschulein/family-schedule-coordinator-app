@@ -10,6 +10,7 @@ import { EventProvider } from "./contexts/EventContext";
 import { supabase } from "./integrations/supabase/client";
 import Index from "./pages/Index";
 import NewEvent from "./pages/NewEvent";
+import EditEvent from "./pages/EditEvent";
 import Settings from "./pages/Settings";
 import Calendar from "./pages/Calendar";
 import NotFound from "./pages/NotFound";
@@ -74,6 +75,7 @@ const App = () => (
               </ProtectedRoute>
             }>
               <Route path="/events/new" element={<NewEvent />} />
+              <Route path="/event/edit/:eventId" element={<EditEvent />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/families" element={<Families />} />

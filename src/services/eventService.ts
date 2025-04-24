@@ -168,3 +168,168 @@ export async function addEventToDb(newEvent: Event) {
     return { event: null, error: error.message || "Failed to add event: Unknown error" };
   }
 }
+
+/**
+ * Updates an existing event in the database
+ */
+export async function updateEventInDb(updatedEvent: Event) {
+  try {
+    if (!updatedEvent.id) {
+      throw new Error("Event ID is required for updates");
+    }
+
+    // Verify user is authenticated and authorized to update this event
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      throw new Error(`Authentication error: ${sessionError.message}`);
+    }
+    
+    if (!session) {
+      throw new Error("You must be logged in to update events");
+    }
+
+    // Check if user is the creator of this event
+    const { data: existingEvent, error: fetchError } = await supabase
+      .from('events')
+      .select('creator_id')
+      .eq('id', updatedEvent.id)
+      .single();
+
+    if (fetchError) {
+      throw new Error(`Failed to verify event ownership: ${fetchError.message}`);
+    }
+
+    if (existingEvent.creator_id !== session.user.id) {
+      throw new Error("You can only edit events that you created");
+    }
+
+    // Format dates for Supabase
+    const eventData = {
+      name: updatedEvent.name,
+      date: updatedEvent.date.toISOString(),
+      end_date: updatedEvent.end_date ? updatedEvent.end_date.toISOString() : updatedEvent.date.toISOString(),
+      time: updatedEvent.time,
+      description: updatedEvent.description || "",
+      all_day: updatedEvent.all_day || false
+    };
+
+    console.log("Event data for update:", eventData);
+
+    const { data: eventResult, error: updateError } = await supabase
+      .from('events')
+      .update(eventData)
+      .eq('id', updatedEvent.id)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error("Error updating event:", updateError);
+      throw new Error(`Failed to update event: ${updateError.message}`);
+    }
+    
+    console.log("Event updated successfully:", eventResult);
+    
+    if (updatedEvent.familyMembers && updatedEvent.familyMembers.length > 0) {
+      // First delete existing associations
+      const { error: deleteError } = await supabase
+        .from('event_families')
+        .delete()
+        .eq('event_id', updatedEvent.id);
+        
+      if (deleteError) {
+        console.error("Error removing existing family associations:", deleteError);
+        toast.warning("Event updated but failed to update family member associations");
+      } else {
+        // Then add new associations
+        const familyMemberAssociations = updatedEvent.familyMembers.map(memberId => ({
+          event_id: updatedEvent.id,
+          family_id: memberId,
+          shared_by: session.user.id
+        }));
+        
+        const { error: associationError } = await supabase
+          .from('event_families')
+          .insert(familyMemberAssociations);
+          
+        if (associationError) {
+          console.error("Error associating family members:", associationError);
+          toast.warning("Event updated but failed to update family member associations");
+        }
+      }
+    }
+    
+    return { event: eventResult, error: null };
+  } catch (error: any) {
+    console.error("Error updating event:", error);
+    return { event: null, error: error.message || "Failed to update event: Unknown error" };
+  }
+}
+
+/**
+ * Deletes an event from the database
+ */
+export async function deleteEventFromDb(eventId: string) {
+  try {
+    // Verify user is authenticated and authorized to delete this event
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      throw new Error(`Authentication error: ${sessionError.message}`);
+    }
+    
+    if (!session) {
+      throw new Error("You must be logged in to delete events");
+    }
+
+    // Check if user is the creator of this event
+    const { data: existingEvent, error: fetchError } = await supabase
+      .from('events')
+      .select('creator_id, name')
+      .eq('id', eventId)
+      .single();
+
+    if (fetchError) {
+      throw new Error(`Failed to verify event ownership: ${fetchError.message}`);
+    }
+
+    if (existingEvent.creator_id !== session.user.id) {
+      throw new Error("You can only delete events that you created");
+    }
+
+    // Delete associated family members first
+    const { error: familyDeleteError } = await supabase
+      .from('event_families')
+      .delete()
+      .eq('event_id', eventId);
+      
+    if (familyDeleteError) {
+      console.error("Error removing family associations:", familyDeleteError);
+      // Continue with event deletion anyway
+    }
+
+    // Delete the event
+    const { error: deleteError } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', eventId);
+    
+    if (deleteError) {
+      console.error("Error deleting event:", deleteError);
+      throw new Error(`Failed to delete event: ${deleteError.message}`);
+    }
+    
+    console.log("Event deleted successfully:", existingEvent.name);
+    
+    return { 
+      success: true, 
+      message: `Event "${existingEvent.name}" deleted successfully`, 
+      error: null 
+    };
+  } catch (error: any) {
+    console.error("Error deleting event:", error);
+    return { 
+      success: false, 
+      message: null, 
+      error: error.message || "Failed to delete event: Unknown error" 
+    };
+  }
+}

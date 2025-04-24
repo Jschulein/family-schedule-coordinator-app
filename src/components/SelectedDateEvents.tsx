@@ -1,8 +1,12 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Event } from "@/types/eventTypes";
+import EventActions from './EventActions';
+import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useState } from 'react';
 
 interface SelectedDateEventsProps {
   selectedDate: Date | undefined;
@@ -11,6 +15,17 @@ interface SelectedDateEventsProps {
 }
 
 const SelectedDateEvents = ({ selectedDate, events, calendarColor }: SelectedDateEventsProps) => {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data } = await supabase.auth.getSession();
+      setCurrentUserId(data.session?.user.id || null);
+    };
+    
+    fetchUserId();
+  }, []);
+  
   const selectedDateEvents = selectedDate
     ? events.filter(
         (event) => format(event.date, "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd")
@@ -38,6 +53,9 @@ const SelectedDateEvents = ({ selectedDate, events, calendarColor }: SelectedDat
                     </Badge>
                     <span className="font-medium">{event.name}</span>
                   </div>
+                  {event.creatorId === currentUserId && (
+                    <EventActions event={event} compact={true} />
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">{event.description}</p>
               </div>
