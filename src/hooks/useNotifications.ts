@@ -2,12 +2,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
+import { Json } from '@/integrations/supabase/types';
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'error';
 
 export type Notification = {
   id: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: NotificationType;
   read: boolean;
   created_at: string;
   action_url?: string;
@@ -30,13 +33,28 @@ export const useNotifications = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setNotifications(data || []);
+      
+      // Validate and convert notification types before setting state
+      const validNotifications = (data || []).map(notification => ({
+        ...notification,
+        type: validateNotificationType(notification.type)
+      })) as Notification[];
+      
+      setNotifications(validNotifications);
     } catch (error: any) {
       console.error('Error fetching notifications:', error);
       toast.error('Failed to load notifications');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to validate notification type
+  const validateNotificationType = (type: string): NotificationType => {
+    const validTypes: NotificationType[] = ['info', 'success', 'warning', 'error'];
+    return validTypes.includes(type as NotificationType) 
+      ? (type as NotificationType) 
+      : 'info'; // Default to 'info' for any invalid types
   };
 
   const subscribeToNotifications = () => {
@@ -50,7 +68,11 @@ export const useNotifications = () => {
           table: 'notifications'
         },
         (payload) => {
-          setNotifications(prev => [payload.new as Notification, ...prev]);
+          const newNotification = payload.new as any;
+          setNotifications(prev => [{
+            ...newNotification,
+            type: validateNotificationType(newNotification.type)
+          } as Notification, ...prev]);
         }
       )
       .subscribe();
