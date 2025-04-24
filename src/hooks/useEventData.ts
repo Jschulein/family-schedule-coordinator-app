@@ -11,6 +11,7 @@ export function useEventData() {
   const [error, setError] = useState<string | null>(null);
   
   const fetchEvents = useCallback(async () => {
+    console.log("Fetching events...");
     setLoading(true);
     setError(null);
 
@@ -18,10 +19,15 @@ export function useEventData() {
       const { events: fetchedEvents, error: fetchError } = await fetchEventsFromDb();
       
       if (fetchError) {
+        console.error("Failed to fetch events:", fetchError);
         setError(fetchError);
         toast.error("Unable to fetch events from server");
       } else {
+        console.log(`Successfully loaded ${fetchedEvents.length} events`);
         setEvents(fetchedEvents);
+        if (fetchedEvents.length === 0) {
+          toast.info("No events found. Create your first event!");
+        }
       }
     } catch (e: any) {
       console.error("Error in fetchEvents:", e);
@@ -33,13 +39,16 @@ export function useEventData() {
   }, []);
 
   useEffect(() => {
+    // Initial fetch
     fetchEvents();
 
     // Set up a subscription for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
+        console.log("Auth state changed: SIGNED_IN, fetching events");
         fetchEvents();
       } else if (event === 'SIGNED_OUT') {
+        console.log("Auth state changed: SIGNED_OUT, clearing events");
         setEvents([]);
       }
     });
