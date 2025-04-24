@@ -93,8 +93,7 @@ export const useFamilies = () => {
         return;
       }
 
-      // We'll directly create just the family, relying on the database trigger
-      // to handle the family_member creation, avoiding recursion issues
+      // Create just the family record, the database trigger will handle creating the family_member
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })
@@ -121,6 +120,7 @@ export const useFamilies = () => {
       console.error("Error creating family:", error);
       const errorMessage = error?.message || "Failed to create family. Please try again.";
       setError(errorMessage);
+      toast.error(errorMessage);
       throw error; // Propagate the error so the form can handle it
     } finally {
       setCreating(false);
@@ -134,8 +134,7 @@ export const useFamilies = () => {
 
   useEffect(() => {
     fetchFamilies();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchFamilies]);
 
   return {
     families,
