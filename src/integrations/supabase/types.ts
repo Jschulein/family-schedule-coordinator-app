@@ -378,12 +378,41 @@ export type Database = {
         }
         Returns: string
       }
+      delete_user_profile: {
+        Args: { user_id: number }
+        Returns: undefined
+      }
+      get_user_profile: {
+        Args: { user_id: number }
+        Returns: {
+          id: number
+          username: string
+          email: string
+          created_at: string
+        }[]
+      }
       handle_invitation_accept: {
         Args: { invitation_id: string; user_id: string }
         Returns: boolean
       }
       is_event_owner: {
         Args: { event_id: string }
+        Returns: boolean
+      }
+      update_user_profile: {
+        Args: { user_id: number; new_username: string; new_email: string }
+        Returns: undefined
+      }
+      user_can_access_event: {
+        Args: { event_id_param: string }
+        Returns: boolean
+      }
+      user_families: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+      user_is_family_member: {
+        Args: { family_id_param: string }
         Returns: boolean
       }
     }

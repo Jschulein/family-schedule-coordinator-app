@@ -28,27 +28,32 @@ export const useFamilies = () => {
         return;
       }
 
-      const { data, error } = await supabase
+      // Use a simpler query to reduce the chance of recursion issues
+      const { data, error: familiesError } = await supabase
+        .from("families")
+        .select("id, name")
+        .order('name');
+      
+      if (familiesError) throw familiesError;
+
+      // Now get the families the user is a member of
+      const { data: memberships, error: membershipsError } = await supabase
         .from("family_members")
-        .select("family_id, families(name, id)")
+        .select("family_id")
         .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      const uniqueFamilies: Family[] = [];
-      const seen = new Set();
-      for (const fm of data ?? []) {
-        if (fm.families && !seen.has(fm.families.id)) {
-          uniqueFamilies.push({ id: fm.families.id, name: fm.families.name });
-          seen.add(fm.families.id);
-        }
-      }
-      setFamilies(uniqueFamilies);
+      
+      if (membershipsError) throw membershipsError;
+      
+      // Filter to only include families where user is a member
+      const familyIds = new Set(memberships?.map(m => m.family_id) || []);
+      const userFamilies = data?.filter(f => familyIds.has(f.id)) || [];
+      
+      setFamilies(userFamilies);
 
       // Set first family as active if none selected
-      if (!activeFamilyId && uniqueFamilies.length > 0) {
-        handleSelectFamily(uniqueFamilies[0].id);
-      } else if (activeFamilyId && !uniqueFamilies.some(f => f.id === activeFamilyId)) {
+      if (!activeFamilyId && userFamilies.length > 0) {
+        handleSelectFamily(userFamilies[0].id);
+      } else if (activeFamilyId && !userFamilies.some(f => f.id === activeFamilyId)) {
         setActiveFamilyId(null);
         localStorage.removeItem("activeFamilyId");
       }
@@ -77,37 +82,31 @@ export const useFamilies = () => {
         return;
       }
 
-      const { data, error } = await supabase
+      // Step 1: Create the family
+      const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })
         .select("id, name")
         .single();
 
-      if (error) throw error;
-
-      if (data) {
-        const { error: memberError } = await supabase
-          .from("family_members")
-          .insert({
-            family_id: data.id,
-            user_id: user.id,
-            role: "admin",
-            email: user.email,
-          });
-
-        if (memberError) {
-          console.error("Error adding member:", memberError);
-        }
-
-        setFamilies(prev => [...prev, { id: data.id, name: data.name }]);
-        handleSelectFamily(data.id);
-        toast.success("Family created successfully!");
-        return data;
+      if (familyError) throw familyError;
+      
+      if (!familyData) {
+        throw new Error("No data returned when creating family");
       }
+      
+      // Let's fetch families again to make sure we have the latest data
+      // This also verifies the RLS policies are working correctly
+      await fetchFamilies();
+      
+      handleSelectFamily(familyData.id);
+      toast.success("Family created successfully!");
+      return familyData;
     } catch (error: any) {
       console.error("Error creating family:", error.message);
       setError("Failed to create family. Please try again.");
       toast.error("Failed to create family");
+      throw error; // Propagate the error so the form can handle it
     } finally {
       setCreating(false);
     }
