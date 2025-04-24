@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 
 interface CreateFamilyFormProps {
-  onSubmit: (name: string) => Promise<unknown>; // Already updated to accept any Promise return type
+  onSubmit: (name: string) => Promise<unknown>; 
   creating: boolean;
 }
 
@@ -20,15 +21,20 @@ export const CreateFamilyForm = ({ onSubmit, creating }: CreateFamilyFormProps) 
     
     if (!newFamilyName.trim()) {
       setError("Family name cannot be empty");
+      toast.error("Family name cannot be empty");
       return;
     }
     
     try {
+      console.log("Submitting family creation form:", newFamilyName);
       await onSubmit(newFamilyName);
       setNewFamilyName("");
-    } catch (err) {
-      console.error("Error in form submission:", err);
-      setError("Failed to create family. Please try again.");
+      toast.success("Family created successfully!");
+    } catch (err: any) {
+      console.error("Error in family creation form submission:", err);
+      const errorMessage = err?.message || "Failed to create family. Please try again.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

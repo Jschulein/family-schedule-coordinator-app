@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 
@@ -17,7 +17,8 @@ export const useFamilies = () => {
     localStorage.getItem("activeFamilyId")
   );
 
-  const fetchFamilies = async () => {
+  const fetchFamilies = useCallback(async () => {
+    console.log("Fetching families...");
     setLoading(true);
     setError(null);
     try {
@@ -28,32 +29,44 @@ export const useFamilies = () => {
         return;
       }
 
-      // Use a simpler query to reduce the chance of recursion issues
-      const { data, error: familiesError } = await supabase
-        .from("families")
-        .select("id, name")
-        .order('name');
-      
-      if (familiesError) throw familiesError;
-
-      // Now get the families the user is a member of
+      // First get all family_members for current user
       const { data: memberships, error: membershipsError } = await supabase
         .from("family_members")
         .select("family_id")
         .eq("user_id", user.id);
       
-      if (membershipsError) throw membershipsError;
+      if (membershipsError) {
+        console.error("Error fetching family memberships:", membershipsError);
+        throw membershipsError;
+      }
       
-      // Filter to only include families where user is a member
-      const familyIds = new Set(memberships?.map(m => m.family_id) || []);
-      const userFamilies = data?.filter(f => familyIds.has(f.id)) || [];
+      if (!memberships || memberships.length === 0) {
+        console.log("User has no family memberships");
+        setFamilies([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get details of each family
+      const familyIds = memberships.map(m => m.family_id);
+      const { data: familiesData, error: familiesError } = await supabase
+        .from("families")
+        .select("id, name")
+        .in('id', familyIds)
+        .order('name');
       
-      setFamilies(userFamilies);
+      if (familiesError) {
+        console.error("Error fetching families:", familiesError);
+        throw familiesError;
+      }
+      
+      console.log(`Successfully fetched ${familiesData?.length || 0} families`);
+      setFamilies(familiesData || []);
 
       // Set first family as active if none selected
-      if (!activeFamilyId && userFamilies.length > 0) {
-        handleSelectFamily(userFamilies[0].id);
-      } else if (activeFamilyId && !userFamilies.some(f => f.id === activeFamilyId)) {
+      if (!activeFamilyId && familiesData && familiesData.length > 0) {
+        handleSelectFamily(familiesData[0].id);
+      } else if (activeFamilyId && !familiesData?.some(f => f.id === activeFamilyId)) {
         setActiveFamilyId(null);
         localStorage.removeItem("activeFamilyId");
       }
@@ -64,7 +77,7 @@ export const useFamilies = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeFamilyId]);
 
   const createFamily = async (name: string) => {
     if (!name.trim()) {
@@ -76,6 +89,7 @@ export const useFamilies = () => {
     setError(null);
     
     try {
+      console.log("Creating new family:", name);
       const { data: { user }, error: userErr } = await supabase.auth.getUser();
       if (userErr || !user) {
         toast.error("You must be logged in to create a family");
@@ -89,23 +103,27 @@ export const useFamilies = () => {
         .select("id, name")
         .single();
 
-      if (familyError) throw familyError;
+      if (familyError) {
+        console.error("Error creating family:", familyError);
+        throw familyError;
+      }
       
       if (!familyData) {
         throw new Error("No data returned when creating family");
       }
       
-      // Let's fetch families again to make sure we have the latest data
-      // This also verifies the RLS policies are working correctly
+      console.log("Family created successfully:", familyData);
+      
+      // Fetch all families again to make sure we have the latest data
+      // We'll rely on the database trigger we set up to handle creating family_member entry
       await fetchFamilies();
       
       handleSelectFamily(familyData.id);
-      toast.success("Family created successfully!");
       return familyData;
     } catch (error: any) {
-      console.error("Error creating family:", error.message);
-      setError("Failed to create family. Please try again.");
-      toast.error("Failed to create family");
+      console.error("Error creating family:", error);
+      const errorMessage = error?.message || "Failed to create family. Please try again.";
+      setError(errorMessage);
       throw error; // Propagate the error so the form can handle it
     } finally {
       setCreating(false);
@@ -119,6 +137,7 @@ export const useFamilies = () => {
 
   useEffect(() => {
     fetchFamilies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
