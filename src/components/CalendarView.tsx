@@ -2,7 +2,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { Event } from "@/contexts/EventContext";
+import { Event } from "@/types/eventTypes";
 import DayContent from "./calendar/DayContent";
 import CalendarHeader from "./calendar/CalendarHeader";
 

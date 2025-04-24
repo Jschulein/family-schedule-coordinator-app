@@ -1,6 +1,6 @@
 
 import { format } from "date-fns";
-import { Event } from "@/contexts/EventContext";
+import { Event } from "@/types/eventTypes";
 
 interface DayContentProps {
   date: Date;

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Card,
@@ -8,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Event } from "@/contexts/EventContext";
+import { Event } from "@/types/eventTypes";
 
 const UpcomingEvents = ({ events }: { events: Event[] }) => {
   const sortedEvents = [...events].sort((a, b) => a.date.getTime() - b.date.getTime());

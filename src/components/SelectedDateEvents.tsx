@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Event } from "@/contexts/EventContext";
+import { Event } from "@/types/eventTypes";
 
 interface SelectedDateEventsProps {
   selectedDate: Date | undefined;

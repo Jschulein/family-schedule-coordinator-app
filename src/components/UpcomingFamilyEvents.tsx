@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, isAfter, startOfDay } from "date-fns";
-import { Event } from "@/contexts/EventContext";
+import { Event } from "@/types/eventTypes";
 
 interface UpcomingFamilyEventsProps {
   events: Event[];
@@ -17,10 +17,11 @@ const UpcomingFamilyEvents = ({ events, calendarColor }: UpcomingFamilyEventsPro
   );
 
   const eventsByFamilyMember = upcomingEvents.reduce((groups: { [key: string]: Event[] }, event) => {
-    if (!groups[event.familyMember]) {
-      groups[event.familyMember] = [];
+    const familyMember = event.familyMember || "Unknown";
+    if (!groups[familyMember]) {
+      groups[familyMember] = [];
     }
-    groups[event.familyMember].push(event);
+    groups[familyMember].push(event);
     return groups;
   }, {});
 
