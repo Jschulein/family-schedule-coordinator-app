@@ -93,7 +93,8 @@ export const useFamilies = () => {
         return;
       }
 
-      // Create the family - our trigger will handle creating the family_member entry
+      // We'll directly create just the family, relying on the database trigger
+      // to handle the family_member creation, avoiding recursion issues
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })
