@@ -13,12 +13,16 @@ interface InviteMemberFormProps {
 
 export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormProps) => {
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [role, setRole] = useState<"admin" | "member" | "child">("member");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !role) return;
+    if (!email || !role || !name) {
+      toast.error("Please fill in all fields");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -35,6 +39,7 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
 
       toast.success("Invitation sent successfully!");
       setEmail("");
+      setName("");
       onInviteSent();
     } catch (error: any) {
       toast.error(error.message || "Failed to send invitation");
@@ -45,6 +50,15 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Input
+          type="text"
+          placeholder="Member name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+      </div>
       <div>
         <Input
           type="email"

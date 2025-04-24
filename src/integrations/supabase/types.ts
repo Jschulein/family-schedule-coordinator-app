@@ -199,6 +199,7 @@ export type Database = {
           family_id: string
           id: string
           joined_at: string | null
+          name: string
           role: Database["public"]["Enums"]["family_role"]
           user_id: string
         }
@@ -207,6 +208,7 @@ export type Database = {
           family_id: string
           id?: string
           joined_at?: string | null
+          name?: string
           role?: Database["public"]["Enums"]["family_role"]
           user_id: string
         }
@@ -215,6 +217,7 @@ export type Database = {
           family_id?: string
           id?: string
           joined_at?: string | null
+          name?: string
           role?: Database["public"]["Enums"]["family_role"]
           user_id?: string
         }
