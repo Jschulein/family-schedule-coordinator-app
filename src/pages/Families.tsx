@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
 import { toast } from "@/components/ui/sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type Family = {
   id: string;
@@ -19,6 +20,7 @@ const FamiliesPage = () => {
   const [newFamilyName, setNewFamilyName] = useState("");
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeFamilyId, setActiveFamilyId] = useState<string | null>(() =>
     localStorage.getItem("activeFamilyId")
   );
@@ -29,6 +31,7 @@ const FamiliesPage = () => {
 
   const fetchFamilies = async () => {
     setLoading(true);
+    setError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -57,10 +60,15 @@ const FamiliesPage = () => {
       // Set first family as active if none selected
       if (!activeFamilyId && uniqueFamilies.length > 0) {
         handleSelectFamily(uniqueFamilies[0].id);
+      } else if (activeFamilyId && !uniqueFamilies.some(f => f.id === activeFamilyId)) {
+        // If active family doesn't exist anymore, reset it
+        setActiveFamilyId(null);
+        localStorage.removeItem("activeFamilyId");
       }
     } catch (error: any) {
+      console.error("Error fetching families:", error.message);
+      setError("Failed to load families. Please try again.");
       toast.error("Failed to load families");
-      console.error("Error:", error.message);
     } finally {
       setLoading(false);
     }
@@ -74,6 +82,8 @@ const FamiliesPage = () => {
     }
 
     setCreating(true);
+    setError(null);
+    
     try {
       const { data: { user }, error: userErr } = await supabase.auth.getUser();
       if (userErr || !user) {
@@ -81,23 +91,40 @@ const FamiliesPage = () => {
         return;
       }
 
+      // First, create the family
       const { data, error } = await supabase
         .from("families")
         .insert({ name: newFamilyName, created_by: user.id })
-        .select("*")
+        .select("id, name")
         .single();
 
       if (error) throw error;
 
       if (data) {
-        setFamilies((f) => [...f, { id: data.id, name: data.name }]);
+        // Add the user as an admin to the new family
+        const { error: memberError } = await supabase
+          .from("family_members")
+          .insert({
+            family_id: data.id,
+            user_id: user.id,
+            role: "admin",
+            email: user.email,
+          });
+
+        if (memberError) {
+          console.error("Error adding member:", memberError);
+          // Continue anyway since the trigger should handle this
+        }
+
+        setFamilies((prevFamilies) => [...prevFamilies, { id: data.id, name: data.name }]);
         setNewFamilyName("");
         toast.success("Family created successfully!");
         handleSelectFamily(data.id);
       }
     } catch (error: any) {
+      console.error("Error creating family:", error.message);
+      setError("Failed to create family. Please try again.");
       toast.error("Failed to create family");
-      console.error("Error:", error.message);
     } finally {
       setCreating(false);
     }
@@ -116,7 +143,26 @@ const FamiliesPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold mb-4">Your Families</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Your Families</h1>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={fetchFamilies} 
+            disabled={loading}
+            title="Refresh families"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+        
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         
         <Card>
           <CardHeader>
