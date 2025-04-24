@@ -1,4 +1,3 @@
-
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Home, Calendar, Users, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { NotificationBell } from './notifications/NotificationBell';
 
 const NAV_ITEMS = [
   {
@@ -63,6 +63,9 @@ export function MainNav() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem className="flex justify-center">
+                <NotificationBell />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
