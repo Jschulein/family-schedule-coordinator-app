@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
+import { toast } from "@/components/ui/sonner";
+import { Loader2 } from "lucide-react";
 
 type Family = {
   id: string;
@@ -15,31 +18,32 @@ const FamiliesPage = () => {
   const [families, setFamilies] = useState<Family[]>([]);
   const [newFamilyName, setNewFamilyName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [activeFamilyId, setActiveFamilyId] = useState<string | null>(() =>
     localStorage.getItem("activeFamilyId")
   );
 
   useEffect(() => {
-    const fetchFamilies = async () => {
-      setLoading(true);
-      setError(null);
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !user) {
-        setError("Could not load user information.");
+    fetchFamilies();
+  }, []);
+
+  const fetchFamilies = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Authentication required");
         setLoading(false);
         return;
       }
-      const { data, error: famErr } = await supabase
+
+      const { data, error } = await supabase
         .from("family_members")
         .select("family_id, families(name, id)")
         .eq("user_id", user.id);
 
-      if (famErr) {
-        setError("Failed to fetch families.");
-        setLoading(false);
-        return;
-      }
+      if (error) throw error;
+
       const uniqueFamilies: Family[] = [];
       const seen = new Set();
       for (const fm of data ?? []) {
@@ -49,42 +53,64 @@ const FamiliesPage = () => {
         }
       }
       setFamilies(uniqueFamilies);
+
+      // Set first family as active if none selected
+      if (!activeFamilyId && uniqueFamilies.length > 0) {
+        handleSelectFamily(uniqueFamilies[0].id);
+      }
+    } catch (error: any) {
+      toast.error("Failed to load families");
+      console.error("Error:", error.message);
+    } finally {
       setLoading(false);
-    };
-    fetchFamilies();
-  }, []);
+    }
+  };
 
   const handleCreateFamily = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFamilyName.trim()) return;
-    setLoading(true);
-    setError(null);
-
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !user) {
-      setError("You must be logged in to create a family.");
-      setLoading(false);
+    if (!newFamilyName.trim()) {
+      toast.error("Please enter a family name");
       return;
     }
-    const { data, error } = await supabase
-      .from("families")
-      .insert({ name: newFamilyName, created_by: user.id })
-      .select("*")
-      .single();
 
-    if (error || !data) {
-      setError("Failed to create family.");
-      setLoading(false);
-      return;
+    setCreating(true);
+    try {
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !user) {
+        toast.error("You must be logged in to create a family");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("families")
+        .insert({ name: newFamilyName, created_by: user.id })
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setFamilies((f) => [...f, { id: data.id, name: data.name }]);
+        setNewFamilyName("");
+        toast.success("Family created successfully!");
+        handleSelectFamily(data.id);
+      }
+    } catch (error: any) {
+      toast.error("Failed to create family");
+      console.error("Error:", error.message);
+    } finally {
+      setCreating(false);
     }
-    setFamilies((f) => [...f, { id: data.id, name: data.name }]);
-    setNewFamilyName("");
-    setLoading(false);
   };
 
   const handleSelectFamily = (familyId: string) => {
     setActiveFamilyId(familyId);
     localStorage.setItem("activeFamilyId", familyId);
+  };
+
+  const handleRefreshInvitations = () => {
+    // Refresh families list after sending an invitation
+    fetchFamilies();
   };
 
   return (
@@ -102,65 +128,86 @@ const FamiliesPage = () => {
                 placeholder="Family name"
                 value={newFamilyName}
                 onChange={(e) => setNewFamilyName(e.target.value)}
-                disabled={loading}
+                disabled={creating}
                 required
+                className="flex-1"
               />
-              <Button type="submit" disabled={loading}>
-                Create
+              <Button type="submit" disabled={creating}>
+                {creating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create"
+                )}
               </Button>
             </form>
-            {error && (
-              <div className="text-red-600 text-sm mt-2">{error}</div>
-            )}
           </CardContent>
         </Card>
 
-        {activeFamilyId && (
-          <>
-            <Card>
-              <CardHeader>
-                <CardTitle>Invite Family Members</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <InviteMemberForm 
-                  familyId={activeFamilyId} 
-                  onInviteSent={() => {}} 
-                />
-              </CardContent>
-            </Card>
-
-            <PendingInvitations familyId={activeFamilyId} />
-          </>
-        )}
-
-        <div>
-          <h2 className="text-lg font-semibold mb-2">Switch Family</h2>
-          {loading ? (
-            <p>Loading families...</p>
-          ) : (
-            <div className="space-y-3">
-              {families.length === 0 && 
-                <p className="text-gray-600">You are not a member of any families yet.</p>
-              }
-              {families.map((fam) => (
-                <Card
-                  key={fam.id}
-                  className={`flex flex-row items-center justify-between ${
-                    fam.id === activeFamilyId ? "border-green-500" : ""
-                  }`}
-                >
-                  <CardContent className="flex-1">{fam.name}</CardContent>
-                  <Button
-                    variant={fam.id === activeFamilyId ? "default" : "outline"}
-                    onClick={() => handleSelectFamily(fam.id)}
-                  >
-                    {fam.id === activeFamilyId ? "Active" : "Set Active"}
-                  </Button>
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {families.length === 0 ? (
+              <Card>
+                <CardContent className="py-8">
+                  <p className="text-center text-gray-500">
+                    You haven't created or joined any families yet.
+                    Create your first family above!
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Families</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {families.map((fam) => (
+                      <Card
+                        key={fam.id}
+                        className={`flex items-center justify-between p-4 ${
+                          fam.id === activeFamilyId ? "border-primary" : ""
+                        }`}
+                      >
+                        <span className="text-lg font-medium">{fam.name}</span>
+                        <Button
+                          variant={fam.id === activeFamilyId ? "default" : "outline"}
+                          onClick={() => handleSelectFamily(fam.id)}
+                        >
+                          {fam.id === activeFamilyId ? "Active" : "Set Active"}
+                        </Button>
+                      </Card>
+                    ))}
+                  </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
-        </div>
+
+                {activeFamilyId && (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Invite Family Members</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <InviteMemberForm 
+                          familyId={activeFamilyId}
+                          onInviteSent={handleRefreshInvitations}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    <PendingInvitations familyId={activeFamilyId} />
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
