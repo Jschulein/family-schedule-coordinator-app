@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 interface InviteMemberFormProps {
   familyId: string;
@@ -28,6 +29,11 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user) {
+        toast.error("You must be logged in to invite members");
+        return;
+      }
+      
       const { error } = await supabase
         .from("invitations")
         .insert({
@@ -36,7 +42,7 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
           name,
           role,
           last_invited: new Date().toISOString(),
-          invited_by: user?.id
+          invited_by: user.id
         });
 
       if (error) throw error;
@@ -46,6 +52,7 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
       setName("");
       onInviteSent();
     } catch (error: any) {
+      console.error("Error sending invitation:", error);
       toast.error(error.message || "Failed to send invitation");
     } finally {
       setLoading(false);
@@ -84,8 +91,13 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={loading}>
-        {loading ? "Sending..." : "Send Invitation"}
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Sending...
+          </>
+        ) : "Send Invitation"}
       </Button>
     </form>
   );

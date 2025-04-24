@@ -7,6 +7,8 @@ import { CreateFamilyForm } from "@/components/families/CreateFamilyForm";
 import { FamilyList } from "@/components/families/FamilyList";
 import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const FamiliesPage = () => {
   const {
@@ -47,8 +49,18 @@ const FamiliesPage = () => {
         <CreateFamilyForm onSubmit={createFamily} creating={creating} />
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <RefreshCw className="h-8 w-8 animate-spin" />
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-8 w-1/2" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         ) : (
           <div className="space-y-6">
@@ -60,10 +72,18 @@ const FamiliesPage = () => {
 
             {activeFamilyId && (
               <>
-                <InviteMemberForm 
-                  familyId={activeFamilyId}
-                  onInviteSent={fetchFamilies}
-                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Invite Family Member</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <InviteMemberForm 
+                      familyId={activeFamilyId}
+                      onInviteSent={fetchFamilies}
+                    />
+                  </CardContent>
+                </Card>
+                
                 <PendingInvitations familyId={activeFamilyId} />
               </>
             )}

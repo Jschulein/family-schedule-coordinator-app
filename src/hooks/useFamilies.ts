@@ -29,31 +29,10 @@ export const useFamilies = () => {
         return;
       }
 
-      // First get all family_members for current user
-      const { data: memberships, error: membershipsError } = await supabase
-        .from("family_members")
-        .select("family_id")
-        .eq("user_id", user.id);
-      
-      if (membershipsError) {
-        console.error("Error fetching family memberships:", membershipsError);
-        throw membershipsError;
-      }
-      
-      if (!memberships || memberships.length === 0) {
-        console.log("User has no family memberships");
-        setFamilies([]);
-        setLoading(false);
-        return;
-      }
-
-      // Get details of each family
-      const familyIds = memberships.map(m => m.family_id);
+      // Direct query to families table
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
-        .select("id, name")
-        .in('id', familyIds)
-        .order('name');
+        .select("id, name");
       
       if (familiesError) {
         console.error("Error fetching families:", familiesError);
