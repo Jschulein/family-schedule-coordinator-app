@@ -29,10 +29,11 @@ export const useFamilies = () => {
         return;
       }
 
-      // Direct query to families table
+      // Direct query to families table - RLS policies will handle the filtering
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
-        .select("id, name");
+        .select("id, name")
+        .order('name');
       
       if (familiesError) {
         console.error("Error fetching families:", familiesError);
@@ -75,7 +76,7 @@ export const useFamilies = () => {
         return;
       }
 
-      // Step 1: Create the family
+      // Create the family - our trigger will handle creating the family_member entry
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })
@@ -94,7 +95,6 @@ export const useFamilies = () => {
       console.log("Family created successfully:", familyData);
       
       // Fetch all families again to make sure we have the latest data
-      // We'll rely on the database trigger we set up to handle creating family_member entry
       await fetchFamilies();
       
       handleSelectFamily(familyData.id);
