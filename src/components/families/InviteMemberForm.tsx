@@ -26,13 +26,17 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
 
     setLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from("invitations")
         .insert({
           family_id: familyId,
           email,
+          name,
           role,
           last_invited: new Date().toISOString(),
+          invited_by: user?.id
         });
 
       if (error) throw error;

@@ -402,6 +402,10 @@ export type Database = {
         Args: { event_id: string }
         Returns: boolean
       }
+      is_family_admin: {
+        Args: { family_id_param: string }
+        Returns: boolean
+      }
       update_user_profile: {
         Args: { user_id: number; new_username: string; new_email: string }
         Returns: undefined
