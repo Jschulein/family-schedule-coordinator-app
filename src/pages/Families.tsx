@@ -1,9 +1,10 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { InviteMemberForm } from "@/components/families/InviteMemberForm";
+import { PendingInvitations } from "@/components/families/PendingInvitations";
 
 type Family = {
   id: string;
@@ -19,19 +20,16 @@ const FamiliesPage = () => {
     localStorage.getItem("activeFamilyId")
   );
 
-  // Fetch families for the user
   useEffect(() => {
     const fetchFamilies = async () => {
       setLoading(true);
       setError(null);
-      // 1. Get user's ID
       const { data: { user }, error: userErr } = await supabase.auth.getUser();
       if (userErr || !user) {
         setError("Could not load user information.");
         setLoading(false);
         return;
       }
-      // 2. Query families where user is a member
       const { data, error: famErr } = await supabase
         .from("family_members")
         .select("family_id, families(name, id)")
@@ -42,7 +40,6 @@ const FamiliesPage = () => {
         setLoading(false);
         return;
       }
-      // Unwrap the families
       const uniqueFamilies: Family[] = [];
       const seen = new Set();
       for (const fm of data ?? []) {
@@ -57,14 +54,12 @@ const FamiliesPage = () => {
     fetchFamilies();
   }, []);
 
-  // Handler for creating a new family
   const handleCreateFamily = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFamilyName.trim()) return;
     setLoading(true);
     setError(null);
 
-    // Get current user ID
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) {
       setError("You must be logged in to create a family.");
@@ -87,7 +82,6 @@ const FamiliesPage = () => {
     setLoading(false);
   };
 
-  // Handler for switching active family
   const handleSelectFamily = (familyId: string) => {
     setActiveFamilyId(familyId);
     localStorage.setItem("activeFamilyId", familyId);
@@ -97,6 +91,7 @@ const FamiliesPage = () => {
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto space-y-8">
         <h1 className="text-3xl font-bold mb-4">Your Families</h1>
+        
         <Card>
           <CardHeader>
             <CardTitle>Create a New Family</CardTitle>
@@ -120,17 +115,39 @@ const FamiliesPage = () => {
           </CardContent>
         </Card>
 
+        {activeFamilyId && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Invite Family Members</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InviteMemberForm 
+                  familyId={activeFamilyId} 
+                  onInviteSent={() => {}} 
+                />
+              </CardContent>
+            </Card>
+
+            <PendingInvitations familyId={activeFamilyId} />
+          </>
+        )}
+
         <div>
           <h2 className="text-lg font-semibold mb-2">Switch Family</h2>
           {loading ? (
             <p>Loading families...</p>
           ) : (
             <div className="space-y-3">
-              {families.length === 0 && <p className="text-gray-600">You are not a member of any families yet.</p>}
+              {families.length === 0 && 
+                <p className="text-gray-600">You are not a member of any families yet.</p>
+              }
               {families.map((fam) => (
                 <Card
                   key={fam.id}
-                  className={`flex flex-row items-center justify-between ${fam.id === activeFamilyId ? "border-green-500" : ""}`}
+                  className={`flex flex-row items-center justify-between ${
+                    fam.id === activeFamilyId ? "border-green-500" : ""
+                  }`}
                 >
                   <CardContent className="flex-1">{fam.name}</CardContent>
                   <Button

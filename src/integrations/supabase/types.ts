@@ -235,6 +235,7 @@ export type Database = {
           id: string
           invited_at: string
           invited_by: string | null
+          last_invited: string | null
           role: Database["public"]["Enums"]["family_role"]
           status: string
         }
@@ -244,6 +245,7 @@ export type Database = {
           id?: string
           invited_at?: string
           invited_by?: string | null
+          last_invited?: string | null
           role?: Database["public"]["Enums"]["family_role"]
           status?: string
         }
@@ -253,6 +255,7 @@ export type Database = {
           id?: string
           invited_at?: string
           invited_by?: string | null
+          last_invited?: string | null
           role?: Database["public"]["Enums"]["family_role"]
           status?: string
         }
@@ -272,6 +275,8 @@ export type Database = {
           Email: string | null
           full_name: string | null
           id: string
+          invitation_token: string | null
+          notification_preferences: Json | null
           updated_at: string
         }
         Insert: {
@@ -279,6 +284,8 @@ export type Database = {
           Email?: string | null
           full_name?: string | null
           id: string
+          invitation_token?: string | null
+          notification_preferences?: Json | null
           updated_at?: string
         }
         Update: {
@@ -286,6 +293,8 @@ export type Database = {
           Email?: string | null
           full_name?: string | null
           id?: string
+          invitation_token?: string | null
+          notification_preferences?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -322,6 +331,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      handle_invitation_accept: {
+        Args: { invitation_id: string; user_id: string }
+        Returns: boolean
+      }
       is_event_owner: {
         Args: { event_id: string }
         Returns: boolean
