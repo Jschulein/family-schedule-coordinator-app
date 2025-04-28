@@ -29,27 +29,11 @@ export const useFamilies = () => {
         return;
       }
 
-      // Use the user_families function to get all family IDs for the current user
-      const { data: familyIds, error: familyIdsError } = await supabase
-        .rpc('user_families');
-      
-      if (familyIdsError) {
-        console.error("Error fetching family IDs:", familyIdsError);
-        throw familyIdsError;
-      }
-      
-      if (!familyIds || familyIds.length === 0) {
-        console.log("User has no families");
-        setFamilies([]);
-        setLoading(false);
-        return;
-      }
-
-      // Now fetch the actual family details using the IDs we retrieved
+      // With our improved RLS policies, we can use a direct query to get families
+      // No need for separate user_families function call followed by another query
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
-        .in('id', familyIds)
         .order('name');
       
       if (familiesError) {
@@ -95,7 +79,7 @@ export const useFamilies = () => {
 
       console.log("User authenticated, creating family with user ID:", user.id);
       
-      // Create just the family record, the database trigger will handle creating the family_member
+      // With updated trigger, just insert the family and the trigger will handle the member creation
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })
