@@ -1,10 +1,6 @@
 
-import { useToast as useToastOriginal, toast as toastOriginal } from "@/hooks/use-toast";
+// This file re-exports the toast hooks from the hooks directory
+import { useToast, toast } from "@/hooks/use-toast";
 
-export const useToast = useToastOriginal;
-export const toast = toastOriginal;
-
-export {
-  useToast,
-  toast
-};
+// Simply export what we import
+export { useToast, toast };

@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Invitation {
@@ -32,7 +31,7 @@ export const PendingInvitations = ({ familyId }: PendingInvitationsProps) => {
       if (error) throw error;
       setInvitations(data || []);
     } catch (error: any) {
-      toast.error("Failed to load invitations");
+      toast({ title: "Error", description: "Failed to load invitations" });
     } finally {
       setLoading(false);
     }
@@ -46,10 +45,10 @@ export const PendingInvitations = ({ familyId }: PendingInvitationsProps) => {
         .eq("id", invitationId);
 
       if (error) throw error;
-      toast.success("Invitation resent successfully!");
+      toast({ title: "Success", description: "Invitation resent successfully!" });
       fetchInvitations();
     } catch (error: any) {
-      toast.error("Failed to resend invitation");
+      toast({ title: "Error", description: "Failed to resend invitation" });
     }
   };
 

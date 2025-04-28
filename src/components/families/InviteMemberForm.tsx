@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
@@ -21,7 +21,7 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !role || !name) {
-      toast.error("Please fill in all fields");
+      toast({ title: "Error", description: "Please fill in all fields" });
       return;
     }
 
@@ -30,7 +30,7 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast.error("You must be logged in to invite members");
+        toast({ title: "Error", description: "You must be logged in to invite members" });
         return;
       }
       
@@ -47,13 +47,13 @@ export const InviteMemberForm = ({ familyId, onInviteSent }: InviteMemberFormPro
 
       if (error) throw error;
 
-      toast.success("Invitation sent successfully!");
+      toast({ title: "Success", description: "Invitation sent successfully!" });
       setEmail("");
       setName("");
       onInviteSent();
     } catch (error: any) {
       console.error("Error sending invitation:", error);
-      toast.error(error.message || "Failed to send invitation");
+      toast({ title: "Error", description: error.message || "Failed to send invitation" });
     } finally {
       setLoading(false);
     }
