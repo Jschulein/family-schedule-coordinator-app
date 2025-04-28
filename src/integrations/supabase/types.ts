@@ -387,7 +387,9 @@ export type Database = {
       }
       get_user_families: {
         Args: Record<PropertyKey, never>
-        Returns: string[]
+        Returns: {
+          family_id: string
+        }[]
       }
       get_user_profile: {
         Args: { user_id: number }
@@ -423,6 +425,10 @@ export type Database = {
         Returns: string[]
       }
       user_is_family_member: {
+        Args: { family_id_param: string }
+        Returns: boolean
+      }
+      user_is_in_family: {
         Args: { family_id_param: string }
         Returns: boolean
       }

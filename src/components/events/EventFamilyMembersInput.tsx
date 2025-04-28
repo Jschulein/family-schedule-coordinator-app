@@ -19,11 +19,14 @@ interface EventFamilyMembersInputProps {
 export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersInputProps) => {
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchFamilyMembers = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        // Using our security definer functions, this should now work without recursion
+        // Using the improved RLS policies with security definer functions
         const { data: members, error } = await supabase
           .from('family_members')
           .select('*')
@@ -36,10 +39,13 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
           return;
         }
 
+        console.log(`Successfully loaded ${members?.length || 0} family members`);
         setFamilyMembers(members || []);
       } catch (err) {
         console.error("Error in fetchFamilyMembers:", err);
         setError("An unexpected error occurred");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -58,25 +64,29 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
     <div className="space-y-2">
       <Label>Family Members</Label>
       <div className="grid grid-cols-1 gap-2">
-        {familyMembers.map((member) => (
-          <button
-            key={member.id}
-            type="button"
-            onClick={() => toggleMember(member.id)}
-            className={`flex items-center justify-between p-3 text-left rounded-lg border transition-colors
-              ${value.includes(member.id) 
-                ? "bg-primary/10 border-primary" 
-                : "hover:bg-muted"}`}
-          >
-            <span>{member.email}</span>
-            {value.includes(member.id) && (
-              <Check className="h-4 w-4 text-primary" />
-            )}
-          </button>
-        ))}
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading family members...</p>
+        ) : (
+          familyMembers.map((member) => (
+            <button
+              key={member.id}
+              type="button"
+              onClick={() => toggleMember(member.id)}
+              className={`flex items-center justify-between p-3 text-left rounded-lg border transition-colors
+                ${value.includes(member.id) 
+                  ? "bg-primary/10 border-primary" 
+                  : "hover:bg-muted"}`}
+            >
+              <span>{member.email}</span>
+              {value.includes(member.id) && (
+                <Check className="h-4 w-4 text-primary" />
+              )}
+            </button>
+          ))
+        )}
       </div>
       {error && <p className="text-sm text-red-500">{error}</p>}
-      {familyMembers.length === 0 && !error && (
+      {!loading && familyMembers.length === 0 && !error && (
         <p className="text-sm text-muted-foreground">No family members found</p>
       )}
     </div>

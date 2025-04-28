@@ -16,6 +16,14 @@ export function useEventData() {
     setError(null);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("No active session found");
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+
       const { events: fetchedEvents, error: fetchError } = await fetchEventsFromDb();
       
       if (fetchError) {

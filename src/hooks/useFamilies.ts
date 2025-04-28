@@ -29,7 +29,7 @@ export const useFamilies = () => {
         return;
       }
 
-      // The RLS policies now use our security definer function to avoid recursion
+      // Direct query using our security definer functions
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
@@ -78,7 +78,6 @@ export const useFamilies = () => {
 
       console.log("User authenticated, creating family with user ID:", user.id);
       
-      // Using the security definer functions for family member creation
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })

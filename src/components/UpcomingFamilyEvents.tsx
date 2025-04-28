@@ -19,13 +19,13 @@ const UpcomingFamilyEvents = ({ events, calendarColor }: UpcomingFamilyEventsPro
   useEffect(() => {
     const fetchUserId = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error("Error fetching user session:", error);
           toast({ title: "Error", description: "Failed to authenticate user" });
           return;
         }
-        setCurrentUserId(data.session?.user.id || null);
+        setCurrentUserId(session?.user.id || null);
       } catch (err) {
         console.error("Unexpected error in fetchUserId:", err);
       }
