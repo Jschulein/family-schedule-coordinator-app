@@ -26,7 +26,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
       setLoading(true);
       setError(null);
       try {
-        // Using the improved RLS policies with security definer functions
+        // Using the improved RLS with security definer functions
         const { data: members, error } = await supabase
           .from('family_members')
           .select('*')

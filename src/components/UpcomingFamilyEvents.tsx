@@ -19,6 +19,7 @@ const UpcomingFamilyEvents = ({ events, calendarColor }: UpcomingFamilyEventsPro
   useEffect(() => {
     const fetchUserId = async () => {
       try {
+        // Using improved session handling
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error("Error fetching user session:", error);

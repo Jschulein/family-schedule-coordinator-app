@@ -24,6 +24,7 @@ export function useEventData() {
         return;
       }
 
+      // Using the improved RLS policies that avoid recursion
       const { events: fetchedEvents, error: fetchError } = await fetchEventsFromDb();
       
       if (fetchError) {

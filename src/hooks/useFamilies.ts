@@ -29,7 +29,7 @@ export const useFamilies = () => {
         return;
       }
 
-      // Direct query using our security definer functions
+      // Using our improved RLS policies with security definer functions
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
