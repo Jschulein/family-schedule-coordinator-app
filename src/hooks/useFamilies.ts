@@ -29,8 +29,8 @@ export const useFamilies = () => {
         return;
       }
 
-      // With our improved RLS policies, we can use a direct query to get families
-      // No need for separate user_families function call followed by another query
+      // With our improved RLS policies that use security definer functions,
+      // we can safely query families directly - the RLS will handle the filtering
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
@@ -79,7 +79,8 @@ export const useFamilies = () => {
 
       console.log("User authenticated, creating family with user ID:", user.id);
       
-      // With updated trigger, just insert the family and the trigger will handle the member creation
+      // With our updated security definer trigger, we just insert the family and 
+      // the trigger will safely handle the member creation without RLS issues
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })
