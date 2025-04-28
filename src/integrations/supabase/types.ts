@@ -422,7 +422,9 @@ export type Database = {
       }
       user_families: {
         Args: Record<PropertyKey, never>
-        Returns: string[]
+        Returns: {
+          family_id: string
+        }[]
       }
       user_is_family_member: {
         Args: { family_id_param: string }

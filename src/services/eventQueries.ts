@@ -16,7 +16,7 @@ export async function fetchEventsFromDb() {
       return { events: [], error: "You must be logged in to view events" };
     }
 
-    // With the new RLS policies in place, this should work without recursion
+    // Simple query that relies on our new RLS policies for access control
     const { data: eventRows, error: eventError } = await supabase
       .from('events')
       .select('*')
