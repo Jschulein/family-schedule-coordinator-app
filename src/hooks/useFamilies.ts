@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/components/ui/use-toast";
 
 export type Family = {
   id: string;
@@ -24,13 +24,13 @@ export const useFamilies = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Authentication required");
+        toast({ title: "Error", description: "Authentication required" });
         setLoading(false);
         return;
       }
 
-      // With our improved RLS policies that use security definer functions,
-      // we can safely query families directly - the RLS will handle the filtering
+      // With our fixed security definer functions and updated RLS,
+      // this should now work without recursion issues
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
@@ -54,7 +54,7 @@ export const useFamilies = () => {
     } catch (error: any) {
       console.error("Error fetching families:", error.message);
       setError("Failed to load families. Please try again.");
-      toast.error("Failed to load families");
+      toast({ title: "Error", description: "Failed to load families" });
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ export const useFamilies = () => {
 
   const createFamily = async (name: string) => {
     if (!name.trim()) {
-      toast.error("Please enter a family name");
+      toast({ title: "Error", description: "Please enter a family name" });
       return;
     }
 
@@ -73,14 +73,14 @@ export const useFamilies = () => {
       console.log("Creating new family:", name);
       const { data: { user }, error: userErr } = await supabase.auth.getUser();
       if (userErr || !user) {
-        toast.error("You must be logged in to create a family");
+        toast({ title: "Error", description: "You must be logged in to create a family" });
         return;
       }
 
       console.log("User authenticated, creating family with user ID:", user.id);
       
-      // With our updated security definer trigger, we just insert the family and 
-      // the trigger will safely handle the member creation without RLS issues
+      // Our security definer trigger will now correctly handle the member creation
+      // without triggering infinite recursion
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })
@@ -97,7 +97,7 @@ export const useFamilies = () => {
       }
       
       console.log("Family created successfully:", familyData);
-      toast.success("Family created successfully!");
+      toast({ title: "Success", description: "Family created successfully!" });
       
       // Fetch all families again to make sure we have the latest data
       await fetchFamilies();
@@ -108,7 +108,7 @@ export const useFamilies = () => {
       console.error("Error creating family:", error);
       const errorMessage = error?.message || "Failed to create family. Please try again.";
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({ title: "Error", description: errorMessage });
       throw error; // Propagate the error so the form can handle it
     } finally {
       setCreating(false);

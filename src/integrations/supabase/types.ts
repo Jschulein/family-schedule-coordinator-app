@@ -385,6 +385,10 @@ export type Database = {
         Args: { user_id: number }
         Returns: undefined
       }
+      get_user_families: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
       get_user_profile: {
         Args: { user_id: number }
         Returns: {
