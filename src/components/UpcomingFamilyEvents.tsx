@@ -6,6 +6,7 @@ import { Event } from "@/types/eventTypes";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import EventActions from "./EventActions";
+import { toast } from "@/components/ui/use-toast"; 
 
 interface UpcomingFamilyEventsProps {
   events: Event[];
@@ -17,8 +18,17 @@ const UpcomingFamilyEvents = ({ events, calendarColor }: UpcomingFamilyEventsPro
 
   useEffect(() => {
     const fetchUserId = async () => {
-      const { data } = await supabase.auth.getSession();
-      setCurrentUserId(data.session?.user.id || null);
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Error fetching user session:", error);
+          toast({ title: "Error", description: "Failed to authenticate user" });
+          return;
+        }
+        setCurrentUserId(data.session?.user.id || null);
+      } catch (err) {
+        console.error("Unexpected error in fetchUserId:", err);
+      }
     };
     
     fetchUserId();

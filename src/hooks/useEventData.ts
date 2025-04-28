@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
 import { fetchEventsFromDb } from '@/services/eventService';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/components/ui/use-toast";
 
 export function useEventData() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -21,18 +21,18 @@ export function useEventData() {
       if (fetchError) {
         console.error("Failed to fetch events:", fetchError);
         setError(fetchError);
-        toast.error("Unable to fetch events from server");
+        toast({ title: "Error", description: "Unable to fetch events from server" });
       } else {
         console.log(`Successfully loaded ${fetchedEvents.length} events`);
         setEvents(fetchedEvents);
         if (fetchedEvents.length === 0) {
-          toast.info("No events found. Create your first event!");
+          toast({ title: "Info", description: "No events found. Create your first event!" });
         }
       }
     } catch (e: any) {
       console.error("Error in fetchEvents:", e);
       setError("An unexpected error occurred");
-      toast.error("Failed to load events");
+      toast({ title: "Error", description: "Failed to load events" });
     } finally {
       setLoading(false);
     }

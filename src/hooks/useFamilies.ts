@@ -29,8 +29,7 @@ export const useFamilies = () => {
         return;
       }
 
-      // With our fixed security definer functions and updated RLS,
-      // this should now work without recursion issues
+      // The RLS policies now use our security definer function to avoid recursion
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
@@ -53,7 +52,7 @@ export const useFamilies = () => {
       }
     } catch (error: any) {
       console.error("Error fetching families:", error.message);
-      setError("Failed to load families. Please try again.");
+      setError(error.message || "Failed to load families. Please try again.");
       toast({ title: "Error", description: "Failed to load families" });
     } finally {
       setLoading(false);
@@ -79,8 +78,7 @@ export const useFamilies = () => {
 
       console.log("User authenticated, creating family with user ID:", user.id);
       
-      // Our security definer trigger will now correctly handle the member creation
-      // without triggering infinite recursion
+      // Using the security definer functions for family member creation
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })

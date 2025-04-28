@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 interface FamilyMember {
   id: string;
@@ -21,17 +22,25 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
 
   useEffect(() => {
     const fetchFamilyMembers = async () => {
-      const { data: members, error } = await supabase
-        .from('family_members')
-        .select('*')
-        .order('email');
+      try {
+        // Using our security definer functions, this should now work without recursion
+        const { data: members, error } = await supabase
+          .from('family_members')
+          .select('*')
+          .order('email');
 
-      if (error) {
-        setError("Failed to load family members");
-        return;
+        if (error) {
+          console.error("Error fetching family members:", error);
+          setError("Failed to load family members");
+          toast({ title: "Error", description: "Failed to load family members" });
+          return;
+        }
+
+        setFamilyMembers(members || []);
+      } catch (err) {
+        console.error("Error in fetchFamilyMembers:", err);
+        setError("An unexpected error occurred");
       }
-
-      setFamilyMembers(members);
     };
 
     fetchFamilyMembers();
