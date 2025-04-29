@@ -88,7 +88,7 @@ export function MainNav() {
       <SidebarFooter className="mt-auto px-0 py-2 flex justify-center border-t border-sidebar-border">
         <SidebarMenuButton
           size="lg"
-          variant="ghost"
+          variant="default"
           tooltip="Logout"
           onClick={handleLogout}
           className="flex flex-col items-center justify-center w-12 h-12 text-red-500 hover:bg-red-100 hover:text-red-600"
