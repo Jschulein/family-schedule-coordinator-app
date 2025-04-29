@@ -1,7 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
-import { toast } from "@/components/ui/use-toast";
 import { handleError } from "@/utils/errorHandler";
 import { prepareEventData, fetchCreatorProfile, getCreatorDisplayName, associateFamilyMembers } from "../helpers";
 
