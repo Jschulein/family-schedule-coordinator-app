@@ -16,7 +16,7 @@ export async function fetchEventsFromDb() {
       return { events: [], error: "You must be logged in to view events" };
     }
 
-    // Simple query that relies on our new RLS policies for access control
+    // Using direct query with our new RLS policies
     const { data: eventRows, error: eventError } = await supabase
       .from('events')
       .select('*')

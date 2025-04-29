@@ -26,7 +26,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
       setLoading(true);
       setError(null);
       try {
-        // Using updated RLS policies that should prevent recursion
+        // Using security definer functions that prevent recursion
         const { data: members, error } = await supabase
           .from('family_members')
           .select('*')

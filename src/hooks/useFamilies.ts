@@ -29,7 +29,7 @@ export const useFamilies = () => {
         return;
       }
 
-      // Using our new RLS policies that prevent recursion
+      // Using security definer functions that prevent recursion issues
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
