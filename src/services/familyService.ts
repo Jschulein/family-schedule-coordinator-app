@@ -61,17 +61,21 @@ export async function createFamilyWithMembers(
     // Filter out the current user from the members array to prevent duplicate insertion
     let filteredMembers = members;
     if (members && members.length > 0) {
-      // Get current user's email to filter out
-      const { data: { email } } = await supabase.auth.getUser();
+      // Get current user's email from the user object we already have
+      const currentUserEmail = user.email;
       
-      // Filter out any members with the same email as the current user
-      filteredMembers = members.filter(member => 
-        member.email.toLowerCase() !== email.toLowerCase()
-      );
+      if (currentUserEmail) {
+        // Filter out any members with the same email as the current user
+        filteredMembers = members.filter(member => 
+          member.email.toLowerCase() !== currentUserEmail.toLowerCase()
+        );
+        
+        console.log(`Inviting ${filteredMembers.length} members to family (filtered out current user)`);
+      } else {
+        console.log("Couldn't get current user email for filtering members");
+      }
       
-      console.log(`Inviting ${filteredMembers.length} members to family (filtered out current user)`);
-      
-      if (filteredMembers.length > 0) {
+      if (filteredMembers && filteredMembers.length > 0) {
         const invitations = filteredMembers.map(member => ({
           family_id: familyId,
           email: member.email,
