@@ -30,7 +30,7 @@ export async function createFamily(name: string) {
 
     console.log("User authenticated, creating family with user ID:", user.id);
     
-    // Use direct table insert instead of RPC
+    // Use direct table operations instead of RPC
     const { data: familyData, error: familyError } = await supabase
       .from('families')
       .insert({ 
@@ -117,7 +117,7 @@ export async function inviteFamilyMember(
       };
     }
     
-    // Use direct table insert instead of RPC
+    // Use direct table operations instead of RPC
     const { data, error } = await supabase
       .from('invitations')
       .insert({

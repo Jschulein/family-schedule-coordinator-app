@@ -19,8 +19,7 @@ export async function fetchUserFamilies() {
       };
     }
 
-    // Use the from() method rather than the rpc() method since we've updated the
-    // function to directly return table data
+    // Use direct table query instead of RPC to avoid recursion issues
     const { data, error } = await supabase
       .from('families')
       .select('*')
@@ -60,10 +59,26 @@ export async function fetchUserFamilies() {
  */
 export async function fetchFamilyMembers() {
   try {
-    // Use the from() method with joins rather than the rpc() method
+    // Use direct table query with a join to avoid recursion
+    const { data: userFamilies } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '');
+
+    if (!userFamilies || userFamilies.length === 0) {
+      return { 
+        data: [], 
+        error: null, 
+        isError: false 
+      };
+    }
+
+    const familyIds = userFamilies.map(f => f.family_id);
+    
     const { data, error } = await supabase
       .from('family_members')
-      .select('*');
+      .select('*')
+      .in('family_id', familyIds);
 
     if (error) {
       console.error("Error fetching family members:", error);
