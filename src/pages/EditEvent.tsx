@@ -10,7 +10,8 @@ import { Event } from "@/types/eventTypes";
 import { supabase } from "@/integrations/supabase/client";
 
 const EditEvent = () => {
-  const { eventId } = useParams<{eventId: string}>();
+  // Updated to match the router path parameter
+  const { id: eventId } = useParams<{id: string}>();
   const navigate = useNavigate();
   const { events, updateEvent, deleteEvent, loading: contextLoading, error: contextError } = useEvents();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,13 +21,18 @@ const EditEvent = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("EditEvent page loaded with eventId:", eventId);
+    console.log("Available events:", events.map(e => e.id));
+    
     // Get the event from the context
     if (events.length > 0 && eventId) {
       const foundEvent = events.find(e => e.id === eventId);
       if (foundEvent) {
+        console.log("Found event:", foundEvent);
         setEvent(foundEvent);
         setIsLoading(false);
       } else {
+        console.log("Event not found with id:", eventId);
         setError("Event not found");
         setIsLoading(false);
       }

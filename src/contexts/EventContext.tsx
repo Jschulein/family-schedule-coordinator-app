@@ -1,8 +1,11 @@
-
 import { createContext, useContext, ReactNode } from 'react';
 import { Event, EventContextType } from '@/types/eventTypes';
 import { useEventData } from '@/hooks/useEventData';
-import { addEventToDb, updateEventInDb, deleteEventFromDb } from '@/services/eventService';
+import { 
+  addEventToDb as addEventFn, 
+  updateEventInDb as updateEventFn, 
+  deleteEventFromDb as deleteEventFn 
+} from '@/services/events';
 import { toast } from "@/hooks/use-toast";
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
@@ -12,7 +15,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
   const addEvent = async (newEvent: Event) => {
     try {
-      const { event: createdEvent, error: addError } = await addEventToDb(newEvent);
+      const { event: createdEvent, error: addError } = await addEventFn(newEvent);
       
       if (addError) {
         toast({
@@ -41,7 +44,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
   const updateEvent = async (updatedEvent: Event) => {
     try {
-      const { event: eventResult, error: updateError } = await updateEventInDb(updatedEvent);
+      const { event: eventResult, error: updateError } = await updateEventFn(updatedEvent);
       
       if (updateError) {
         toast({
@@ -73,7 +76,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
   const deleteEvent = async (eventId: string) => {
     try {
-      const { success, message, error: deleteError } = await deleteEventFromDb(eventId);
+      const { success, message, error: deleteError } = await deleteEventFn(eventId);
       
       if (deleteError) {
         toast({

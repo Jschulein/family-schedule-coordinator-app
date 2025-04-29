@@ -21,7 +21,7 @@ const EventActions = ({ event, compact = false }: EventActionsProps) => {
 
   const handleEdit = () => {
     if (event.id) {
-      navigate(`/event/edit/${event.id}`);
+      navigate(`/events/${event.id}/edit`);
     }
   };
 

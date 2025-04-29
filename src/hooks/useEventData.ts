@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
-import { fetchEventsFromDb } from '@/services/eventService';
-import { toast } from "@/components/ui/use-toast";
+import { fetchEventsFromDb } from '@/services/events';
+import { toast } from "@/hooks/use-toast";
 
 export function useEventData() {
   const [events, setEvents] = useState<Event[]>([]);
