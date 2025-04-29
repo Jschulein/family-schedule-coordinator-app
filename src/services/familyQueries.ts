@@ -19,10 +19,36 @@ export async function fetchUserFamilies() {
       };
     }
 
-    // Use direct table query instead of RPC to avoid recursion issues
+    // Use family_members table directly to get the families the user belongs to
+    const { data: memberships, error: membershipError } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('user_id', user.id);
+      
+    if (membershipError) {
+      console.error("Error fetching user family memberships:", membershipError);
+      return { 
+        data: null, 
+        error: membershipError.message, 
+        isError: true 
+      };
+    }
+    
+    if (!memberships || memberships.length === 0) {
+      return { 
+        data: [], 
+        error: null, 
+        isError: false 
+      };
+    }
+    
+    const familyIds = memberships.map(m => m.family_id);
+    
+    // Fetch the actual family data
     const { data, error } = await supabase
       .from('families')
       .select('*')
+      .in('id', familyIds)
       .order('name');
     
     if (error) {
@@ -59,11 +85,20 @@ export async function fetchUserFamilies() {
  */
 export async function fetchFamilyMembers() {
   try {
-    // Use direct table query with a join to avoid recursion
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { 
+        data: null, 
+        error: "Authentication required", 
+        isError: true 
+      };
+    }
+    
+    // First get the families the user belongs to
     const { data: userFamilies } = await supabase
       .from('family_members')
       .select('family_id')
-      .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '');
+      .eq('user_id', user.id);
 
     if (!userFamilies || userFamilies.length === 0) {
       return { 
@@ -75,6 +110,7 @@ export async function fetchFamilyMembers() {
 
     const familyIds = userFamilies.map(f => f.family_id);
     
+    // Then fetch all members of those families
     const { data, error } = await supabase
       .from('family_members')
       .select('*')

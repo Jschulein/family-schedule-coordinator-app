@@ -4,7 +4,7 @@ import { handleError } from "@/utils/errorHandler";
 import { Family, FamilyRole } from "@/types/familyTypes";
 
 /**
- * Creates a new family in the database
+ * Creates a new family in the database using the security definer function
  * @param name The name of the family to create
  * @returns The created family or an error
  */
@@ -30,26 +30,23 @@ export async function createFamily(name: string) {
 
     console.log("User authenticated, creating family with user ID:", user.id);
     
-    // Use direct table operations instead of RPC
-    const { data: familyData, error: familyError } = await supabase
-      .from('families')
-      .insert({ 
-        name: name, 
-        created_by: user.id 
-      })
-      .select()
-      .single();
+    // Use the new security definer function
+    const { data: familyId, error: functionError } = await supabase
+      .rpc('safe_create_family', { 
+        p_name: name, 
+        p_user_id: user.id 
+      });
 
-    if (familyError) {
-      console.error("Error creating family:", familyError);
+    if (functionError) {
+      console.error("Error creating family:", functionError);
       return {
         data: null,
-        error: familyError.message,
+        error: functionError.message,
         isError: true
       };
     }
     
-    if (!familyData) {
+    if (!familyId) {
       return {
         data: null,
         error: "No data returned when creating family",
@@ -57,20 +54,21 @@ export async function createFamily(name: string) {
       };
     }
     
-    // Now add the creator as an admin to this family
-    const { error: memberError } = await supabase
-      .from('family_members')
-      .insert({
-        family_id: familyData.id,
-        user_id: user.id,
-        email: user.email,
-        role: 'admin',
-        name: user.user_metadata?.full_name || user.email
-      });
-    
-    if (memberError) {
-      console.error("Error adding creator as family member:", memberError);
-      // We still return the family since it was created successfully
+    // Fetch the complete family data to return
+    const { data: familyData, error: fetchError } = await supabase
+      .from('families')
+      .select('*')
+      .eq('id', familyId)
+      .single();
+      
+    if (fetchError) {
+      console.error("Error fetching created family:", fetchError);
+      // We still return the family ID as it was created successfully
+      return {
+        data: { id: familyId, name, created_by: user.id } as Family,
+        error: null,
+        isError: false
+      };
     }
     
     console.log("Family created successfully:", familyData);
