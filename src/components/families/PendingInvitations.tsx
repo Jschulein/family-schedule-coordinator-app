@@ -1,19 +1,8 @@
 
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-
-interface Invitation {
-  id: string;
-  email: string;
-  name?: string; // Make name optional since it might be missing from DB
-  role: string;
-  status: string;
-  last_invited: string;
-}
+import { useFamilyInvitations } from "@/hooks/useFamilyInvitations";
 
 interface PendingInvitationsProps {
   familyId: string;
@@ -21,92 +10,7 @@ interface PendingInvitationsProps {
 }
 
 export const PendingInvitations = ({ familyId, refreshing = false }: PendingInvitationsProps) => {
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [resending, setResending] = useState<string | null>(null);
-
-  const fetchInvitations = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("invitations")
-        .select("*")
-        .eq("family_id", familyId)
-        .eq("status", "pending");
-
-      if (error) throw error;
-      
-      // Map the data to match our Invitation interface
-      const mappedInvitations: Invitation[] = (data || []).map(invitation => ({
-        id: invitation.id,
-        email: invitation.email,
-        // Use email as display name since name doesn't exist in DB schema
-        name: invitation.email,
-        role: invitation.role,
-        status: invitation.status,
-        last_invited: invitation.last_invited || invitation.invited_at
-      }));
-      
-      setInvitations(mappedInvitations);
-    } catch (error: any) {
-      console.error("Error loading invitations:", error.message);
-      toast({ title: "Error", description: "Failed to load invitations" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendInvite = async (invitationId: string) => {
-    try {
-      setResending(invitationId);
-      const { error } = await supabase
-        .from("invitations")
-        .update({ last_invited: new Date().toISOString() })
-        .eq("id", invitationId);
-
-      if (error) throw error;
-      toast({ title: "Success", description: "Invitation resent successfully!" });
-      fetchInvitations();
-    } catch (error: any) {
-      console.error("Error resending invitation:", error.message);
-      toast({ title: "Error", description: "Failed to resend invitation" });
-    } finally {
-      setResending(null);
-    }
-  };
-
-  useEffect(() => {
-    if (familyId) {
-      fetchInvitations();
-    }
-  }, [familyId]);
-  
-  // Re-fetch when refreshing prop changes
-  useEffect(() => {
-    if (refreshing && familyId) {
-      fetchInvitations();
-    }
-  }, [refreshing, familyId]);
-
-  // Set up realtime subscription for invitations
-  useEffect(() => {
-    if (!familyId) return;
-    
-    const channel = supabase
-      .channel('invitation-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'invitations', filter: `family_id=eq.${familyId}` }, 
-        () => {
-          console.log('Invitation changes detected, refreshing data');
-          fetchInvitations();
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [familyId]);
+  const { invitations, loading, resending, resendInvite } = useFamilyInvitations(familyId, refreshing);
 
   if (loading) {
     return (
@@ -139,7 +43,7 @@ export const PendingInvitations = ({ familyId, refreshing = false }: PendingInvi
                 </div>
                 <Button
                   variant="outline"
-                  onClick={() => handleResendInvite(invitation.id)}
+                  onClick={() => resendInvite(invitation.id)}
                   disabled={resending === invitation.id}
                 >
                   {resending === invitation.id ? (
@@ -156,4 +60,4 @@ export const PendingInvitations = ({ familyId, refreshing = false }: PendingInvi
       </CardContent>
     </Card>
   );
-};
+}

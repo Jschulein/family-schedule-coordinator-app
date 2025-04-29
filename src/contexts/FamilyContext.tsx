@@ -41,6 +41,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
   );
 
   const fetchFamilies = useCallback(async () => {
+    console.log("FamilyContext: fetchFamilies called");
     setLoading(true);
     setError(null);
     
@@ -51,11 +52,14 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
       toast({ title: "Error", description: "Failed to load families" });
     } else if (result.data) {
       setFamilies(result.data);
+      console.log(`FamilyContext: fetched ${result.data.length} families`);
       
       // Set first family as active if none selected
       if (!activeFamilyId && result.data.length > 0) {
+        console.log("No active family, setting first family as active");
         handleSelectFamily(result.data[0].id);
       } else if (activeFamilyId && !result.data.some(f => f.id === activeFamilyId)) {
+        console.log("Active family not found in results, clearing selection");
         setActiveFamilyId(null);
         localStorage.removeItem("activeFamilyId");
       }
@@ -74,6 +78,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     setError(null);
     
     try {
+      console.log("FamilyContext: creating new family:", name);
       const result = await createFamilyService(name);
       
       if (result.isError) {
@@ -89,7 +94,6 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
       toast({ title: "Success", description: "Family created successfully!" });
       
       // Fetch all families again to make sure we have the latest data
-      // The database trigger handle_new_family() will automatically add the creator as an admin
       await fetchFamilies();
       
       handleSelectFamily(result.data.id);
@@ -106,7 +110,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
   };
 
   const handleSelectFamily = (familyId: string) => {
-    console.log("Selecting family:", familyId);
+    console.log("FamilyContext: selecting family:", familyId);
     setActiveFamilyId(familyId);
     localStorage.setItem("activeFamilyId", familyId);
   };

@@ -21,6 +21,7 @@ export async function createFamily(name: string) {
     console.log("Creating new family:", name);
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) {
+      console.error("Authentication failed:", userErr?.message);
       return {
         data: null,
         error: "You must be logged in to create a family",
@@ -30,7 +31,7 @@ export async function createFamily(name: string) {
 
     console.log("User authenticated, creating family with user ID:", user.id);
     
-    // Use the new security definer function
+    // Use the security definer function
     const { data, error: functionError } = await supabase
       .rpc('safe_create_family', { 
         p_name: name, 
@@ -47,6 +48,7 @@ export async function createFamily(name: string) {
     }
     
     if (!data) {
+      console.error("No data returned from safe_create_family function");
       return {
         data: null,
         error: "No data returned when creating family",
@@ -56,6 +58,7 @@ export async function createFamily(name: string) {
     
     // Fetch the complete family data to return
     const familyId = data;
+    console.log("Family created with ID:", familyId);
     const { data: familyData, error: fetchError } = await supabase
       .from('families')
       .select('*')
@@ -106,9 +109,11 @@ export async function inviteFamilyMember(
   role: FamilyRole
 ) {
   try {
+    console.log(`Inviting member to family ${familyId}: ${name} (${email}) as ${role}`);
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     
     if (userErr || !user) {
+      console.error("Authentication failed:", userErr?.message);
       return {
         success: false,
         error: "You must be logged in to invite members",
@@ -137,6 +142,7 @@ export async function inviteFamilyMember(
       };
     }
     
+    console.log("Invitation sent successfully");
     return {
       success: true,
       error: null,

@@ -8,7 +8,7 @@ import { Family, FamilyMember } from "@/types/familyTypes";
  * @returns An object containing families data and loading/error states
  */
 export async function fetchUserFamilies() {
-  console.log("Fetching families...");
+  console.log("Fetching families using SQL function...");
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -35,6 +35,7 @@ export async function fetchUserFamilies() {
     }
     
     if (!memberships || memberships.length === 0) {
+      console.log("No family memberships found for user");
       return { 
         data: [], 
         error: null, 
@@ -43,6 +44,7 @@ export async function fetchUserFamilies() {
     }
     
     const familyIds = memberships.map(m => m.family_id);
+    console.log(`Found ${familyIds.length} family memberships for user`);
     
     // Fetch the actual family data
     const { data, error } = await supabase

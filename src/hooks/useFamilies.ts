@@ -10,5 +10,9 @@ export { type Family } from "@/types/familyTypes";
  * Hook for managing family-related state and operations
  */
 export const useFamilies = () => {
+  console.warn(
+    "Warning: useFamilies() is deprecated and will be removed in a future version. " +
+    "Use useFamilyContext() from '@/contexts/FamilyContext' instead."
+  );
   return useFamilyContext();
 };
