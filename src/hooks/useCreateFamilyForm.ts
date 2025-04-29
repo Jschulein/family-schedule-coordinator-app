@@ -57,7 +57,16 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
     try {
       console.log("Creating new family:", data.name);
       
-      const result = await createFamilyWithMembers(data.name, data.members);
+      // Ensure members data meets required type constraints
+      const validMembers = data.members?.map(member => ({
+        name: member.name,
+        email: member.email,
+        role: member.role
+      })).filter(member => 
+        member.name && member.email && member.role
+      ) as { name: string; email: string; role: FamilyRole }[] || [];
+      
+      const result = await createFamilyWithMembers(data.name, validMembers);
       
       if (result.isError) {
         toast({ title: "Error", description: result.error });
@@ -66,8 +75,8 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
       
       toast({ 
         title: "Success", 
-        description: data.members && data.members.length > 0 
-          ? `Family created and ${data.members.length} members invited!`
+        description: validMembers.length > 0 
+          ? `Family created and ${validMembers.length} members invited!`
           : "Family created successfully!" 
       });
       
