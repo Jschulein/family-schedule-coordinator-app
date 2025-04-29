@@ -1,7 +1,13 @@
 
 -- Create security definer function to get user families
 CREATE OR REPLACE FUNCTION public.get_user_families()
-RETURNS SETOF families
+RETURNS TABLE (
+  id uuid,
+  name text,
+  color text,
+  created_by uuid,
+  created_at timestamptz
+)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -72,7 +78,7 @@ CREATE OR REPLACE FUNCTION public.invite_family_member(
   p_role text,
   p_invited_by uuid
 )
-RETURNS void
+RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -111,5 +117,7 @@ BEGIN
     role = p_role::family_role,
     last_invited = now(),
     invited_by = p_invited_by;
+    
+  RETURN true;
 END;
 $$;

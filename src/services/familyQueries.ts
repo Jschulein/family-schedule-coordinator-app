@@ -32,6 +32,7 @@ export async function fetchUserFamilies() {
       };
     }
     
+    // The data is now correctly typed as Family[] from our updated function
     console.log(`Successfully fetched ${data?.length || 0} families`);
     return { 
       data: data as Family[], 

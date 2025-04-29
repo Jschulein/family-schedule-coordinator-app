@@ -96,7 +96,7 @@ export async function inviteFamilyMember(
     }
     
     // Use a security definer function to prevent infinite recursion
-    const { error } = await supabase
+    const { data, error } = await supabase
       .rpc('invite_family_member', {
         p_family_id: familyId,
         p_email: email,
