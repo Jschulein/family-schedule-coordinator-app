@@ -18,8 +18,30 @@ export async function fetchUserFamilies() {
       throw error;
     }
     
+    // Since get_user_families only returns family_id, we need to fetch the full family data
+    if (!data || data.length === 0) {
+      return {
+        data: [],
+        isError: false,
+        error: null
+      };
+    }
+    
+    // Extract family IDs from the response
+    const familyIds = data.map(item => item.family_id);
+    
+    // Fetch full family details
+    const { data: familyData, error: familyError } = await supabase
+      .from('families')
+      .select('*')
+      .in('id', familyIds);
+      
+    if (familyError) {
+      throw familyError;
+    }
+    
     return {
-      data: data as Family[],
+      data: familyData as Family[],
       isError: false,
       error: null
     };
@@ -43,15 +65,37 @@ export async function fetchUserFamilies() {
  */
 export async function fetchFamilyMembers() {
   try {    
-    // Use the security definer function to avoid infinite recursion
-    const { data, error } = await supabase.rpc('get_family_members');
+    // Use direct query instead of RPC for now
+    // First get the families the user belongs to
+    const { data: userFamilies, error: userFamiliesError } = await supabase.rpc('get_user_families');
     
-    if (error) {
-      throw error;
+    if (userFamiliesError) {
+      throw userFamiliesError;
+    }
+    
+    if (!userFamilies || userFamilies.length === 0) {
+      return {
+        data: [],
+        isError: false,
+        error: null
+      };
+    }
+    
+    // Extract family IDs from the response
+    const familyIds = userFamilies.map(item => item.family_id);
+    
+    // Fetch members from these families
+    const { data: membersData, error: membersError } = await supabase
+      .from('family_members')
+      .select('*')
+      .in('family_id', familyIds);
+      
+    if (membersError) {
+      throw membersError;
     }
     
     return {
-      data: data as FamilyMember[],
+      data: membersData as FamilyMember[],
       isError: false,
       error: null
     };

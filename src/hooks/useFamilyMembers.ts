@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { fetchFamilyMembers } from "@/services/families";
-import type { FamilyMember } from "@/types/familyTypes";
+import { FamilyMember } from "@/services/families/types";
 import { toast } from "@/components/ui/use-toast";
 
 /**
