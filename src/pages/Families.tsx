@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import { useFamilies } from "@/hooks/useFamilies";
-import { CreateFamilyForm } from "@/components/families/CreateFamilyForm";
 import { FamilyList } from "@/components/families/FamilyList";
 import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
@@ -11,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { CreateFamilyWithMembersForm } from "@/components/families/CreateFamilyWithMembersForm";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 // Import the useEvents hook but make it optional to avoid errors when context is not available
 import { useEvents } from "@/contexts/EventContext";
@@ -20,14 +21,13 @@ const FamiliesPage = () => {
     families,
     loading,
     error,
-    creating,
     activeFamilyId,
     fetchFamilies,
-    createFamily,
     handleSelectFamily,
   } = useFamilies();
   
   const [refreshingInvitations, setRefreshingInvitations] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   
   // Try to use the events context if available, otherwise provide a no-op function
   let refetchEvents = () => Promise.resolve();
@@ -64,20 +64,36 @@ const FamiliesPage = () => {
     }
   };
 
+  const handleFamilyCreated = () => {
+    fetchFamilies();
+    setSheetOpen(false);  // Close the sheet when family is created
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Your Families</h1>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={fetchFamilies} 
-            disabled={loading}
-            title="Refresh families"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={fetchFamilies} 
+              disabled={loading}
+              title="Refresh families"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+              <SheetTrigger asChild>
+                <Button>Create New Family</Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <CreateFamilyWithMembersForm onSuccess={handleFamilyCreated} />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
         
         {error && (
@@ -88,8 +104,6 @@ const FamiliesPage = () => {
           </Alert>
         )}
         
-        <CreateFamilyForm onSubmit={createFamily} creating={creating} />
-
         {loading ? (
           <div className="space-y-4">
             <Card>
@@ -116,7 +130,7 @@ const FamiliesPage = () => {
               <>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Invite Family Member</CardTitle>
+                    <CardTitle>Invite Additional Family Member</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <InviteMemberForm 

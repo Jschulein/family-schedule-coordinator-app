@@ -9,6 +9,7 @@ interface FamilyMember {
   id: string;
   email: string;
   role: string;
+  name?: string;
 }
 
 interface EventFamilyMembersInputProps {
@@ -81,6 +82,11 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
     }
   };
 
+  // Helper to display member name or email if name is empty
+  const getMemberDisplayName = (member: FamilyMember) => {
+    return member.name && member.name.trim() !== '' ? member.name : member.email;
+  };
+
   return (
     <div className="space-y-2">
       <Label>Family Members</Label>
@@ -98,7 +104,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
                   ? "bg-primary/10 border-primary" 
                   : "hover:bg-muted"}`}
             >
-              <span>{member.email}</span>
+              <span>{getMemberDisplayName(member)}</span>
               {value.includes(member.id) && (
                 <Check className="h-4 w-4 text-primary" />
               )}
