@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import EditEventForm from "@/components/EditEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { Event } from "@/types/eventTypes";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchEventById } from "@/services/events";
 
 const EditEvent = () => {
   // Updated to match the router path parameter
@@ -22,25 +23,54 @@ const EditEvent = () => {
 
   useEffect(() => {
     console.log("EditEvent page loaded with eventId:", eventId);
-    console.log("Available events:", events.map(e => e.id));
     
-    // Get the event from the context
-    if (events.length > 0 && eventId) {
-      const foundEvent = events.find(e => e.id === eventId);
-      if (foundEvent) {
-        console.log("Found event:", foundEvent);
-        setEvent(foundEvent);
+    const loadEvent = async () => {
+      if (!eventId) {
+        setError("No event ID provided");
         setIsLoading(false);
-      } else {
-        console.log("Event not found with id:", eventId);
-        setError("Event not found");
+        return;
+      }
+      
+      try {
+        // Try to get the event from the context first for faster loading
+        const contextEvent = events.find(e => e.id === eventId);
+        if (contextEvent) {
+          console.log("Found event in context:", contextEvent);
+          setEvent(contextEvent);
+          setIsLoading(false);
+          return;
+        }
+        
+        // If not in context, fetch directly from the database
+        console.log("Fetching event from database");
+        const { event: fetchedEvent, error: fetchError } = await fetchEventById(eventId);
+        
+        if (fetchError) {
+          console.error("Error fetching event:", fetchError);
+          setError(fetchError);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!fetchedEvent) {
+          console.log("Event not found with id:", eventId);
+          setError("Event not found");
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Successfully fetched event:", fetchedEvent);
+        setEvent(fetchedEvent);
+      } catch (err) {
+        console.error("Unexpected error loading event:", err);
+        setError("Failed to load event");
+      } finally {
         setIsLoading(false);
       }
-    } else if (!contextLoading && events.length === 0) {
-      setIsLoading(false);
-      setError("No events available");
-    }
-  }, [events, eventId, contextLoading]);
+    };
+    
+    loadEvent();
+  }, [eventId, events]);
 
   useEffect(() => {
     // Check authentication status
@@ -50,18 +80,30 @@ const EditEvent = () => {
         
         if (error) {
           console.error("Auth error:", error);
-          toast.error("Authentication error. Please try logging in again.");
+          toast({
+            title: "Authentication error",
+            description: "Please try logging in again.",
+            variant: "destructive"
+          });
           navigate("/auth");
           return;
         }
         
         if (!data.session) {
-          toast.error("You need to be logged in to edit events");
+          toast({
+            title: "Authentication required", 
+            description: "You need to be logged in to edit events",
+            variant: "destructive"
+          });
           navigate("/auth");
         }
       } catch (err) {
         console.error("Error checking auth:", err);
-        toast.error("Failed to verify authentication status");
+        toast({
+          title: "Error",
+          description: "Failed to verify authentication status",
+          variant: "destructive"
+        });
       }
     };
     
@@ -72,10 +114,18 @@ const EditEvent = () => {
     try {
       setIsSubmitting(true);
       await updateEvent(eventData);
+      toast({
+        title: "Success",
+        description: "Event updated successfully!"
+      });
       navigate("/calendar");
     } catch (error: any) {
       console.error("Error updating event:", error);
-      toast.error(`Failed to update event: ${error.message || "Unknown error"}`);
+      toast({
+        title: "Error",
+        description: `Failed to update event: ${error.message || "Unknown error"}`,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -85,10 +135,18 @@ const EditEvent = () => {
     try {
       setIsDeleting(true);
       await deleteEvent(id);
+      toast({
+        title: "Success",
+        description: "Event deleted successfully!"
+      });
       navigate("/calendar");
     } catch (error: any) {
       console.error("Error deleting event:", error);
-      toast.error(`Failed to delete event: ${error.message || "Unknown error"}`);
+      toast({
+        title: "Error",
+        description: `Failed to delete event: ${error.message || "Unknown error"}`,
+        variant: "destructive"
+      });
     } finally {
       setIsDeleting(false);
     }

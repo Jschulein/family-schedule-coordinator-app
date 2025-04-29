@@ -107,7 +107,19 @@ navigate(`/events/${event.id}/edit`); // Changed from /event/edit/${event.id}
 
 ### Error: Event Data Not Found on Edit Page
 **Description**: When navigating to edit an event, the event data might not be found.
-**Solution**: Added logging and improved error handling in EditEvent.tsx; ensured parameter names match route definition (`id` instead of `eventId`).
+**Solution**: Added direct database fetching capability when event is not in context:
+```typescript
+// If not in context, fetch directly from the database
+const { event: fetchedEvent, error: fetchError } = await fetchEventById(eventId);
+```
+
+### Error: Missing fetchEventById Function
+**Description**: The application lacks a dedicated function for fetching a single event by ID, which causes issues when navigating directly to the edit page.
+**Solution**: 
+1. Created a new function `fetchEventById` in `/src/services/events/queries/fetchEventById.ts`
+2. Exported it from `/src/services/events/queries/index.ts`
+3. Implemented direct database fetching in the EditEvent component
+4. Added proper error handling and loading states
 
 ## Navigation Issues
 
@@ -177,3 +189,4 @@ const fetchFilteredEvents = async (filters) => {
    - Periodically review this log to identify patterns
    - Refactor components or services that frequently cause issues
    - Update documentation based on recurring problems
+
