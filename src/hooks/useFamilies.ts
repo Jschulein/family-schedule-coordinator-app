@@ -122,11 +122,8 @@ export const useFamilies = () => {
       console.log("Family created successfully:", familyData);
       toast({ title: "Success", description: "Family created successfully!" });
       
-      // Add the current user as an admin of the family
-      // This uses the database trigger handle_new_family() instead of direct insert
-      // to avoid the RLS policy recursion
-      
       // Fetch all families again to make sure we have the latest data
+      // The database trigger handle_new_family() will automatically add the creator as an admin
       await fetchFamilies();
       
       handleSelectFamily(familyData.id);
