@@ -3,7 +3,8 @@ import { Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
-import { fetchFamilyMembers, type FamilyMember } from "@/services/familyService";
+import { fetchFamilyMembers } from "@/services/familyService";
+import type { FamilyMember } from "@/types/familyTypes";
 
 interface EventFamilyMembersInputProps {
   value: string[];

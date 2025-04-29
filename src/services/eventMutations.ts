@@ -198,7 +198,11 @@ async function associateFamilyMembers(eventId: string, familyMemberIds: string[]
     
   if (associationError) {
     console.error("Error associating family members:", associationError);
-    toast.warning("Event created but failed to associate with family members");
+    toast({
+      title: "Warning",
+      description: "Event created but failed to associate with family members",
+      variant: "destructive"
+    });
   }
 }
 
@@ -213,7 +217,11 @@ async function updateFamilyMemberAssociations(eventId: string, familyMemberIds: 
     
   if (deleteError) {
     console.error("Error removing existing family associations:", deleteError);
-    toast.warning("Event updated but failed to update family member associations");
+    toast({
+      title: "Warning", 
+      description: "Event updated but failed to update family member associations",
+      variant: "destructive"
+    });
   } else {
     await associateFamilyMembers(eventId, familyMemberIds, userId);
   }

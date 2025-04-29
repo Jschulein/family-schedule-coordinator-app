@@ -1,7 +1,9 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { handleError } from "@/utils/errorHandler";
 import { Family, FamilyMember } from "@/types/familyTypes";
+
+// Re-export the FamilyMember type so it can be imported from this service
+export type { FamilyMember } from "@/types/familyTypes";
 
 /**
  * Fetches all families that the current user belongs to
