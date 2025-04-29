@@ -29,7 +29,10 @@ export async function createFamilyWithMembers(
       };
     }
 
+    console.log("Creating new family with secure function:", name);
+    
     // Use the security definer function to create the family
+    // This already adds the current user as a family member
     const { data, error: functionError } = await supabase
       .rpc('safe_create_family', { 
         p_name: name, 
@@ -55,31 +58,42 @@ export async function createFamilyWithMembers(
     
     const familyId = data;
     
-    // If members were provided, invite them
+    // Filter out the current user from the members array to prevent duplicate insertion
+    let filteredMembers = members;
     if (members && members.length > 0) {
-      console.log(`Inviting ${members.length} members to family`);
+      // Get current user's email to filter out
+      const { data: { email } } = await supabase.auth.getUser();
       
-      const invitations = members.map(member => ({
-        family_id: familyId,
-        email: member.email,
-        name: member.name,
-        role: member.role,
-        invited_by: user.id,
-        last_invited: new Date().toISOString()
-      }));
+      // Filter out any members with the same email as the current user
+      filteredMembers = members.filter(member => 
+        member.email.toLowerCase() !== email.toLowerCase()
+      );
       
-      const { error: invitationError } = await supabase
-        .from("invitations")
-        .insert(invitations);
+      console.log(`Inviting ${filteredMembers.length} members to family (filtered out current user)`);
       
-      if (invitationError) {
-        console.error("Error sending invitations:", invitationError);
-        // We continue even if invitations fail, as the family was created successfully
-        return {
-          data: { id: familyId, name, created_by: user.id } as Family,
-          error: "Family created but there was an error inviting some members",
-          isError: false
-        };
+      if (filteredMembers.length > 0) {
+        const invitations = filteredMembers.map(member => ({
+          family_id: familyId,
+          email: member.email,
+          name: member.name,
+          role: member.role,
+          invited_by: user.id,
+          last_invited: new Date().toISOString()
+        }));
+        
+        const { error: invitationError } = await supabase
+          .from("invitations")
+          .insert(invitations);
+        
+        if (invitationError) {
+          console.error("Error sending invitations:", invitationError);
+          // We continue even if invitations fail, as the family was created successfully
+          return {
+            data: { id: familyId, name, created_by: user.id } as Family,
+            error: "Family created but there was an error inviting some members",
+            isError: false
+          };
+        }
       }
     }
     
