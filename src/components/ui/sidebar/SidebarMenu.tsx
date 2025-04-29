@@ -70,7 +70,9 @@ export const SidebarMenuButton = React.forwardRef<
     asChild?: boolean;
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-  } & VariantProps<typeof sidebarMenuButtonVariants>
+    variant?: "default" | "outline";
+    size?: "default" | "sm" | "lg";
+  }
 >(
   (
     {
