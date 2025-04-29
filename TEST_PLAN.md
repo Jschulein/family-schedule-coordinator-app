@@ -21,6 +21,8 @@ This document outlines a systematic approach to testing the application's functi
   - [ ] Handle errors properly
   - [ ] Create family members in database
   - [ ] Redirect after creation
+  - [ ] Verify no duplicate family members are created
+  - [ ] Test error handling for constraint violations
 - [ ] View existing families
 - [ ] Switch between active families
 - [ ] Invite family members
@@ -142,6 +144,8 @@ This document outlines a systematic approach to testing the application's functi
    - Test with network disconnected
    - Test with database errors (mock if needed)
    - Verify error messages display properly
+   - Test duplicate member creation (should be prevented)
+   - Verify proper handling of unique constraint violations
 
 6. **Post-Creation Tests:**
    - Verify database records created correctly

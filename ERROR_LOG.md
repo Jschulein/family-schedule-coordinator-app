@@ -70,6 +70,25 @@ try {
 2. Ensure all components import from `families/index.ts`
 3. Update any existing imports to use the consolidated services
 
+### Error: Duplicate Family Member Creation
+**Description**: When creating a family, the application attempts to add the same user as a family member multiple times, violating the unique constraint on family_id and user_id.
+**Solution**: Implement uniqueness check before inserting family members and handle the conflict gracefully:
+```sql
+-- In the safe_create_family function:
+INSERT INTO public.family_members (family_id, user_id, email, role, name)
+VALUES (
+  new_family_id,
+  p_user_id,
+  user_email,
+  'admin'::family_role,
+  COALESCE(
+    (SELECT raw_user_meta_data->>'full_name' FROM auth.users WHERE id = p_user_id),
+    user_email
+  )
+)
+ON CONFLICT (family_id, user_id) DO NOTHING; -- Added conflict handling
+```
+
 ### Error: Family Member Invitation Issues
 **Description**: Invitation emails may not be sent or processed correctly.
 **Solution**: Verify invitation flow and implement better error feedback:
