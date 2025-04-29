@@ -113,13 +113,19 @@ navigate(`/events/${event.id}/edit`); // Changed from /event/edit/${event.id}
 const { event: fetchedEvent, error: fetchError } = await fetchEventById(eventId);
 ```
 
-### Error: Missing fetchEventById Function
-**Description**: The application lacks a dedicated function for fetching a single event by ID, which causes issues when navigating directly to the edit page.
-**Solution**: 
-1. Created a new function `fetchEventById` in `/src/services/events/queries/fetchEventById.ts`
-2. Exported it from `/src/services/events/queries/index.ts`
-3. Implemented direct database fetching in the EditEvent component
-4. Added proper error handling and loading states
+### Error: Missing formatEventFromDB Function
+**Description**: The `fetchEventById.ts` file tried to import and use a non-existent `formatEventFromDB` function.
+**Solution**: Updated the code to use the existing `fromDbEvent` function from `eventFormatter.ts` instead:
+```typescript
+// Changed import statement
+import { fromDbEvent } from "@/utils/eventFormatter";
+
+// Changed function call
+const formattedEvent = fromDbEvent({
+  ...eventData,
+  familyMembers
+}, userMap);
+```
 
 ## Navigation Issues
 

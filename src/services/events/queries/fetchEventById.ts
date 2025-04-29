@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
-import { formatEventFromDB } from "@/utils/eventFormatter";
+import { fromDbEvent } from "@/utils/eventFormatter";
 import { handleError } from "@/utils/errorHandler";
 
 /**
@@ -42,11 +42,23 @@ export async function fetchEventById(eventId: string): Promise<{ event: Event | 
     
     const familyMembers = familyData?.map(item => item.family_id) || [];
     
+    // Fetch creator profile for proper display
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', eventData.creator_id)
+      .single();
+
+    // Create a user map for the fromDbEvent function
+    const userMap = {
+      [eventData.creator_id]: userProfile || undefined
+    };
+    
     // Format the event with family members included
-    const formattedEvent = formatEventFromDB({
+    const formattedEvent = fromDbEvent({
       ...eventData,
       familyMembers
-    });
+    }, userMap);
     
     return { event: formattedEvent, error: null };
   } catch (error: any) {

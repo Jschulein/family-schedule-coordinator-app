@@ -37,6 +37,7 @@ This document outlines a systematic approach to testing the application's functi
   - [ ] Handle validation errors
   - [ ] Process family member associations
   - [ ] Error handling during update
+  - [ ] Verify proper user profile display for event creator
 - [ ] Delete events
   - [ ] Confirm deletion dialog
   - [ ] Process deletion in database
@@ -77,6 +78,7 @@ This document outlines a systematic approach to testing the application's functi
 - [ ] Authentication error handling
 - [ ] Permission error handling
 - [ ] Graceful degradation of features
+- [ ] Functions correctly importing and using exported utilities
 
 ## Mobile Responsiveness Testing
 
@@ -120,6 +122,7 @@ This document outlines a systematic approach to testing the application's functi
    - Verify event data loads correctly when accessed directly (not from context)
    - Test with non-existent event IDs
    - Test with invalid event IDs
+   - Verify proper user profiles are loaded for event creators
 
 4. **Form Functionality Tests:**
    - Verify all form fields populate with correct event data
@@ -159,3 +162,4 @@ For each test, document:
 6. Environment details (browser, device, etc.)
 
 Use this test plan to systematically verify functionality and identify issues that need to be fixed. Update the ERROR_LOG.md document with any issues found during testing.
+
