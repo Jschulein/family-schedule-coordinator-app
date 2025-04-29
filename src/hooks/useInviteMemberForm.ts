@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { inviteFamilyMember } from "@/services/familyMutations";
+import { inviteFamilyMember } from "@/services/families";
 import { FamilyRole } from "@/types/familyTypes";
 
 export function useInviteMemberForm(

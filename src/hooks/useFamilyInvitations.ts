@@ -1,17 +1,8 @@
-
 import { useState, useEffect } from "react";
-import { fetchFamilyInvitations, resendFamilyInvitation } from "@/services/familyService";
+import { fetchFamilyInvitations, resendFamilyInvitation } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-
-export interface FamilyInvitation {
-  id: string;
-  email: string;
-  name?: string;
-  role: string;
-  status: string;
-  last_invited: string;
-}
+import { FamilyInvitation } from "@/services/families/types";
 
 export function useFamilyInvitations(familyId: string | null, refreshTrigger = false) {
   const [invitations, setInvitations] = useState<FamilyInvitation[]>([]);

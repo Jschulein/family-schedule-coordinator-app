@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FamilyRole } from "@/types/familyTypes";
-import { createFamilyWithMembers } from "@/services/familyService";
+import { createFamilyWithMembers } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
 
 // Define validation schema

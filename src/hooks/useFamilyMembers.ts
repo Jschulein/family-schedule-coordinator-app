@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { fetchFamilyMembers } from "@/services/familyService";
+import { fetchFamilyMembers } from "@/services/families";
 import type { FamilyMember } from "@/types/familyTypes";
 import { toast } from "@/components/ui/use-toast";
 
