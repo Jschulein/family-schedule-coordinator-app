@@ -2,16 +2,8 @@
 import { Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-
-interface FamilyMember {
-  id: string;
-  email: string;
-  role: string;
-  name?: string;
-  user_id?: string;
-}
+import { fetchFamilyMembers, type FamilyMember } from "@/services/familyService";
 
 interface EventFamilyMembersInputProps {
   value: string[];
@@ -24,109 +16,27 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchFamilyMembers = async () => {
+    const loadFamilyMembers = async () => {
       setLoading(true);
       setError(null);
-      try {
-        // Get user's families through the secure function that doesn't cause recursion
-        const { data: userFamilies, error: familiesError } = await supabase
-          .rpc('user_families');
-
-        if (familiesError) {
-          console.error("Error fetching user families:", familiesError);
-          setError("Failed to load family information");
-          return;
-        }
-
-        if (!userFamilies || userFamilies.length === 0) {
-          console.log("No families found for current user");
-          setFamilyMembers([]);
-          setLoading(false);
-          return;
-        }
-        
-        // Extract just the family IDs
-        const familyIds = userFamilies.map(f => f.family_id);
-        
-        // Fetch members directly by family IDs
-        // The improved RLS policy will now correctly filter without recursion
-        const { data: members, error: membersError } = await supabase
-          .from('family_members')
-          .select('*')
-          .in('family_id', familyIds);
-
-        if (membersError) {
-          console.error("Error fetching family members:", membersError);
-          setError("Failed to load family members");
-          toast({ title: "Error", description: "Failed to load family members" });
-          return;
-        }
-
-        console.log(`Successfully loaded ${members?.length || 0} family members`);
-        setFamilyMembers(members || []);
-      } catch (err) {
-        console.error("Error in fetchFamilyMembers:", err);
-        setError("An unexpected error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvents();
-  }, []);
-
-  // Corrected function name that was causing a build error
-  const fetchEvents = async () => {
-    await fetchFamilyMembers();
-  };
-  
-  const fetchFamilyMembers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Get user's families through the secure function
-      const { data: userFamilies, error: familiesError } = await supabase
-        .rpc('user_families');
-
-      if (familiesError) {
-        console.error("Error fetching user families:", familiesError);
-        setError("Failed to load family information");
-        return;
-      }
-
-      if (!userFamilies || userFamilies.length === 0) {
-        console.log("No families found for current user");
-        setFamilyMembers([]);
-        setLoading(false);
-        return;
+      
+      const result = await fetchFamilyMembers();
+      
+      if (result.isError) {
+        setError(result.error || "Failed to load family members");
+        toast({ 
+          title: "Error", 
+          description: "Failed to load family members" 
+        });
+      } else if (result.data) {
+        setFamilyMembers(result.data);
       }
       
-      // Extract just the family IDs
-      const familyIds = userFamilies.map(f => f.family_id);
-      
-      // Fetch members directly by family IDs
-      const { data: members, error: membersError } = await supabase
-        .from('family_members')
-        .select('*')
-        .in('family_id', familyIds)
-        .order('email');
-
-      if (membersError) {
-        console.error("Error fetching family members:", membersError);
-        setError("Failed to load family members");
-        toast({ title: "Error", description: "Failed to load family members" });
-        return;
-      }
-
-      console.log(`Successfully loaded ${members?.length || 0} family members`);
-      setFamilyMembers(members || []);
-    } catch (err) {
-      console.error("Error in fetchFamilyMembers:", err);
-      setError("An unexpected error occurred");
-    } finally {
       setLoading(false);
-    }
-  };
+    };
+    
+    loadFamilyMembers();
+  }, []);
 
   const toggleMember = (memberId: string) => {
     if (value.includes(memberId)) {

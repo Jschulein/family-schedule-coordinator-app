@@ -1,13 +1,15 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { fetchUserFamilies, createFamily as createFamilyService } from "@/services/familyService";
+import { Family } from "@/types/familyTypes";
+import { handleError } from "@/utils/errorHandler";
 
-export type Family = {
-  id: string;
-  name: string;
-};
+export { type Family } from "@/types/familyTypes";
 
+/**
+ * Hook for managing family-related state and operations
+ */
 export const useFamilies = () => {
   const [families, setFamilies] = useState<Family[]>([]);
   const [loading, setLoading] = useState(false);
@@ -18,73 +20,30 @@ export const useFamilies = () => {
   );
 
   const fetchFamilies = useCallback(async () => {
-    console.log("Fetching families...");
     setLoading(true);
     setError(null);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({ title: "Error", description: "Authentication required" });
-        setLoading(false);
-        return;
-      }
-
-      // First get the family IDs using the security definer function
-      const { data: userFamilies, error: familiesIdError } = await supabase
-        .rpc('user_families');
+    
+    const result = await fetchUserFamilies();
+    
+    if (result.isError) {
+      setError(result.error || "Failed to load families");
+      toast({ title: "Error", description: "Failed to load families" });
+    } else if (result.data) {
+      setFamilies(result.data);
       
-      if (familiesIdError) {
-        console.error("Error fetching user family IDs:", familiesIdError);
-        throw familiesIdError;
-      }
-      
-      if (!userFamilies || userFamilies.length === 0) {
-        console.log("No families found for current user");
-        setFamilies([]);
-        // Clear active family if none exist
-        if (activeFamilyId) {
-          setActiveFamilyId(null);
-          localStorage.removeItem("activeFamilyId");
-        }
-        setLoading(false);
-        return;
-      }
-      
-      // Extract just the family IDs
-      const familyIds = userFamilies.map(f => f.family_id);
-      
-      // Then fetch the actual family data using the IDs
-      const { data: familiesData, error: familiesError } = await supabase
-        .from("families")
-        .select("id, name")
-        .in('id', familyIds)
-        .order('name');
-      
-      if (familiesError) {
-        console.error("Error fetching families details:", familiesError);
-        throw familiesError;
-      }
-      
-      console.log(`Successfully fetched ${familiesData?.length || 0} families`);
-      setFamilies(familiesData || []);
-
       // Set first family as active if none selected
-      if (!activeFamilyId && familiesData && familiesData.length > 0) {
-        handleSelectFamily(familiesData[0].id);
-      } else if (activeFamilyId && !familiesData?.some(f => f.id === activeFamilyId)) {
+      if (!activeFamilyId && result.data.length > 0) {
+        handleSelectFamily(result.data[0].id);
+      } else if (activeFamilyId && !result.data.some(f => f.id === activeFamilyId)) {
         setActiveFamilyId(null);
         localStorage.removeItem("activeFamilyId");
       }
-    } catch (error: any) {
-      console.error("Error fetching families:", error.message);
-      setError(error.message || "Failed to load families. Please try again.");
-      toast({ title: "Error", description: "Failed to load families" });
-    } finally {
-      setLoading(false);
     }
+    
+    setLoading(false);
   }, [activeFamilyId]);
 
-  const createFamily = async (name: string) => {
+  const createFamilyHandler = async (name: string) => {
     if (!name.trim()) {
       toast({ title: "Error", description: "Please enter a family name" });
       return;
@@ -94,45 +53,31 @@ export const useFamilies = () => {
     setError(null);
     
     try {
-      console.log("Creating new family:", name);
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !user) {
-        toast({ title: "Error", description: "You must be logged in to create a family" });
-        return;
-      }
-
-      console.log("User authenticated, creating family with user ID:", user.id);
+      const result = await createFamilyService(name);
       
-      // First create the family
-      const { data: familyData, error: familyError } = await supabase
-        .from("families")
-        .insert({ name, created_by: user.id })
-        .select("id, name")
-        .single();
-
-      if (familyError) {
-        console.error("Error creating family:", familyError);
-        throw familyError;
+      if (result.isError) {
+        setError(result.error || "Failed to create family");
+        toast({ title: "Error", description: result.error || "Failed to create family" });
+        throw new Error(result.error);
       }
       
-      if (!familyData) {
+      if (!result.data) {
         throw new Error("No data returned when creating family");
       }
       
-      console.log("Family created successfully:", familyData);
       toast({ title: "Success", description: "Family created successfully!" });
       
       // Fetch all families again to make sure we have the latest data
       // The database trigger handle_new_family() will automatically add the creator as an admin
       await fetchFamilies();
       
-      handleSelectFamily(familyData.id);
-      return familyData;
+      handleSelectFamily(result.data.id);
+      return result.data;
     } catch (error: any) {
-      console.error("Error creating family:", error);
-      const errorMessage = error?.message || "Failed to create family. Please try again.";
-      setError(errorMessage);
-      toast({ title: "Error", description: errorMessage });
+      handleError(error, { 
+        context: "Creating family",
+        showToast: false // Already handled above
+      });
       throw error; // Propagate the error so the form can handle it
     } finally {
       setCreating(false);
@@ -156,7 +101,7 @@ export const useFamilies = () => {
     creating,
     activeFamilyId,
     fetchFamilies,
-    createFamily,
+    createFamily: createFamilyHandler,
     handleSelectFamily,
   };
 };
