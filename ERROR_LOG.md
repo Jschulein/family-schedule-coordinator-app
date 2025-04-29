@@ -63,6 +63,13 @@ try {
 }
 ```
 
+### Error: Duplicate Family Creation Services
+**Description**: Multiple implementations of the `createFamily` function exist in the codebase (`familyMutations.ts` and `families/createFamily.ts`), which could cause inconsistency and maintenance issues.
+**Solution**: Consolidate the family creation logic into a single service:
+1. Remove `familyMutations.ts` entirely
+2. Ensure all components import from `families/index.ts`
+3. Update any existing imports to use the consolidated services
+
 ### Error: Family Member Invitation Issues
 **Description**: Invitation emails may not be sent or processed correctly.
 **Solution**: Verify invitation flow and implement better error feedback:

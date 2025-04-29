@@ -15,9 +15,19 @@ This document outlines a systematic approach to testing the application's functi
 ## Family Management Testing
 
 - [ ] Create a new family
+  - [ ] Simple family creation
+  - [ ] Family creation with members
+  - [ ] Validation of family name
+  - [ ] Handle errors properly
+  - [ ] Create family members in database
+  - [ ] Redirect after creation
 - [ ] View existing families
 - [ ] Switch between active families
 - [ ] Invite family members
+  - [ ] Email validation
+  - [ ] Role assignment
+  - [ ] Handle existing member invitations
+  - [ ] Process invitation emails
 - [ ] Accept family invitations
 - [ ] View pending invitations
 - [ ] Family member role management
@@ -104,6 +114,40 @@ This document outlines a systematic approach to testing the application's functi
 - [ ] Notifications + Event actions
 
 ## Detailed Testing Procedures
+
+### Family Creation Testing
+
+1. **Preparation:**
+   - Log out and log in with a test user
+   - Navigate to the Families page
+
+2. **Simple Family Creation Tests:**
+   - Test with valid family name
+   - Test with empty family name
+   - Test with very long family name
+   - Test with special characters in family name
+
+3. **Family with Members Creation Tests:**
+   - Test adding multiple members
+   - Test adding members with invalid email formats
+   - Test removing members during creation
+   - Test with different role assignments
+
+4. **Validation Tests:**
+   - Submit with empty required fields
+   - Test duplicate family names for same user
+   - Test with invalid input data
+
+5. **Error Handling Tests:**
+   - Test with network disconnected
+   - Test with database errors (mock if needed)
+   - Verify error messages display properly
+
+6. **Post-Creation Tests:**
+   - Verify database records created correctly
+   - Check that family appears in family list
+   - Verify invitations sent to members
+   - Test selecting the new family
 
 ### Edit Event Testing
 
