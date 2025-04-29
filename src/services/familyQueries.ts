@@ -19,50 +19,22 @@ export async function fetchUserFamilies() {
       };
     }
 
-    // First get the family IDs using the security definer function
-    const { data: userFamilies, error: familiesIdError } = await supabase
-      .rpc('user_families');
+    // Use the security definer function to prevent infinite recursion
+    const { data, error } = await supabase
+      .rpc('get_user_families');
     
-    if (familiesIdError) {
-      console.error("Error fetching user family IDs:", familiesIdError);
+    if (error) {
+      console.error("Error fetching user families:", error);
       return { 
         data: null, 
-        error: familiesIdError.message, 
+        error: error.message, 
         isError: true 
       };
     }
     
-    if (!userFamilies || userFamilies.length === 0) {
-      console.log("No families found for current user");
-      return { 
-        data: [], 
-        error: null, 
-        isError: false 
-      };
-    }
-    
-    // Extract just the family IDs
-    const familyIds = userFamilies.map(f => f.family_id);
-    
-    // Then fetch the actual family data using the IDs
-    const { data: familiesData, error: familiesError } = await supabase
-      .from("families")
-      .select("id, name")
-      .in('id', familyIds)
-      .order('name');
-    
-    if (familiesError) {
-      console.error("Error fetching families details:", familiesError);
-      return { 
-        data: null, 
-        error: familiesError.message, 
-        isError: true 
-      };
-    }
-    
-    console.log(`Successfully fetched ${familiesData?.length || 0} families`);
+    console.log(`Successfully fetched ${data?.length || 0} families`);
     return { 
-      data: familiesData as Family[], 
+      data: data as Family[], 
       error: null, 
       isError: false 
     };
@@ -85,40 +57,12 @@ export async function fetchUserFamilies() {
  */
 export async function fetchFamilyMembers() {
   try {
-    // Get user's families through the secure function
-    const { data: userFamilies, error: familiesError } = await supabase
-      .rpc('user_families');
+    // Use a security definer function to prevent infinite recursion
+    const { data, error } = await supabase
+      .rpc('get_family_members');
 
-    if (familiesError) {
-      console.error("Error fetching user families:", familiesError);
-      return { 
-        data: null, 
-        error: "Failed to load family information", 
-        isError: true 
-      };
-    }
-
-    if (!userFamilies || userFamilies.length === 0) {
-      console.log("No families found for current user");
-      return { 
-        data: [], 
-        error: null, 
-        isError: false 
-      };
-    }
-    
-    // Extract just the family IDs
-    const familyIds = userFamilies.map(f => f.family_id);
-    
-    // Fetch members directly by family IDs
-    const { data: members, error: membersError } = await supabase
-      .from('family_members')
-      .select('*')
-      .in('family_id', familyIds)
-      .order('email');
-
-    if (membersError) {
-      console.error("Error fetching family members:", membersError);
+    if (error) {
+      console.error("Error fetching family members:", error);
       return { 
         data: null, 
         error: "Failed to load family members", 
@@ -126,9 +70,9 @@ export async function fetchFamilyMembers() {
       };
     }
 
-    console.log(`Successfully loaded ${members?.length || 0} family members`);
+    console.log(`Successfully loaded ${data?.length || 0} family members`);
     return { 
-      data: members as FamilyMember[], 
+      data: data as FamilyMember[], 
       error: null, 
       isError: false 
     };

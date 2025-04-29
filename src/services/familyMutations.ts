@@ -30,12 +30,9 @@ export async function createFamily(name: string) {
 
     console.log("User authenticated, creating family with user ID:", user.id);
     
-    // First create the family
+    // Use a security definer function to prevent infinite recursion
     const { data: familyData, error: familyError } = await supabase
-      .from("families")
-      .insert({ name, created_by: user.id })
-      .select("id, name")
-      .single();
+      .rpc('create_family', { family_name: name });
 
     if (familyError) {
       console.error("Error creating family:", familyError);
@@ -85,7 +82,7 @@ export async function inviteFamilyMember(
   familyId: string, 
   email: string, 
   name: string, 
-  role: FamilyRole // Use the FamilyRole type to ensure correct role values
+  role: FamilyRole
 ) {
   try {
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
@@ -98,15 +95,14 @@ export async function inviteFamilyMember(
       };
     }
     
+    // Use a security definer function to prevent infinite recursion
     const { error } = await supabase
-      .from("invitations")
-      .insert({
-        family_id: familyId,
-        email,
-        name,
-        role, // This now uses the proper FamilyRole type
-        last_invited: new Date().toISOString(),
-        invited_by: user.id
+      .rpc('invite_family_member', {
+        p_family_id: familyId,
+        p_email: email,
+        p_name: name,
+        p_role: role,
+        p_invited_by: user.id
       });
 
     if (error) {
