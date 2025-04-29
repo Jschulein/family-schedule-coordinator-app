@@ -7,7 +7,14 @@ import { SidebarRail } from "./SidebarRail";
 import { SidebarInset } from "./SidebarInset";
 import { SidebarContent, SidebarHeader, SidebarFooter, SidebarSeparator } from "./SidebarLayout";
 import { SidebarGroup, SidebarGroupLabel, SidebarGroupAction, SidebarGroupContent } from "./SidebarGroup";
-import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarMenuBadge, SidebarMenuSkeleton } from "./SidebarMenu";
+import { 
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuSkeleton 
+} from "./menu";
 import { SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from "./SidebarMenuSub";
 import { SidebarInput } from "./SidebarInput";
 
