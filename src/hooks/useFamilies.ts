@@ -29,14 +29,33 @@ export const useFamilies = () => {
         return;
       }
 
-      // Using security definer functions that prevent recursion issues
+      // First get the family IDs using the security definer function
+      const { data: userFamilies, error: familiesIdError } = await supabase
+        .rpc('user_families');
+      
+      if (familiesIdError) {
+        console.error("Error fetching user family IDs:", familiesIdError);
+        throw familiesIdError;
+      }
+      
+      if (!userFamilies || userFamilies.length === 0) {
+        console.log("No families found for current user");
+        setFamilies([]);
+        return;
+      }
+      
+      // Extract just the family IDs
+      const familyIds = userFamilies.map(f => f.family_id);
+      
+      // Then fetch the actual family data using the IDs
       const { data: familiesData, error: familiesError } = await supabase
         .from("families")
         .select("id, name")
+        .in('id', familyIds)
         .order('name');
       
       if (familiesError) {
-        console.error("Error fetching families:", familiesError);
+        console.error("Error fetching families details:", familiesError);
         throw familiesError;
       }
       

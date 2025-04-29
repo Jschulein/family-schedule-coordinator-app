@@ -26,14 +26,35 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
       setLoading(true);
       setError(null);
       try {
-        // Using security definer functions that prevent recursion
-        const { data: members, error } = await supabase
+        // Use a different approach to avoid recursion
+        // Get user's families first - this uses a security definer function
+        const { data: userFamilies, error: familiesError } = await supabase
+          .rpc('user_families');
+
+        if (familiesError) {
+          console.error("Error fetching user families:", familiesError);
+          setError("Failed to load family information");
+          return;
+        }
+
+        if (!userFamilies || userFamilies.length === 0) {
+          console.log("No families found for current user");
+          return;
+        }
+        
+        // Extract just the family IDs
+        const familyIds = userFamilies.map(f => f.family_id);
+        
+        // Then fetch members using the family IDs directly - avoiding RLS recursion
+        // by using a filter condition on family_id
+        const { data: members, error: membersError } = await supabase
           .from('family_members')
           .select('*')
+          .in('family_id', familyIds)
           .order('email');
 
-        if (error) {
-          console.error("Error fetching family members:", error);
+        if (membersError) {
+          console.error("Error fetching family members:", membersError);
           setError("Failed to load family members");
           toast({ title: "Error", description: "Failed to load family members" });
           return;
