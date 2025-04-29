@@ -31,7 +31,7 @@ export async function createFamily(name: string) {
     console.log("User authenticated, creating family with user ID:", user.id);
     
     // Use the new security definer function
-    const { data: familyId, error: functionError } = await supabase
+    const { data, error: functionError } = await supabase
       .rpc('safe_create_family', { 
         p_name: name, 
         p_user_id: user.id 
@@ -46,7 +46,7 @@ export async function createFamily(name: string) {
       };
     }
     
-    if (!familyId) {
+    if (!data) {
       return {
         data: null,
         error: "No data returned when creating family",
@@ -55,6 +55,7 @@ export async function createFamily(name: string) {
     }
     
     // Fetch the complete family data to return
+    const familyId = data;
     const { data: familyData, error: fetchError } = await supabase
       .from('families')
       .select('*')

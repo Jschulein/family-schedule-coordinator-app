@@ -420,6 +420,18 @@ export type Database = {
         Args: { family_id_param: string }
         Returns: boolean
       }
+      safe_create_family: {
+        Args: { p_name: string; p_user_id: string }
+        Returns: string
+      }
+      safe_is_family_admin: {
+        Args: { p_family_id: string }
+        Returns: boolean
+      }
+      safe_is_family_member: {
+        Args: { p_family_id: string }
+        Returns: boolean
+      }
       update_user_profile: {
         Args: { user_id: number; new_username: string; new_email: string }
         Returns: undefined
