@@ -1,3 +1,4 @@
+
 import {
   Sidebar,
   SidebarContent,
@@ -7,10 +8,13 @@ import {
   SidebarMenuItem,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Home, Calendar, Users, Settings } from "lucide-react";
+import { Home, Calendar, Users, Settings, LogOut } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { NotificationBell } from './notifications/NotificationBell';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const NAV_ITEMS = [
   {
@@ -38,6 +42,17 @@ const NAV_ITEMS = [
 export function MainNav() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success("Successfully logged out");
+      navigate("/auth");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast.error("Failed to sign out. Please try again.");
+    }
+  };
 
   return (
     <Sidebar className="bg-sidebar min-h-screen border-r border-sidebar-border">
@@ -70,6 +85,18 @@ export function MainNav() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="mt-auto px-0 py-2 flex justify-center border-t border-sidebar-border">
+        <SidebarMenuButton
+          size="lg"
+          variant="ghost"
+          tooltip="Logout"
+          onClick={handleLogout}
+          className="flex flex-col items-center justify-center w-12 h-12 text-red-500 hover:bg-red-100 hover:text-red-600"
+        >
+          <LogOut className="w-6 h-6 mx-auto" />
+          <span className="sr-only">Logout</span>
+        </SidebarMenuButton>
+      </SidebarFooter>
     </Sidebar>
   );
 }
