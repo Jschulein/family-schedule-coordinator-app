@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { fetchFamilyInvitations, resendFamilyInvitation } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
@@ -26,13 +27,16 @@ export function useFamilyInvitations(familyId: string | null, refreshTrigger = f
         return;
       }
       
-      // Map the data to match our Invitation interface
+      // Map the data to match our FamilyInvitation interface
       const mappedInvitations: FamilyInvitation[] = result.data.map(invitation => ({
         id: invitation.id,
+        family_id: invitation.family_id,
         email: invitation.email,
         name: invitation.name || invitation.email,
         role: invitation.role,
         status: invitation.status,
+        invited_at: invitation.invited_at,
+        invited_by: invitation.invited_by,
         last_invited: invitation.last_invited || invitation.invited_at
       }));
       
