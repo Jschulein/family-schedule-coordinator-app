@@ -19,9 +19,12 @@ export async function fetchUserFamilies() {
       };
     }
 
-    // Use the security definer function to prevent infinite recursion
+    // Use the from() method rather than the rpc() method since we've updated the
+    // function to directly return table data
     const { data, error } = await supabase
-      .rpc('get_user_families');
+      .from('families')
+      .select('*')
+      .order('name');
     
     if (error) {
       console.error("Error fetching user families:", error);
@@ -32,7 +35,6 @@ export async function fetchUserFamilies() {
       };
     }
     
-    // The data is now correctly typed as Family[] from our updated function
     console.log(`Successfully fetched ${data?.length || 0} families`);
     return { 
       data: data as Family[], 
@@ -58,9 +60,10 @@ export async function fetchUserFamilies() {
  */
 export async function fetchFamilyMembers() {
   try {
-    // Use a security definer function to prevent infinite recursion
+    // Use the from() method with joins rather than the rpc() method
     const { data, error } = await supabase
-      .rpc('get_family_members');
+      .from('family_members')
+      .select('*');
 
     if (error) {
       console.error("Error fetching family members:", error);

@@ -30,9 +30,15 @@ export async function createFamily(name: string) {
 
     console.log("User authenticated, creating family with user ID:", user.id);
     
-    // Use a security definer function to prevent infinite recursion
+    // Use direct table insert instead of RPC
     const { data: familyData, error: familyError } = await supabase
-      .rpc('create_family', { family_name: name });
+      .from('families')
+      .insert({ 
+        name: name, 
+        created_by: user.id 
+      })
+      .select()
+      .single();
 
     if (familyError) {
       console.error("Error creating family:", familyError);
@@ -49,6 +55,22 @@ export async function createFamily(name: string) {
         error: "No data returned when creating family",
         isError: true
       };
+    }
+    
+    // Now add the creator as an admin to this family
+    const { error: memberError } = await supabase
+      .from('family_members')
+      .insert({
+        family_id: familyData.id,
+        user_id: user.id,
+        email: user.email,
+        role: 'admin',
+        name: user.user_metadata?.full_name || user.email
+      });
+    
+    if (memberError) {
+      console.error("Error adding creator as family member:", memberError);
+      // We still return the family since it was created successfully
     }
     
     console.log("Family created successfully:", familyData);
@@ -95,14 +117,16 @@ export async function inviteFamilyMember(
       };
     }
     
-    // Use a security definer function to prevent infinite recursion
+    // Use direct table insert instead of RPC
     const { data, error } = await supabase
-      .rpc('invite_family_member', {
-        p_family_id: familyId,
-        p_email: email,
-        p_name: name,
-        p_role: role,
-        p_invited_by: user.id
+      .from('invitations')
+      .insert({
+        family_id: familyId,
+        email: email,
+        name: name,
+        role: role,
+        invited_by: user.id,
+        last_invited: new Date().toISOString()
       });
 
     if (error) {
