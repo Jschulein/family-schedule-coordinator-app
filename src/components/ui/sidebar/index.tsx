@@ -1,6 +1,10 @@
 
 // Main re-export file for sidebar components
-import { Sidebar, SidebarProvider, useSidebar, SidebarTrigger, SidebarRail, SidebarInset } from "./Sidebar";
+import { Sidebar } from "./Sidebar";
+import { SidebarProvider, useSidebar } from "./SidebarContext";
+import { SidebarTrigger } from "./SidebarTrigger";
+import { SidebarRail } from "./SidebarRail";
+import { SidebarInset } from "./SidebarInset";
 import { SidebarContent, SidebarHeader, SidebarFooter, SidebarSeparator } from "./SidebarLayout";
 import { SidebarGroup, SidebarGroupLabel, SidebarGroupAction, SidebarGroupContent } from "./SidebarGroup";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarMenuBadge, SidebarMenuSkeleton } from "./SidebarMenu";
