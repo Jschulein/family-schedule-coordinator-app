@@ -25,107 +25,111 @@ export async function fetchEventsFromDb() {
       return { events: [], error: "Failed to load family information: " + familiesError.message };
     }
 
-    // Construct the query based on family_id
-    let eventQuery = supabase
-      .from('events')
-      .select('*')
-      .order('date', { ascending: true });
-    
     // If we have families, use them to filter events
     if (userFamilies && userFamilies.length > 0) {
       const familyIds = userFamilies.map(f => f.family_id);
+      console.log(`Found ${familyIds.length} families for current user`);
       
-      // Get events created by the user or linked to their families
-      const { data: eventRows, error: eventError } = await eventQuery;
-
-      if (eventError) {
-        console.error("Error fetching events:", eventError);
-        return { events: [], error: "Failed to load events: " + eventError.message };
+      // Get events shared with these families
+      const { data: familyEventRows, error: familyEventError } = await supabase
+        .from('event_families')
+        .select('event_id')
+        .in('family_id', familyIds);
+        
+      if (familyEventError) {
+        console.error("Error fetching family events:", familyEventError);
+        return { events: [], error: "Failed to load family events: " + familyEventError.message };
       }
-
-      // Get unique creator IDs from the events
-      const creatorIds = Array.from(
-        new Set((eventRows || []).map((row: any) => row.creator_id))
-      ).filter(Boolean);
       
-      let userMap: Record<string, UserProfile | undefined> = {};
+      // Get events created by the user or shared with their families
+      let eventQuery = supabase.from('events').select('*').order('date', { ascending: true });
+      
+      if (familyEventRows && familyEventRows.length > 0) {
+        // Get events that are either created by the user or shared with their families
+        const eventIds = familyEventRows.map(row => row.event_id);
+        
+        const { data: eventRows, error: eventError } = await eventQuery.or(
+          `id.in.(${eventIds.join(',')})${eventIds.length > 0 ? ',' : ''}creator_id.eq.${sessionData.session.user.id}`
+        );
 
-      // Only fetch profiles if we have creator IDs
-      if (creatorIds.length > 0) {
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, full_name, Email')
-          .in('id', creatorIds);
-
-        if (profileError) {
-          console.error("Error fetching profiles:", profileError);
-        } else if (profiles) {
-          // Create a lookup map of user profiles by ID
-          profiles.forEach((profile: UserProfile) => {
-            userMap[profile.id] = profile;
-          });
+        if (eventError) {
+          console.error("Error fetching events:", eventError);
+          return { events: [], error: "Failed to load events: " + eventError.message };
         }
-      }
 
-      // Map the database rows to Event objects
-      const mappedEvents = (eventRows || []).map((row: any) => fromDbEvent(row, userMap));
-      
-      if (mappedEvents.length === 0) {
-        console.log("No events found in database");
+        // Process events with user profiles
+        const mappedEvents = await processEventsWithProfiles(eventRows || []);
+        return { events: mappedEvents, error: null };
       } else {
-        console.log(`Successfully fetched ${mappedEvents.length} events`);
+        // Just get user's personal events if no family events
+        const { data: personalEvents, error: personalEventError } = await supabase
+          .from('events')
+          .select('*')
+          .eq('creator_id', sessionData.session.user.id)
+          .order('date', { ascending: true });
+          
+        if (personalEventError) {
+          console.error("Error fetching personal events:", personalEventError);
+          return { events: [], error: "Failed to load personal events: " + personalEventError.message };
+        }
+        
+        // Process personal events
+        const mappedEvents = await processEventsWithProfiles(personalEvents || []);
+        return { events: mappedEvents, error: null };
       }
-
-      return { events: mappedEvents, error: null };
     } else {
+      // No families found, just get personal events
       console.log("No families found for user, only returning personal events");
       
-      // Just get events created by the current user
-      const { data: eventRows, error: eventError } = await supabase
+      const { data: personalEvents, error: personalEventError } = await supabase
         .from('events')
         .select('*')
         .eq('creator_id', sessionData.session.user.id)
         .order('date', { ascending: true });
-
-      if (eventError) {
-        console.error("Error fetching personal events:", eventError);
-        return { events: [], error: "Failed to load events: " + eventError.message };
+        
+      if (personalEventError) {
+        console.error("Error fetching personal events:", personalEventError);
+        return { events: [], error: "Failed to load personal events: " + personalEventError.message };
       }
-
-      // Process events as before
-      const creatorIds = Array.from(
-        new Set((eventRows || []).map((row: any) => row.creator_id))
-      ).filter(Boolean);
       
-      let userMap: Record<string, UserProfile | undefined> = {};
-
-      if (creatorIds.length > 0) {
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, full_name, Email')
-          .in('id', creatorIds);
-
-        if (profileError) {
-          console.error("Error fetching profiles:", profileError);
-        } else if (profiles) {
-          profiles.forEach((profile: UserProfile) => {
-            userMap[profile.id] = profile;
-          });
-        }
-      }
-
-      const mappedEvents = (eventRows || []).map((row: any) => fromDbEvent(row, userMap));
-      
-      if (mappedEvents.length === 0) {
-        console.log("No personal events found in database");
-      } else {
-        console.log(`Successfully fetched ${mappedEvents.length} personal events`);
-      }
-
+      // Process personal events
+      const mappedEvents = await processEventsWithProfiles(personalEvents || []);
       return { events: mappedEvents, error: null };
     }
   } catch (error: any) {
     console.error("Error in fetchEventsFromDb:", error);
     return { events: [], error: error.message || "An unexpected error occurred" };
   }
+}
+
+// Helper function to process events and fetch creator profiles
+async function processEventsWithProfiles(eventRows: any[]) {
+  if (!eventRows.length) return [];
+  
+  // Get unique creator IDs from the events
+  const creatorIds = Array.from(
+    new Set(eventRows.map((row: any) => row.creator_id))
+  ).filter(Boolean);
+  
+  let userMap: Record<string, UserProfile | undefined> = {};
+
+  // Only fetch profiles if we have creator IDs
+  if (creatorIds.length > 0) {
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, full_name, Email')
+      .in('id', creatorIds);
+
+    if (profileError) {
+      console.error("Error fetching profiles:", profileError);
+    } else if (profiles) {
+      // Create a lookup map of user profiles by ID
+      profiles.forEach((profile: UserProfile) => {
+        userMap[profile.id] = profile;
+      });
+    }
+  }
+
+  // Map the database rows to Event objects
+  return eventRows.map((row: any) => fromDbEvent(row, userMap));
 }

@@ -34,9 +34,6 @@ export function useEventData() {
       } else {
         console.log(`Successfully loaded ${fetchedEvents.length} events`);
         setEvents(fetchedEvents);
-        if (fetchedEvents.length === 0) {
-          toast({ title: "Info", description: "No events found. Create your first event!" });
-        }
       }
     } catch (e: any) {
       console.error("Error in fetchEvents:", e);
@@ -46,6 +43,47 @@ export function useEventData() {
       setLoading(false);
     }
   }, []);
+
+  // Set up subscriptions to real-time updates for events and event_families tables
+  useEffect(() => {
+    const setupRealtimeSubscriptions = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      // Subscribe to events table changes
+      const eventsChannel = supabase
+        .channel('events-channel')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'events' }, 
+          (payload) => {
+            console.log('Events change received:', payload);
+            // Refresh events when changes occur
+            fetchEvents();
+          }
+        )
+        .subscribe();
+        
+      // Subscribe to event_families table changes
+      const eventFamiliesChannel = supabase
+        .channel('event-families-channel')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'event_families' }, 
+          (payload) => {
+            console.log('Event families change received:', payload);
+            // Refresh events when family sharing changes
+            fetchEvents();
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(eventsChannel);
+        supabase.removeChannel(eventFamiliesChannel);
+      };
+    };
+    
+    setupRealtimeSubscriptions();
+  }, [fetchEvents]);
 
   useEffect(() => {
     // Initial fetch

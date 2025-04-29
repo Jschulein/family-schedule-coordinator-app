@@ -9,6 +9,9 @@ import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from "react";
+import { toast } from "@/components/ui/use-toast";
+import { useEvents } from "@/contexts/EventContext";
 
 const FamiliesPage = () => {
   const {
@@ -21,6 +24,33 @@ const FamiliesPage = () => {
     createFamily,
     handleSelectFamily,
   } = useFamilies();
+  
+  const [refreshingInvitations, setRefreshingInvitations] = useState(false);
+  const { refetchEvents } = useEvents();
+
+  // When active family changes, refresh events
+  useEffect(() => {
+    if (activeFamilyId) {
+      // Refresh events when family changes to show updated family events
+      refetchEvents().catch(err => 
+        console.error("Error refreshing events after family change:", err)
+      );
+    }
+  }, [activeFamilyId, refetchEvents]);
+
+  const handleInviteSent = async () => {
+    setRefreshingInvitations(true);
+    try {
+      // Refresh both families and invitations
+      await fetchFamilies();
+      toast({ title: "Success", description: "Invitation sent and data refreshed" });
+    } catch (error) {
+      console.error("Error refreshing data after invitation:", error);
+      toast({ title: "Warning", description: "Invitation sent but failed to refresh data" });
+    } finally {
+      setRefreshingInvitations(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -79,12 +109,15 @@ const FamiliesPage = () => {
                   <CardContent>
                     <InviteMemberForm 
                       familyId={activeFamilyId}
-                      onInviteSent={fetchFamilies}
+                      onInviteSent={handleInviteSent}
                     />
                   </CardContent>
                 </Card>
                 
-                <PendingInvitations familyId={activeFamilyId} />
+                <PendingInvitations 
+                  familyId={activeFamilyId} 
+                  refreshing={refreshingInvitations}
+                />
               </>
             )}
           </div>
