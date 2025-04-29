@@ -26,8 +26,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
       setLoading(true);
       setError(null);
       try {
-        // Use a different approach to avoid recursion
-        // Get user's families first - this uses a security definer function
+        // Get user's families first using the secure function
         const { data: userFamilies, error: familiesError } = await supabase
           .rpc('user_families');
 
@@ -46,7 +45,6 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
         const familyIds = userFamilies.map(f => f.family_id);
         
         // Then fetch members using the family IDs directly - avoiding RLS recursion
-        // by using a filter condition on family_id
         const { data: members, error: membersError } = await supabase
           .from('family_members')
           .select('*')

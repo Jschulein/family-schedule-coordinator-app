@@ -434,6 +434,10 @@ export type Database = {
         Args: { family_id_param: string }
         Returns: boolean
       }
+      user_is_family_member_safe: {
+        Args: { family_id_param: string }
+        Returns: boolean
+      }
       user_is_in_family: {
         Args: { family_id_param: string }
         Returns: boolean
