@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
+
+// Import the useEvents hook but make it optional to avoid errors when context is not available
 import { useEvents } from "@/contexts/EventContext";
 
 const FamiliesPage = () => {
@@ -26,12 +28,22 @@ const FamiliesPage = () => {
   } = useFamilies();
   
   const [refreshingInvitations, setRefreshingInvitations] = useState(false);
-  const { refetchEvents } = useEvents();
+  
+  // Try to use the events context if available, otherwise provide a no-op function
+  let refetchEvents = () => Promise.resolve();
+  try {
+    const eventsContext = useEvents();
+    if (eventsContext) {
+      refetchEvents = eventsContext.refetchEvents;
+    }
+  } catch (e) {
+    console.log("EventContext not available, skipping event refetch functionality");
+  }
 
-  // When active family changes, refresh events
+  // When active family changes, refresh events if context is available
   useEffect(() => {
     if (activeFamilyId) {
-      // Refresh events when family changes to show updated family events
+      // Try to refresh events when family changes
       refetchEvents().catch(err => 
         console.error("Error refreshing events after family change:", err)
       );

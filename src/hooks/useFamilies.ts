@@ -41,6 +41,12 @@ export const useFamilies = () => {
       if (!userFamilies || userFamilies.length === 0) {
         console.log("No families found for current user");
         setFamilies([]);
+        // Clear active family if none exist
+        if (activeFamilyId) {
+          setActiveFamilyId(null);
+          localStorage.removeItem("activeFamilyId");
+        }
+        setLoading(false);
         return;
       }
       
@@ -97,6 +103,7 @@ export const useFamilies = () => {
 
       console.log("User authenticated, creating family with user ID:", user.id);
       
+      // First create the family
       const { data: familyData, error: familyError } = await supabase
         .from("families")
         .insert({ name, created_by: user.id })
@@ -114,6 +121,10 @@ export const useFamilies = () => {
       
       console.log("Family created successfully:", familyData);
       toast({ title: "Success", description: "Family created successfully!" });
+      
+      // Add the current user as an admin of the family
+      // This uses the database trigger handle_new_family() instead of direct insert
+      // to avoid the RLS policy recursion
       
       // Fetch all families again to make sure we have the latest data
       await fetchFamilies();
