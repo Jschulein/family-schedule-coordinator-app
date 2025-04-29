@@ -11,11 +11,14 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  sidebarMenuButtonVariants,
   SidebarMenuAction,
   SidebarMenuBadge,
-  SidebarMenuSkeleton 
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton
 } from "./menu";
-import { SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from "./SidebarMenuSub";
 import { SidebarInput } from "./SidebarInput";
 
 export {
@@ -43,6 +46,7 @@ export {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  sidebarMenuButtonVariants,
   SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuSkeleton,
@@ -55,3 +59,4 @@ export {
   // Input component
   SidebarInput
 };
+

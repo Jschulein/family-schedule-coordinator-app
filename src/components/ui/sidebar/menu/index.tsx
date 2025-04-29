@@ -5,6 +5,9 @@ import { SidebarMenuButton, sidebarMenuButtonVariants } from './SidebarMenuButto
 import { SidebarMenuAction } from './SidebarMenuAction';
 import { SidebarMenuBadge } from './SidebarMenuBadge';
 import { SidebarMenuSkeleton } from './SidebarMenuSkeleton';
+import { SidebarMenuSub } from './SidebarMenuSub';
+import { SidebarMenuSubItem } from './SidebarMenuSubItem';
+import { SidebarMenuSubButton } from './SidebarMenuSubButton';
 
 export {
   SidebarMenu,
@@ -13,5 +16,9 @@ export {
   sidebarMenuButtonVariants,
   SidebarMenuAction,
   SidebarMenuBadge,
-  SidebarMenuSkeleton
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton
 };
+
