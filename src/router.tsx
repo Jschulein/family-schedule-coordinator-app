@@ -1,5 +1,5 @@
 
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, Outlet } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
@@ -13,6 +13,13 @@ const EditEvent = lazy(() => import("./pages/EditEvent"));
 const Families = lazy(() => import("./pages/Families"));
 const Settings = lazy(() => import("./pages/Settings"));
 
+// Loading fallback component
+const SuspenseFallback = () => <div className="flex items-center justify-center min-h-[70vh]">
+  <div className="animate-pulse text-center">
+    <p className="text-lg text-muted-foreground">Loading...</p>
+  </div>
+</div>;
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -20,33 +27,33 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Index />,
+        element: <Suspense fallback={<SuspenseFallback />}><Index /></Suspense>,
       },
       {
         path: "calendar",
-        element: <Calendar />,
+        element: <Suspense fallback={<SuspenseFallback />}><Calendar /></Suspense>,
       },
       {
         path: "events/new",
-        element: <NewEvent />,
+        element: <Suspense fallback={<SuspenseFallback />}><NewEvent /></Suspense>,
       },
       {
         path: "events/:id/edit",
-        element: <EditEvent />,
+        element: <Suspense fallback={<SuspenseFallback />}><EditEvent /></Suspense>,
       },
       {
         path: "families",
-        element: <Families />,
+        element: <Suspense fallback={<SuspenseFallback />}><Families /></Suspense>,
       },
       {
         path: "settings",
-        element: <Settings />,
+        element: <Suspense fallback={<SuspenseFallback />}><Settings /></Suspense>,
       },
     ],
   },
   {
     path: "/auth",
-    element: <Auth />,
+    element: <Suspense fallback={<SuspenseFallback />}><Auth /></Suspense>,
   },
   {
     path: "*",
