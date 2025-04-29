@@ -1,10 +1,8 @@
 
 import { Check } from "lucide-react";
-import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { toast } from "@/components/ui/use-toast";
-import { fetchFamilyMembers } from "@/services/familyService";
 import type { FamilyMember } from "@/types/familyTypes";
+import { useFamilyMembers } from "@/hooks/useFamilyMembers";
 
 interface EventFamilyMembersInputProps {
   value: string[];
@@ -12,32 +10,7 @@ interface EventFamilyMembersInputProps {
 }
 
 export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersInputProps) => {
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const loadFamilyMembers = async () => {
-      setLoading(true);
-      setError(null);
-      
-      const result = await fetchFamilyMembers();
-      
-      if (result.isError) {
-        setError(result.error || "Failed to load family members");
-        toast({ 
-          title: "Error", 
-          description: "Failed to load family members" 
-        });
-      } else if (result.data) {
-        setFamilyMembers(result.data);
-      }
-      
-      setLoading(false);
-    };
-    
-    loadFamilyMembers();
-  }, []);
+  const { familyMembers, loading, error } = useFamilyMembers();
 
   const toggleMember = (memberId: string) => {
     if (value.includes(memberId)) {

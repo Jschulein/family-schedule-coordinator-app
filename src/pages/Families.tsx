@@ -2,7 +2,6 @@
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RefreshCw, AlertCircle } from "lucide-react";
-import { useFamilies } from "@/hooks/useFamilies";
 import { FamilyList } from "@/components/families/FamilyList";
 import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
@@ -12,6 +11,7 @@ import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { CreateFamilyWithMembersForm } from "@/components/families/CreateFamilyWithMembersForm";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useFamilyContext } from "@/contexts/FamilyContext";
 
 // Import the useEvents hook but make it optional to avoid errors when context is not available
 import { useEvents } from "@/contexts/EventContext";
@@ -24,7 +24,7 @@ const FamiliesPage = () => {
     activeFamilyId,
     fetchFamilies,
     handleSelectFamily,
-  } = useFamilies();
+  } = useFamilyContext();
   
   const [refreshingInvitations, setRefreshingInvitations] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
