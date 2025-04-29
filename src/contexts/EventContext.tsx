@@ -3,7 +3,7 @@ import { createContext, useContext, ReactNode } from 'react';
 import { Event, EventContextType } from '@/types/eventTypes';
 import { useEventData } from '@/hooks/useEventData';
 import { addEventToDb, updateEventInDb, deleteEventFromDb } from '@/services/eventService';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/hooks/use-toast";
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
@@ -15,17 +15,27 @@ export function EventProvider({ children }: { children: ReactNode }) {
       const { event: createdEvent, error: addError } = await addEventToDb(newEvent);
       
       if (addError) {
-        toast.error(addError);
+        toast({
+          title: "Error",
+          description: addError
+        });
         return;
       }
       
       if (createdEvent) {
         setEvents(prevEvents => [...prevEvents, createdEvent]);
-        toast.success("Event created successfully!");
+        toast({
+          title: "Success",
+          description: "Event created successfully!"
+        });
       }
     } catch (error: any) {
       console.error("Error in addEvent:", error);
-      toast.error("Failed to add event: " + (error.message || "Unknown error"));
+      toast({
+        title: "Error",
+        description: "Failed to add event: " + (error.message || "Unknown error"),
+        variant: "destructive"
+      });
     }
   };
 
@@ -34,7 +44,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
       const { event: eventResult, error: updateError } = await updateEventInDb(updatedEvent);
       
       if (updateError) {
-        toast.error(updateError);
+        toast({
+          title: "Error",
+          description: updateError,
+          variant: "destructive"
+        });
         return;
       }
       
@@ -42,11 +56,18 @@ export function EventProvider({ children }: { children: ReactNode }) {
         setEvents(prevEvents => prevEvents.map(event => 
           event.id === updatedEvent.id ? {...updatedEvent, id: event.id} : event
         ));
-        toast.success("Event updated successfully!");
+        toast({
+          title: "Success", 
+          description: "Event updated successfully!"
+        });
       }
     } catch (error: any) {
       console.error("Error in updateEvent:", error);
-      toast.error("Failed to update event: " + (error.message || "Unknown error"));
+      toast({
+        title: "Error",
+        description: "Failed to update event: " + (error.message || "Unknown error"),
+        variant: "destructive"
+      });
     }
   };
 
@@ -55,17 +76,28 @@ export function EventProvider({ children }: { children: ReactNode }) {
       const { success, message, error: deleteError } = await deleteEventFromDb(eventId);
       
       if (deleteError) {
-        toast.error(deleteError);
+        toast({
+          title: "Error",
+          description: deleteError,
+          variant: "destructive"
+        });
         return;
       }
       
       if (success) {
         setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
-        toast.success(message || "Event deleted successfully!");
+        toast({
+          title: "Success",
+          description: message || "Event deleted successfully!"
+        });
       }
     } catch (error: any) {
       console.error("Error in deleteEvent:", error);
-      toast.error("Failed to delete event: " + (error.message || "Unknown error"));
+      toast({
+        title: "Error",
+        description: "Failed to delete event: " + (error.message || "Unknown error"),
+        variant: "destructive"
+      });
     }
   };
 

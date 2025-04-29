@@ -1,148 +1,70 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Family, FamilyMember } from "@/types/familyTypes";
+import { Family, FamilyMember } from "./types";
 import { handleError } from "@/utils/errorHandler";
-import { FamilyServiceResponse } from "./types";
 
 /**
- * Fetches all families that the current user belongs to
- * @returns An object containing families data and loading/error states
+ * Fetches all families that the current user is a member of
+ * @returns Result containing families data or error
  */
-export async function fetchUserFamilies(): Promise<FamilyServiceResponse<Family[]>> {
-  console.log("Fetching families using SQL function...");
+export async function fetchUserFamilies() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return { 
-        data: null, 
-        error: "Authentication required", 
-        isError: true 
-      };
-    }
-
-    // Use family_members table directly to get the families the user belongs to
-    const { data: memberships, error: membershipError } = await supabase
-      .from('family_members')
-      .select('family_id')
-      .eq('user_id', user.id);
-      
-    if (membershipError) {
-      console.error("Error fetching user family memberships:", membershipError);
-      return { 
-        data: null, 
-        error: membershipError.message, 
-        isError: true 
-      };
-    }
+    console.log("Fetching user families using security definer function");
     
-    if (!memberships || memberships.length === 0) {
-      console.log("No family memberships found for user");
-      return { 
-        data: [], 
-        error: null, 
-        isError: false 
-      };
-    }
-    
-    const familyIds = memberships.map(m => m.family_id);
-    console.log(`Found ${familyIds.length} family memberships for user`);
-    
-    // Fetch the actual family data
-    const { data, error } = await supabase
-      .from('families')
-      .select('*')
-      .in('id', familyIds)
-      .order('name');
+    // Use the security definer function to avoid infinite recursion
+    const { data, error } = await supabase.rpc('get_user_families');
     
     if (error) {
-      console.error("Error fetching user families:", error);
-      return { 
-        data: null, 
-        error: error.message, 
-        isError: true 
-      };
+      throw error;
     }
     
-    console.log(`Successfully fetched ${data?.length || 0} families`);
-    return { 
-      data: data as Family[], 
-      error: null, 
-      isError: false 
+    return {
+      data: data as Family[],
+      isError: false,
+      error: null
     };
   } catch (error: any) {
     const errorMessage = handleError(error, {
       context: "Fetching families",
       showToast: true
     });
-    return { 
-      data: null, 
-      error: errorMessage, 
-      isError: true 
+    
+    return {
+      data: null,
+      isError: true,
+      error: errorMessage
     };
   }
 }
 
 /**
- * Fetches all family members for the families that the current user belongs to
- * @returns An object containing family members data and loading/error states
+ * Fetches family members for all families the current user has access to
+ * @returns Result containing family members data or error
  */
-export async function fetchFamilyMembers(): Promise<FamilyServiceResponse<FamilyMember[]>> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return { 
-        data: null, 
-        error: "Authentication required", 
-        isError: true 
-      };
-    }
+export async function fetchFamilyMembers() {
+  try {    
+    // Use the security definer function to avoid infinite recursion
+    const { data, error } = await supabase.rpc('get_family_members');
     
-    // First get the families the user belongs to
-    const { data: userFamilies } = await supabase
-      .from('family_members')
-      .select('family_id')
-      .eq('user_id', user.id);
-
-    if (!userFamilies || userFamilies.length === 0) {
-      return { 
-        data: [], 
-        error: null, 
-        isError: false 
-      };
-    }
-
-    const familyIds = userFamilies.map(f => f.family_id);
-    
-    // Then fetch all members of those families
-    const { data, error } = await supabase
-      .from('family_members')
-      .select('*')
-      .in('family_id', familyIds);
-
     if (error) {
-      console.error("Error fetching family members:", error);
-      return { 
-        data: null, 
-        error: "Failed to load family members", 
-        isError: true 
-      };
+      throw error;
     }
-
-    console.log(`Successfully loaded ${data?.length || 0} family members`);
-    return { 
-      data: data as FamilyMember[], 
-      error: null, 
-      isError: false 
+    
+    return {
+      data: data as FamilyMember[],
+      isError: false,
+      error: null
     };
-  } catch (err: any) {
-    const errorMessage = handleError(err, {
+  } catch (error: any) {
+    const errorMessage = handleError(error, {
       context: "Fetching family members",
       showToast: true
     });
-    return { 
-      data: null, 
-      error: errorMessage, 
-      isError: true 
+    
+    return {
+      data: null,
+      isError: true,
+      error: errorMessage
     };
   }
 }
