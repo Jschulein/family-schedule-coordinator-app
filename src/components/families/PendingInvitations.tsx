@@ -37,10 +37,12 @@ export const PendingInvitations = ({ familyId, refreshing = false }: PendingInvi
       if (error) throw error;
       
       // Map the data to match our Invitation interface
+      // Don't try to access name directly as it might not exist in the DB
       const mappedInvitations: Invitation[] = (data || []).map(invitation => ({
         id: invitation.id,
         email: invitation.email,
-        name: invitation.name || invitation.email, // Use email as fallback if name is missing
+        // Only use email as display name since name doesn't exist in DB schema
+        name: invitation.email,
         role: invitation.role,
         status: invitation.status,
         last_invited: invitation.last_invited || invitation.invited_at
