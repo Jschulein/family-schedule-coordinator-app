@@ -1,62 +1,37 @@
 
-import { lazy, Suspense } from "react";
-import { createBrowserRouter, Outlet } from "react-router-dom";
-import AppLayout from "./components/AppLayout";
-import NotFound from "./pages/NotFound";
-
-// Use React.lazy for code splitting
-const Index = lazy(() => import("./pages/Index"));
-const Calendar = lazy(() => import("./pages/Calendar"));
-const Auth = lazy(() => import("./pages/Auth"));
-const NewEvent = lazy(() => import("./pages/NewEvent"));
-const EditEvent = lazy(() => import("./pages/EditEvent"));
-const Families = lazy(() => import("./pages/Families"));
-const Settings = lazy(() => import("./pages/Settings"));
-
-// Loading fallback component
-const SuspenseFallback = () => <div className="flex items-center justify-center min-h-[70vh]">
-  <div className="animate-pulse text-center">
-    <p className="text-lg text-muted-foreground">Loading...</p>
-  </div>
-</div>;
+import { Navigate, createBrowserRouter } from "react-router-dom";
+import AppLayout from "@/components/AppLayout";
+import Index from "@/pages/Index";
+import Calendar from "@/pages/Calendar";
+import NewEvent from "@/pages/NewEvent";
+import EditEvent from "@/pages/EditEvent";
+import NotFound from "@/pages/NotFound";
+import Families from "@/pages/Families";
+import Auth from "@/pages/Auth";
+import Settings from "@/pages/Settings";
+import TestFamilyFlow from "@/pages/TestFamilyFlow";
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <AppLayout><Outlet /></AppLayout>,
+    element: <AppLayout />,
     children: [
-      {
-        index: true,
-        element: <Suspense fallback={<SuspenseFallback />}><Index /></Suspense>,
-      },
-      {
-        path: "calendar",
-        element: <Suspense fallback={<SuspenseFallback />}><Calendar /></Suspense>,
-      },
-      {
-        path: "events/new",
-        element: <Suspense fallback={<SuspenseFallback />}><NewEvent /></Suspense>,
-      },
-      {
-        path: "events/:id/edit",
-        element: <Suspense fallback={<SuspenseFallback />}><EditEvent /></Suspense>,
-      },
-      {
-        path: "families",
-        element: <Suspense fallback={<SuspenseFallback />}><Families /></Suspense>,
-      },
-      {
-        path: "settings",
-        element: <Suspense fallback={<SuspenseFallback />}><Settings /></Suspense>,
-      },
+      { index: true, element: <Index /> },
+      { path: "calendar", element: <Calendar /> },
+      { path: "events/new", element: <NewEvent /> },
+      { path: "events/:eventId/edit", element: <EditEvent /> },
+      { path: "families", element: <Families /> },
+      { path: "settings", element: <Settings /> },
+      { path: "test-family-flow", element: <TestFamilyFlow /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
   {
     path: "/auth",
-    element: <Suspense fallback={<SuspenseFallback />}><Auth /></Suspense>,
+    element: <Auth />,
   },
   {
-    path: "*",
-    element: <NotFound />,
+    path: "/*",
+    element: <Navigate to="/auth" replace />,
   },
 ]);

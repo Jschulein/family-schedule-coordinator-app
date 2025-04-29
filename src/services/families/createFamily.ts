@@ -106,9 +106,22 @@ export async function createFamilyWithMembers(
   members?: Array<{ name: string; email: string; role: FamilyRole }>
 ): Promise<FamilyServiceResponse<Family>> {
   try {
+    // Validate input parameters
+    if (!name || name.trim() === '') {
+      console.error("Invalid family name provided");
+      return {
+        data: null,
+        error: "Family name is required",
+        isError: true
+      };
+    }
+
+    console.log(`Creating family with members. Name: ${name}, Members count: ${members?.length || 0}`);
+    
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     
     if (userErr || !user) {
+      console.error("User authentication error:", userErr);
       return {
         data: null,
         error: "You must be logged in to create a family",
@@ -116,10 +129,9 @@ export async function createFamilyWithMembers(
       };
     }
 
-    console.log("Creating new family with secure function:", name);
+    console.log("Creating new family with secure function. User ID:", user.id);
     
     // Use the security definer function to create the family
-    // This already adds the current user as a family member
     const { data, error: functionError } = await supabase
       .rpc('safe_create_family', { 
         p_name: name, 
@@ -127,7 +139,7 @@ export async function createFamilyWithMembers(
       });
 
     if (functionError) {
-      console.error("Error creating family:", functionError);
+      console.error("Error creating family with RPC function:", functionError);
       return {
         data: null,
         error: functionError.message,
@@ -136,6 +148,7 @@ export async function createFamilyWithMembers(
     }
     
     if (!data) {
+      console.error("No data returned when creating family");
       return {
         data: null,
         error: "No data returned when creating family",
@@ -144,8 +157,10 @@ export async function createFamilyWithMembers(
     }
     
     const familyId = data;
+    console.log(`Family created successfully with ID: ${familyId}`);
     
     // Only send invitations if there are members to invite
+    let invitationResults = null;
     if (members && members.length > 0) {
       // Get current user's email from the user object we already have
       const currentUserEmail = user.email;
@@ -172,9 +187,12 @@ export async function createFamilyWithMembers(
           
           console.log(`Sending ${invitations.length} invitations`);
           
-          const { error: invitationError } = await supabase
+          const { data: invitationData, error: invitationError } = await supabase
             .from("invitations")
-            .insert(invitations);
+            .insert(invitations)
+            .select();
+          
+          invitationResults = { data: invitationData, error: invitationError };
           
           if (invitationError) {
             console.error("Error sending invitations:", invitationError);
@@ -185,6 +203,8 @@ export async function createFamilyWithMembers(
               isError: false
             };
           }
+          
+          console.log("Invitations sent successfully:", invitationData?.length || 0);
         } else {
           console.log("No members to invite after filtering out current user");
         }
@@ -221,6 +241,7 @@ export async function createFamilyWithMembers(
       context: "Creating family with members",
       showToast: true
     });
+    console.error("Exception in createFamilyWithMembers:", error);
     return {
       data: null,
       error: errorMessage,
