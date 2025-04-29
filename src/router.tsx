@@ -1,6 +1,6 @@
 
 import { lazy } from "react";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Outlet } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import NotFound from "./pages/NotFound";
 
@@ -16,7 +16,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <AppLayout />,
+    element: <AppLayout><Outlet /></AppLayout>,
     children: [
       {
         index: true,
