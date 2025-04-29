@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react";
 interface Invitation {
   id: string;
   email: string;
-  name: string;
+  name?: string; // Make name optional since it might be missing from DB
   role: string;
   status: string;
   last_invited: string;
@@ -35,7 +35,18 @@ export const PendingInvitations = ({ familyId, refreshing = false }: PendingInvi
         .eq("status", "pending");
 
       if (error) throw error;
-      setInvitations(data || []);
+      
+      // Map the data to match our Invitation interface
+      const mappedInvitations: Invitation[] = (data || []).map(invitation => ({
+        id: invitation.id,
+        email: invitation.email,
+        name: invitation.name || invitation.email, // Use email as fallback if name is missing
+        role: invitation.role,
+        status: invitation.status,
+        last_invited: invitation.last_invited || invitation.invited_at
+      }));
+      
+      setInvitations(mappedInvitations);
     } catch (error: any) {
       console.error("Error loading invitations:", error.message);
       toast({ title: "Error", description: "Failed to load invitations" });
@@ -75,6 +86,26 @@ export const PendingInvitations = ({ familyId, refreshing = false }: PendingInvi
       fetchInvitations();
     }
   }, [refreshing, familyId]);
+
+  // Set up realtime subscription for invitations
+  useEffect(() => {
+    if (!familyId) return;
+    
+    const channel = supabase
+      .channel('invitation-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'invitations', filter: `family_id=eq.${familyId}` }, 
+        () => {
+          console.log('Invitation changes detected, refreshing data');
+          fetchInvitations();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [familyId]);
 
   if (loading) {
     return (
