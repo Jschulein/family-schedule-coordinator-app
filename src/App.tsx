@@ -6,6 +6,8 @@ import { router } from './router';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { useFamilyContext } from './contexts/FamilyContext';
+import { EventProvider } from './contexts/EventContext';
+import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 
 function App() {
   const { fetchFamilies } = useFamilyContext();
@@ -17,8 +19,11 @@ function App() {
 
   return (
     <ThemeProvider>
-      <RouterProvider router={router} />
-      <Toaster />
+      <EventProvider>
+        <RouterProvider router={router} />
+        <Toaster />
+        <SonnerToaster />
+      </EventProvider>
     </ThemeProvider>
   );
 }
