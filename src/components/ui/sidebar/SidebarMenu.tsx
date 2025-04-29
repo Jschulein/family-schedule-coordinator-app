@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useSidebar } from "./Sidebar";
+import { useSidebar } from "./SidebarContext";
 
 // SidebarMenu Component
 export const SidebarMenu = React.forwardRef<
