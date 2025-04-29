@@ -1,0 +1,46 @@
+
+// Main re-export file for sidebar components
+import { Sidebar, SidebarProvider, useSidebar, SidebarTrigger, SidebarRail, SidebarInset } from "./Sidebar";
+import { SidebarContent, SidebarHeader, SidebarFooter, SidebarSeparator } from "./SidebarLayout";
+import { SidebarGroup, SidebarGroupLabel, SidebarGroupAction, SidebarGroupContent } from "./SidebarGroup";
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarMenuBadge, SidebarMenuSkeleton } from "./SidebarMenu";
+import { SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from "./SidebarMenuSub";
+import { SidebarInput } from "./SidebarInput";
+
+export {
+  // Base sidebar components
+  Sidebar,
+  SidebarProvider,
+  useSidebar,
+  SidebarTrigger,
+  SidebarRail,
+  SidebarInset,
+  
+  // Layout components
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarSeparator,
+  
+  // Group components
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  
+  // Menu components
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuSkeleton,
+  
+  // Submenu components
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
+  
+  // Input component
+  SidebarInput
+};
