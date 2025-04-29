@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { handleError } from "@/utils/errorHandler";
-import { Family } from "@/types/familyTypes";
+import { Family, FamilyRole } from "@/types/familyTypes";
 
 /**
  * Creates a new family in the database
@@ -85,7 +85,7 @@ export async function inviteFamilyMember(
   familyId: string, 
   email: string, 
   name: string, 
-  role: string
+  role: FamilyRole // Use the FamilyRole type to ensure correct role values
 ) {
   try {
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
@@ -104,7 +104,7 @@ export async function inviteFamilyMember(
         family_id: familyId,
         email,
         name,
-        role,
+        role, // This now uses the proper FamilyRole type
         last_invited: new Date().toISOString(),
         invited_by: user.id
       });
