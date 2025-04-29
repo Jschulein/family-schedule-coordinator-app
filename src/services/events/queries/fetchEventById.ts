@@ -18,7 +18,7 @@ export async function fetchEventById(eventId: string): Promise<{ event: Event | 
       .from('events')
       .select('*')
       .eq('id', eventId)
-      .single();
+      .maybeSingle(); // Changed from single() to handle not found case gracefully
       
     if (eventError) {
       console.error("Error fetching event:", eventError);
@@ -47,7 +47,7 @@ export async function fetchEventById(eventId: string): Promise<{ event: Event | 
       .from('profiles')
       .select('*')
       .eq('id', eventData.creator_id)
-      .single();
+      .maybeSingle(); // Changed to maybeSingle to handle not found case
 
     // Create a user map for the fromDbEvent function
     const userMap = {
