@@ -57,14 +57,22 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
     try {
       console.log("Creating new family:", data.name);
       
-      // Ensure members data meets required type constraints
-      const validMembers = data.members?.map(member => ({
+      // Ensure members data meets required type constraints and remove duplicates
+      let validMembers = data.members?.map(member => ({
         name: member.name,
-        email: member.email,
+        email: member.email.toLowerCase(), // Normalize email for comparison
         role: member.role
       })).filter(member => 
         member.name && member.email && member.role
       ) as { name: string; email: string; role: FamilyRole }[] || [];
+      
+      // Remove duplicate emails as API will reject them anyway
+      const uniqueEmails = new Set();
+      validMembers = validMembers.filter(member => {
+        const isDuplicate = uniqueEmails.has(member.email);
+        uniqueEmails.add(member.email);
+        return !isDuplicate;
+      });
       
       const result = await createFamilyWithMembers(data.name, validMembers);
       

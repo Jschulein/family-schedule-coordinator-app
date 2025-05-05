@@ -11,7 +11,12 @@ export async function testFamilyCreationFlow() {
   testLogger.info('INIT', 'Starting family creation flow test');
   
   // Test 1: Authentication
-  await testAuthentication();
+  const authResult = await testAuthentication();
+  if (!authResult) {
+    // If authentication failed, don't proceed with family creation tests
+    testLogger.error('FAMILY_CREATE', 'Skipping family creation test due to authentication failure');
+    return testLogger.generateReport();
+  }
   
   // Test 2: Family Creation with Members
   await testFamilyCreation();
@@ -39,33 +44,39 @@ async function testAuthentication() {
       return true;
     }
     
-    // If not, try to authenticate
+    // If not, try to authenticate with test account
     testLogger.info('AUTH', 'No active session found, attempting login');
     
-    // Use test credentials - in a real app, these would come from a form
-    // Note: These should be replaced with actual test credentials
+    // These credentials should be updated to match a valid test account
+    // In a real app, these should be environment variables
     const email = 'test@example.com';
     const password = 'password123';
     
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    
-    if (error) {
-      testLogger.error('AUTH', 'Authentication failed', error);
-      throw error;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        testLogger.error('AUTH', 'Authentication failed', error);
+        testLogger.info('AUTH', 'Authentication failed. Please make sure to create a test user in Supabase with email: test@example.com and password: password123');
+        return false;
+      }
+      
+      testLogger.success('AUTH', 'Authentication successful', {
+        user: data.user?.id,
+        email: data.user?.email
+      });
+      
+      return true;
+    } catch (error) {
+      testLogger.error('AUTH', 'Exception during authentication', error);
+      return false;
     }
-    
-    testLogger.success('AUTH', 'Authentication successful', {
-      user: data.user?.id,
-      email: data.user?.email
-    });
-    
-    return true;
   } catch (error) {
     testLogger.error('AUTH', 'Exception during authentication', error);
-    throw error;
+    return false;
   }
 }
 
@@ -76,11 +87,14 @@ async function testFamilyCreation() {
   testLogger.info('FAMILY_CREATE', 'Testing family creation...');
   
   try {
-    // Create a test family
-    const familyName = `Test Family ${new Date().toISOString()}`;
+    // Generate a unique family name using timestamp to avoid conflicts
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '');
+    const familyName = `Test Family ${timestamp}`;
+    
+    // Create members with unique emails to avoid conflicts
     const members = [
-      { name: 'Test Member 1', email: 'member1@example.com', role: 'member' as const },
-      { name: 'Test Member 2', email: 'member2@example.com', role: 'admin' as const }
+      { name: 'Test Member 1', email: `member1.${timestamp}@example.com`, role: 'member' as const },
+      { name: 'Test Member 2', email: `member2.${timestamp}@example.com`, role: 'admin' as const }
     ];
     
     testLogger.info('FAMILY_CREATE', 'Creating family with members', {
