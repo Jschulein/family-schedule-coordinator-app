@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
-import { testFamilyCreationFlow } from "@/tests/familyCreationFlow";
+import { testFamilyCreationFlow } from "@/tests";
 
 const TestFamilyFlowPage = () => {
   const [isRunning, setIsRunning] = useState(false);
