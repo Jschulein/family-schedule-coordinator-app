@@ -2,17 +2,18 @@
 import {
   createBrowserRouter,
 } from "react-router-dom";
-import AppLayout from "./components/AppLayout"; // Fixed path
+import AppLayout from "./components/AppLayout"; 
 import Calendar from "./pages/Calendar";
 import NotFound from "./pages/NotFound";
 import Families from "./pages/Families";
-import NewEvent from "./pages/NewEvent"; // Using existing page
-import EditEvent from "./pages/EditEvent"; // Using existing page
+import NewEvent from "./pages/NewEvent"; 
+import EditEvent from "./pages/EditEvent"; 
 import TestingPage from "./pages/Testing";
 import TestFamilyFlowPage from "./pages/TestFamilyFlow";
+import Index from "./pages/Index";
 
-// Export as a named export to match how it's imported in App.tsx
-export const router = createBrowserRouter([
+// Export as a default export to match how it's imported in App.tsx
+const router = createBrowserRouter([
   {
     path: "/",
     element: <AppLayout />,
@@ -20,6 +21,10 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
+        element: <Index />,
+      },
+      {
+        path: "/calendar",
         element: <Calendar />,
       },
       {

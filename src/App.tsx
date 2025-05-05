@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import './App.css';
 import { RouterProvider } from 'react-router-dom';
-import router from './router'; // Change to default import
+import router from './router'; // Using default import
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { useFamilyContext } from './contexts/FamilyContext';
