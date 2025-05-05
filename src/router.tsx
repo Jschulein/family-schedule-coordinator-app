@@ -11,9 +11,16 @@ import EditEvent from "./pages/EditEvent";
 import TestingPage from "./pages/Testing";
 import TestFamilyFlowPage from "./pages/TestFamilyFlow";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Events from "./pages/Events";
 
 // Export as a default export to match how it's imported in App.tsx
 const router = createBrowserRouter([
+  {
+    path: "/auth",
+    element: <Auth />,
+    errorElement: <NotFound />
+  },
   {
     path: "/",
     element: <AppLayout />,
@@ -33,7 +40,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/events",
-        element: <Calendar />, // Temporarily point to Calendar
+        element: <Events />, // Using Events component
       },
       {
         path: "/events/:eventId/edit",

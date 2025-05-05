@@ -13,6 +13,18 @@ This document tracks errors found in the application and their solutions. Use th
 
 ## Authentication Issues
 
+### Error: Missing Authentication Route
+**Description**: The application attempts to redirect users to `/auth` for login/registration, but this route doesn't exist.
+**Solution**: Created a proper Auth page and added it to the router configuration:
+```typescript
+// In router.tsx
+{
+  path: "/auth",
+  element: <Auth />,
+  errorElement: <NotFound />
+},
+```
+
 ### Error: Authentication Redirect Loop
 **Description**: Users may experience redirect loops during authentication if site URLs are not configured properly in Supabase.
 **Solution**: Configure Site URL and Redirect URLs in Supabase under Authentication > URL Configuration.
@@ -96,6 +108,22 @@ ON CONFLICT (family_id, user_id) DO NOTHING; -- Added conflict handling
 - Implement status indicators for invitation process
 - Add retry mechanisms for failed invitations
 
+### Error: Authentication Required for Family Creation
+**Description**: When a user tries to create a family without being logged in, they get a cryptic error.
+**Solution**: Added proper authentication flow and redirection to the auth page when needed, plus clear error messages:
+```typescript
+// In CreateFamilyForm.tsx
+const { data: { session }, error: authError } = await supabase.auth.getSession();
+if (!session || authError) {
+  toast({ 
+    title: "Authentication required", 
+    description: "Please sign in to create a family." 
+  });
+  navigate("/auth");
+  return;
+}
+```
+
 ## Event Management Issues
 
 ### Error: Event Creation Fails Without Feedback
@@ -163,6 +191,32 @@ const formattedEvent = fromDbEvent({
 - Edit view: `/resource/:id/edit`
 - Create view: `/resource/new`
 
+### Error: Missing Routes
+**Description**: Several routes referenced in the code were missing from the router configuration.
+**Solution**: Updated router.tsx to include all necessary routes with proper path patterns:
+```typescript
+// Added auth route
+{
+  path: "/auth",
+  element: <Auth />,
+  errorElement: <NotFound />
+},
+
+// Fixed event routes
+{
+  path: "/events",
+  element: <Events />,
+},
+{
+  path: "/events/:eventId/edit", 
+  element: <EditEvent />,
+},
+{
+  path: "/event/create",
+  element: <NewEvent />,
+},
+```
+
 ## UI/UX Issues
 
 ### Error: Inconsistent Toast Notifications
@@ -172,6 +226,13 @@ const formattedEvent = fromDbEvent({
 // Use this consistently
 import { toast } from "@/hooks/use-toast";
 ```
+
+### Error: Missing Authentication Feedback
+**Description**: Users weren't properly informed when they needed to be authenticated.
+**Solution**: Added clear UI indicators and feedback for authentication requirements:
+- Added AuthForm component with toggle between login and signup
+- Added proper error messaging for authentication failures
+- Implemented automatic redirects to/from auth page based on session state
 
 ## Performance Issues
 
