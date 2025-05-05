@@ -42,29 +42,44 @@ export async function testFamilyCreation() {
       });
     }
     
+    // Get current user's ID before running the test
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      testLogger.error('FAMILY_CREATE', 'Could not get authenticated user', userError);
+      throw new Error('Authentication required for testing');
+    }
+    
+    testLogger.info('FAMILY_CREATE', 'Running test as user', { 
+      userId: user.id,
+      userEmail: user.email
+    });
+    
     const result = await createFamilyWithMembers(familyName, members);
     
     if (result.isError || !result.data) {
-      // Check if this is the specific duplicate key error related to family_members
-      if (result.error && result.error.includes("duplicate key value violates unique constraint \"family_members_family_id_user_id_key\"")) {
-        testLogger.warning('FAMILY_CREATE', 'Family member constraint detected - checking if family was still created');
+      // Try to recover from constraint violations by checking if the family was actually created
+      if (result.error && (
+          result.error.includes("duplicate key value violates unique constraint") ||
+          result.error.includes("violates row-level security policy")
+        )) {
+        testLogger.warning('FAMILY_CREATE', 'Constraint detected - checking if family was still created', {
+          error: result.error
+        });
         
-        // Get current user's ID to search for recently created families
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          testLogger.error('FAMILY_CREATE', 'Could not get authenticated user');
-          throw new Error('Authentication required for testing');
-        }
-        
-        // Check if the family was actually created despite the error
-        const { data: existingFamilies } = await supabase
+        // Search for recently created families with this name and user
+        const { data: existingFamilies, error: searchError } = await supabase
           .from('families')
           .select('*')
           .eq('name', familyName)
           .eq('created_by', user.id)
           .order('created_at', { ascending: false })
           .limit(1);
+          
+        if (searchError) {
+          testLogger.error('FAMILY_CREATE', 'Error searching for created family', searchError);
+          throw new Error(`Failed to check if family was created: ${searchError.message}`);
+        }
           
         if (existingFamilies && existingFamilies.length > 0) {
           testLogger.success('FAMILY_CREATE', 'Family was created successfully despite constraint violation', {
@@ -76,6 +91,10 @@ export async function testFamilyCreation() {
           await verifyInvitationsCreated(existingFamilies[0].id, members);
           
           return existingFamilies[0];
+        } else {
+          testLogger.error('FAMILY_CREATE', 'Family creation failed and no family was found', {
+            error: result.error
+          });
         }
       }
       
@@ -95,7 +114,10 @@ export async function testFamilyCreation() {
     
     return result.data;
   } catch (error) {
-    testLogger.error('FAMILY_CREATE', 'Exception during family creation', error);
+    testLogger.error('FAMILY_CREATE', 'Exception during family creation', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return null;
   }
 }

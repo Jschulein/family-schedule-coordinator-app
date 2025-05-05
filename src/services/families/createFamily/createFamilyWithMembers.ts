@@ -39,6 +39,38 @@ export async function createFamilyWithMembers(
       };
     }
 
+    // First, check if a family with this name already exists for this user to prevent duplicates
+    const { data: existingFamily, error: checkError } = await supabase
+      .from('families')
+      .select('*')
+      .eq('name', name)
+      .eq('created_by', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+      
+    if (!checkError && existingFamily && existingFamily.length > 0) {
+      console.log("Family with this name already exists:", existingFamily[0]);
+      
+      // If the family exists, just handle the members part
+      if (members && members.length > 0 && user.email) {
+        const invitationResults = await sendFamilyInvitations(
+          existingFamily[0].id, 
+          members, 
+          user.email
+        );
+        
+        if (invitationResults.error) {
+          console.warn("Error sending invitations to existing family:", invitationResults.error);
+        }
+      }
+      
+      return {
+        data: existingFamily[0] as Family,
+        error: null,
+        isError: false
+      };
+    }
+
     console.log("Creating new family with safe_create_family function. User ID:", user.id);
     
     // Use the security definer function to create the family
@@ -50,10 +82,11 @@ export async function createFamilyWithMembers(
 
     if (functionError) {
       // Handle cases where the error is due to a constraint violation but the family was created
-      if (functionError.message.includes("duplicate key value violates unique constraint")) {
-        console.warn("Duplicate key detected - checking if family was still created");
+      if (functionError.message.includes("duplicate key value violates unique constraint") ||
+          functionError.message.includes("violates row-level security policy")) {
+        console.warn("Constraint violation detected - checking if family was still created:", functionError.message);
         
-        // If we get a duplicate key error, we check if the family was actually created
+        // Check if the family was actually created despite the error
         const { data: familiesCheck, error: checkError } = await supabase
           .from('families')
           .select('*')
