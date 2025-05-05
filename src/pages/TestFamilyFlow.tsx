@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 import { testFamilyCreationFlow } from "@/tests";
+import { convertMarkdownToHtml } from "@/__tests__/utils/markdownUtils";
 
 const TestFamilyFlowPage = () => {
   const [isRunning, setIsRunning] = useState(false);
@@ -158,27 +159,5 @@ const TestFamilyFlowPage = () => {
     </div>
   );
 };
-
-/**
- * Simple markdown to HTML converter for our specific needs
- */
-function convertMarkdownToHtml(markdown: string): string {
-  let html = markdown
-    // Headers
-    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-    // Lists
-    .replace(/^\- (.*$)/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n)+/g, '<ul>$&</ul>')
-    // Bold
-    .replace(/\*\*(.*)\*\*/gm, '<strong>$1</strong>')
-    // Code blocks
-    .replace(/```json\n([\s\S]*?)```/gm, '<pre><code class="language-json">$1</code></pre>')
-    // Line breaks
-    .replace(/\n/gm, '<br />');
-  
-  return html;
-}
 
 export default TestFamilyFlowPage;

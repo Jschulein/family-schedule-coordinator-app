@@ -13,5 +13,5 @@ export {
   testFamilyMembersPerformance
 } from './useFamilyMembers.test';
 
-// Test runner component
-export { default as TestRunner } from '@/components/testing/TestRunner';
+// Export the TestRunner component from the new location
+export { default as TestRunner } from '@/__tests__/components/TestRunner';
