@@ -18,30 +18,10 @@ export async function fetchUserFamilies() {
       throw error;
     }
     
-    // Since get_user_families only returns family_id, we need to fetch the full family data
-    if (!data || data.length === 0) {
-      return {
-        data: [],
-        isError: false,
-        error: null
-      };
-    }
-    
-    // Extract family IDs from the response
-    const familyIds = data.map(item => item.family_id);
-    
-    // Fetch full family details
-    const { data: familyData, error: familyError } = await supabase
-      .from('families')
-      .select('*')
-      .in('id', familyIds);
-      
-    if (familyError) {
-      throw familyError;
-    }
-    
+    // The get_user_families function now returns the complete family data
+    // so we can directly use the results
     return {
-      data: familyData as Family[],
+      data: data as Family[],
       isError: false,
       error: null
     };
@@ -65,7 +45,6 @@ export async function fetchUserFamilies() {
  */
 export async function fetchFamilyMembers() {
   try {    
-    // Use direct query instead of RPC for now
     // First get the families the user belongs to
     const { data: userFamilies, error: userFamiliesError } = await supabase.rpc('get_user_families');
     
@@ -82,7 +61,7 @@ export async function fetchFamilyMembers() {
     }
     
     // Extract family IDs from the response
-    const familyIds = userFamilies.map(item => item.family_id);
+    const familyIds = userFamilies.map(family => family.id);
     
     // Fetch members from these families
     const { data: membersData, error: membersError } = await supabase
