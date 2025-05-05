@@ -21,6 +21,8 @@ export const useTestRunner = () => {
       [testId]: null
     }));
     
+    const startTime = performance.now();
+    
     try {
       let report: string;
       
@@ -42,15 +44,26 @@ export const useTestRunner = () => {
       // Extract test statistics using the centralized utility
       const stats = extractReportStats(report);
       
+      // Calculate execution time
+      const endTime = performance.now();
+      const executionTimeMs = Math.round(endTime - startTime);
+      
       setResults(prev => ({
         ...prev,
         [testId]: {
           report,
-          ...stats
+          ...stats,
+          executionTimeMs,
+          timestamp: new Date().toISOString()
         }
       }));
     } catch (err) {
       console.error('Test error:', err);
+      
+      // Calculate execution time even for errors
+      const endTime = performance.now();
+      const executionTimeMs = Math.round(endTime - startTime);
+      
       setResults(prev => ({
         ...prev,
         [testId]: {
@@ -58,7 +71,9 @@ export const useTestRunner = () => {
           success: false,
           hasWarnings: false,
           errorCount: 1,
-          warningCount: 0
+          warningCount: 0,
+          executionTimeMs,
+          timestamp: new Date().toISOString()
         }
       }));
     } finally {

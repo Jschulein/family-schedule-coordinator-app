@@ -9,6 +9,8 @@ export interface TestResult {
   hasWarnings: boolean;
   errorCount: number;
   warningCount: number;
+  executionTimeMs?: number;
+  timestamp?: string;
 }
 
 export interface TestConfig {

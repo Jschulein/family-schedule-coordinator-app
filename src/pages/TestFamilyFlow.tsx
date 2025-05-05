@@ -1,16 +1,20 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, AlertTriangle, Timer } from "lucide-react";
 import { testFamilyCreationFlow } from "@/tests";
 import { convertMarkdownToHtml, extractReportStats } from "@/utils/markdown";
+import { Badge } from "@/components/ui/badge";
 
 const TestFamilyFlowPage = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [executionTimeMs, setExecutionTimeMs] = useState<number | null>(null);
+  const [timestamp, setTimestamp] = useState<string | null>(null);
   const [testStats, setTestStats] = useState<{
     success: boolean;
     hasWarnings: boolean;
@@ -23,6 +27,10 @@ const TestFamilyFlowPage = () => {
     setReport(null);
     setError(null);
     setTestStats(null);
+    setExecutionTimeMs(null);
+    setTimestamp(null);
+    
+    const startTime = performance.now();
     
     try {
       const result = await testFamilyCreationFlow();
@@ -30,13 +38,30 @@ const TestFamilyFlowPage = () => {
       
       // Use the centralized utility to extract test statistics
       setTestStats(extractReportStats(result));
+      
+      // Set execution time and timestamp
+      const endTime = performance.now();
+      setExecutionTimeMs(Math.round(endTime - startTime));
+      setTimestamp(new Date().toISOString());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       console.error('Test error:', err);
+      
+      // Set execution time even for errors
+      const endTime = performance.now();
+      setExecutionTimeMs(Math.round(endTime - startTime));
+      setTimestamp(new Date().toISOString());
     } finally {
       setIsRunning(false);
     }
   };
+  
+  // Format execution time
+  const formattedExecutionTime = executionTimeMs 
+    ? (executionTimeMs < 1000 
+        ? `${executionTimeMs}ms` 
+        : `${(executionTimeMs / 1000).toFixed(2)}s`)
+    : null;
   
   return (
     <div className="container mx-auto py-8">
@@ -124,6 +149,15 @@ const TestFamilyFlowPage = () => {
             <CardDescription>
               Results of the family creation flow test, including authentication, family creation, and data validation
             </CardDescription>
+            {formattedExecutionTime && timestamp && (
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground mt-2">
+                <Timer className="h-4 w-4" />
+                <span>Execution time: {formattedExecutionTime}</span>
+                <Badge variant="outline" className="ml-auto">
+                  {new Date(timestamp).toLocaleString()}
+                </Badge>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {isRunning ? (

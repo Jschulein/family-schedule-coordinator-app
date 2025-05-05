@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AlertCircle, CheckCircle, AlertTriangle, Clock, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, AlertTriangle, Clock, Loader2, Timer } from "lucide-react";
 import { TestResult } from './types';
 import { convertMarkdownToHtml } from '@/utils/markdown';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 interface TestResultDisplayProps {
   result: TestResult | null;
@@ -14,6 +15,15 @@ interface TestResultDisplayProps {
 }
 
 const TestResultDisplay = ({ result, isRunning, testDescription, testTitle }: TestResultDisplayProps) => {
+  // Format execution time
+  const formattedExecutionTime = useMemo(() => {
+    if (!result?.executionTimeMs) return null;
+    
+    return result.executionTimeMs < 1000 
+      ? `${result.executionTimeMs}ms` 
+      : `${(result.executionTimeMs / 1000).toFixed(2)}s`;
+  }, [result?.executionTimeMs]);
+
   if (isRunning) {
     return (
       <div className="py-8 text-center text-muted-foreground">
@@ -71,6 +81,18 @@ const TestResultDisplay = ({ result, isRunning, testDescription, testTitle }: Te
   return (
     <div className="space-y-4">
       <StatusAlert />
+      
+      {formattedExecutionTime && (
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+          <Timer className="h-4 w-4" />
+          <span>Execution time: {formattedExecutionTime}</span>
+          {result.timestamp && (
+            <Badge variant="outline" className="ml-auto">
+              {new Date(result.timestamp).toLocaleString()}
+            </Badge>
+          )}
+        </div>
+      )}
       
       <ScrollArea className="h-[450px] rounded-md border p-4">
         <div 
