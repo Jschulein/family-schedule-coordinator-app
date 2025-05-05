@@ -63,18 +63,22 @@ export async function fetchFamilyMembers() {
     // Extract family IDs from the response
     const familyIds = userFamilies.map(family => family.id);
     
-    // Fetch members from these families
+    // Use the security definer function instead of directly querying the family_members table
+    // This will prevent the infinite recursion in the RLS policy
     const { data: membersData, error: membersError } = await supabase
-      .from('family_members')
-      .select('*')
-      .in('family_id', familyIds);
+      .rpc('get_family_members');
       
     if (membersError) {
       throw membersError;
     }
     
+    // Filter the results to only include members from the user's families
+    const filteredMembers = membersData.filter(member => 
+      familyIds.includes(member.family_id)
+    );
+    
     return {
-      data: membersData as FamilyMember[],
+      data: filteredMembers as FamilyMember[],
       isError: false,
       error: null
     };
