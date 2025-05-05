@@ -19,7 +19,14 @@ export async function testFamilyCreationFlow() {
   }
   
   // Test 2: Family Creation with Members
-  await testFamilyCreation();
+  const familyResult = await testFamilyCreation();
+  if (!familyResult) {
+    testLogger.error('FAMILY_CREATE', 'Family creation test failed');
+    return testLogger.generateReport();
+  }
+  
+  // Test 3: Verify no duplicate constraint violations
+  await verifyNoDuplicateConstraints();
   
   // Generate and return report
   const report = testLogger.generateReport();
@@ -102,6 +109,18 @@ async function testFamilyCreation() {
       members
     });
     
+    // Test for potential duplicate emails before submission
+    const emails = members.map(m => m.email.toLowerCase());
+    const uniqueEmails = new Set(emails);
+    
+    if (uniqueEmails.size !== members.length) {
+      testLogger.warning('FAMILY_CREATE', 'Duplicate emails detected in test data', {
+        emails,
+        uniqueCount: uniqueEmails.size,
+        totalCount: members.length
+      });
+    }
+    
     const result = await createFamilyWithMembers(familyName, members);
     
     if (result.isError || !result.data) {
@@ -122,7 +141,7 @@ async function testFamilyCreation() {
     return result.data;
   } catch (error) {
     testLogger.error('FAMILY_CREATE', 'Exception during family creation', error);
-    throw error;
+    return null;
   }
 }
 
@@ -166,6 +185,17 @@ async function verifyFamilyInDatabase(familyId: string) {
       count: members?.length,
       members
     });
+    
+    // Check for creator member - there should be at least one member who is the creator
+    const creatorMember = members?.find(m => m.role === 'admin');
+    if (!creatorMember) {
+      testLogger.warning('VERIFY_FAMILY', 'No admin members found for new family', { 
+        familyId,
+        members
+      });
+    } else {
+      testLogger.success('VERIFY_FAMILY', 'Admin member found for family', { creatorMember });
+    }
   } catch (error) {
     testLogger.error('VERIFY_FAMILY', 'Exception during family verification', error);
     throw error;
@@ -218,5 +248,62 @@ async function verifyInvitationsCreated(familyId: string, members: Array<{name: 
   } catch (error) {
     testLogger.error('VERIFY_INVITATIONS', 'Exception during invitation verification', error);
     throw error;
+  }
+}
+
+/**
+ * Verify that no duplicate constraint violations would occur
+ */
+async function verifyNoDuplicateConstraints() {
+  testLogger.info('VERIFY_CONSTRAINTS', 'Checking for potential constraint violations');
+  
+  try {
+    // Get current user's email to check for potential duplicates
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      testLogger.warning('VERIFY_CONSTRAINTS', 'No authenticated user found for constraint check');
+      return;
+    }
+    
+    const userEmail = user.email?.toLowerCase();
+    
+    // Get user's family memberships
+    const { data: memberships, error: membershipError } = await supabase
+      .from('family_members')
+      .select('family_id, email')
+      .eq('user_id', user.id);
+    
+    if (membershipError) {
+      testLogger.error('VERIFY_CONSTRAINTS', 'Failed to fetch user family memberships', membershipError);
+      return;
+    }
+    
+    // Check if any invitations exist with the same family_id and email
+    if (memberships && memberships.length > 0) {
+      for (const membership of memberships) {
+        const { data: existingInvites, error: inviteError } = await supabase
+          .from('invitations')
+          .select('*')
+          .eq('family_id', membership.family_id)
+          .eq('email', userEmail);
+          
+        if (inviteError) {
+          testLogger.error('VERIFY_CONSTRAINTS', 'Failed to check for duplicate invitations', inviteError);
+          continue;
+        }
+        
+        if (existingInvites && existingInvites.length > 0) {
+          testLogger.warning('VERIFY_CONSTRAINTS', 'Found potential conflict: user is both a member and has an invitation', {
+            familyId: membership.family_id,
+            email: userEmail,
+            invitations: existingInvites
+          });
+        }
+      }
+    }
+    
+    testLogger.success('VERIFY_CONSTRAINTS', 'Completed constraint violation checks');
+  } catch (error) {
+    testLogger.error('VERIFY_CONSTRAINTS', 'Exception during constraint verification', error);
   }
 }

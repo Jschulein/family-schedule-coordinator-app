@@ -48,7 +48,7 @@ This document tracks errors found in the family creation flow and their solution
    - Verify session is active
 
 2. **Family Creation**
-   - Validate input data (name, members)
+   - Validate input parameters (name, members)
    - Submit family creation request
    - Verify response contains expected data
 

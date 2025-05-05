@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Family, FamilyRole } from "@/types/familyTypes";
 import { handleError } from "@/utils/errorHandler";
@@ -176,35 +175,60 @@ export async function createFamilyWithMembers(
         console.log(`Original members: ${members.length}, Filtered members: ${filteredMembers.length}`);
         
         if (filteredMembers.length > 0) {
-          const invitations = filteredMembers.map(member => ({
-            family_id: familyId,
-            email: member.email,
-            name: member.name,
-            role: member.role,
-            invited_by: user.id,
-            last_invited: new Date().toISOString()
-          }));
-          
-          console.log(`Sending ${invitations.length} invitations`);
-          
-          const { data: invitationData, error: invitationError } = await supabase
-            .from("invitations")
-            .insert(invitations)
-            .select();
-          
-          invitationResults = { data: invitationData, error: invitationError };
-          
-          if (invitationError) {
-            console.error("Error sending invitations:", invitationError);
-            // We continue even if invitations fail, as the family was created successfully
+          try {
+            // Filter out duplicates within the members array
+            const uniqueEmails = new Set<string>();
+            const uniqueMembers = filteredMembers.filter(member => {
+              const email = member.email.toLowerCase();
+              const isDuplicate = uniqueEmails.has(email);
+              uniqueEmails.add(email);
+              return !isDuplicate;
+            });
+            
+            console.log(`After duplicate filtering: ${uniqueMembers.length} members`);
+            
+            // Prepare invitation data
+            const invitations = uniqueMembers.map(member => ({
+              family_id: familyId,
+              email: member.email.toLowerCase(), // Normalize email
+              name: member.name,
+              role: member.role,
+              invited_by: user.id,
+              last_invited: new Date().toISOString()
+            }));
+            
+            console.log(`Sending ${invitations.length} invitations`);
+            
+            // Use an upsert operation to avoid constraint errors
+            const { data: invitationData, error: invitationError } = await supabase
+              .from("invitations")
+              .upsert(invitations, { 
+                onConflict: 'family_id,email',
+                ignoreDuplicates: false // Update if there's a conflict
+              })
+              .select();
+            
+            invitationResults = { data: invitationData, error: invitationError };
+            
+            if (invitationError) {
+              console.error("Error sending invitations:", invitationError);
+              // We continue even if invitations fail, as the family was created successfully
+              return {
+                data: { id: familyId, name, created_by: user.id } as Family,
+                error: "Family created but there was an error inviting some members",
+                isError: false
+              };
+            }
+            
+            console.log("Invitations sent successfully:", invitationData?.length || 0);
+          } catch (inviteError) {
+            console.error("Exception during invitation creation:", inviteError);
             return {
               data: { id: familyId, name, created_by: user.id } as Family,
-              error: "Family created but there was an error inviting some members",
+              error: "Family created but an error occurred while processing invitations",
               isError: false
             };
           }
-          
-          console.log("Invitations sent successfully:", invitationData?.length || 0);
         } else {
           console.log("No members to invite after filtering out current user");
         }

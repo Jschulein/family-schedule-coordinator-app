@@ -1,25 +1,43 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 import { testFamilyCreationFlow } from "@/tests/familyCreationFlow";
 
 const TestFamilyFlowPage = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [testStats, setTestStats] = useState<{
+    success: boolean;
+    hasWarnings: boolean;
+    errorCount: number;
+    warningCount: number;
+  } | null>(null);
   
   const runTest = async () => {
     setIsRunning(true);
     setReport(null);
     setError(null);
+    setTestStats(null);
     
     try {
       const result = await testFamilyCreationFlow();
       setReport(result);
+      
+      // Extract test statistics from the report
+      const errorCount = (result.match(/Errors:\*\* (\d+)/)?.[1] || '0');
+      const warningCount = (result.match(/Warnings:\*\* (\d+)/)?.[1] || '0');
+      
+      setTestStats({
+        success: errorCount === '0',
+        hasWarnings: warningCount !== '0',
+        errorCount: parseInt(errorCount, 10),
+        warningCount: parseInt(warningCount, 10)
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       console.error('Test error:', err);
@@ -32,10 +50,16 @@ const TestFamilyFlowPage = () => {
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Family Creation Flow Test</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Family Creation Flow Test</h1>
+            <p className="text-gray-500 mt-1">
+              Tests the end-to-end process of creating families and inviting members
+            </p>
+          </div>
           <Button 
             onClick={runTest} 
             disabled={isRunning}
+            className="min-w-[120px]"
           >
             {isRunning ? (
               <>
@@ -54,12 +78,50 @@ const TestFamilyFlowPage = () => {
           </Alert>
         )}
         
-        {report && !error && (
-          <Alert className="mb-6 bg-green-50 border-green-500">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-600">Test Completed</AlertTitle>
-            <AlertDescription className="text-green-600">
-              The test has completed. See the detailed report below.
+        {testStats && !error && (
+          <Alert 
+            className={`mb-6 ${
+              testStats.success 
+                ? 'bg-green-50 border-green-500' 
+                : testStats.hasWarnings && testStats.errorCount === 0
+                  ? 'bg-yellow-50 border-yellow-500'
+                  : 'bg-red-50 border-red-500'
+            }`}
+          >
+            {testStats.success ? (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            ) : testStats.hasWarnings && testStats.errorCount === 0 ? (
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            )}
+            
+            <AlertTitle className={`${
+              testStats.success 
+                ? 'text-green-600' 
+                : testStats.hasWarnings && testStats.errorCount === 0
+                  ? 'text-yellow-600'
+                  : 'text-red-600'
+            }`}>
+              {testStats.success 
+                ? 'Test Completed Successfully' 
+                : testStats.hasWarnings && testStats.errorCount === 0
+                  ? 'Test Completed with Warnings'
+                  : 'Test Failed'}
+            </AlertTitle>
+            
+            <AlertDescription className={`${
+              testStats.success 
+                ? 'text-green-600' 
+                : testStats.hasWarnings && testStats.errorCount === 0
+                  ? 'text-yellow-600'
+                  : 'text-red-600'
+            }`}>
+              {testStats.success 
+                ? 'All tests passed successfully. See the detailed report below.'
+                : testStats.hasWarnings && testStats.errorCount === 0
+                  ? `Test completed with ${testStats.warningCount} warning(s). See the detailed report below.`
+                  : `Test failed with ${testStats.errorCount} error(s). See the detailed report below.`}
             </AlertDescription>
           </Alert>
         )}
@@ -67,6 +129,9 @@ const TestFamilyFlowPage = () => {
         <Card>
           <CardHeader>
             <CardTitle>Test Results</CardTitle>
+            <CardDescription>
+              Results of the family creation flow test, including authentication, family creation, and data validation
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isRunning ? (
@@ -85,6 +150,7 @@ const TestFamilyFlowPage = () => {
             ) : (
               <div className="py-8 text-center text-muted-foreground">
                 <p>Click "Run Test" to start testing the family creation flow.</p>
+                <p className="mt-2 text-sm">This will test authentication, family creation, member invitations, and check for potential constraint violations.</p>
               </div>
             )}
           </CardContent>
