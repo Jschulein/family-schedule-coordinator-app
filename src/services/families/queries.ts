@@ -63,13 +63,9 @@ export async function fetchFamilyMembers() {
     // Extract family IDs from the response
     const familyIds = userFamilies.map(family => family.id);
     
-    // Use the security definer function instead of directly querying the family_members table
-    // This will prevent the infinite recursion in the RLS policy
-    // We need to cast the response type since TypeScript doesn't know about this custom RPC function
+    // Use the security definer function with the family IDs parameter to prevent recursion
     const { data: membersData, error: membersError } = await supabase
-      .from('family_members')
-      .select('*')
-      .in('family_id', familyIds);
+      .rpc('get_family_members', { p_family_ids: familyIds });
       
     if (membersError) {
       throw membersError;
