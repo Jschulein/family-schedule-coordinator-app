@@ -124,6 +124,34 @@ if (!session || authError) {
 }
 ```
 
+### Error: Infinite Recursion in RLS Policy
+**Description**: The Row Level Security (RLS) policy for the family_members table causes infinite recursion when trying to fetch or manipulate family member data.
+**Solution**: Created separate security definer functions to bypass RLS and avoid recursion:
+```sql
+-- Create a security definer function that bypasses RLS
+CREATE OR REPLACE FUNCTION public.safe_is_family_member(p_family_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.family_members 
+    WHERE family_id = p_family_id 
+    AND user_id = auth.uid()
+  );
+END;
+$$;
+
+-- Use this function in RLS policies instead of directly querying the table
+CREATE POLICY "Users can view own family members" 
+ON public.family_members
+FOR SELECT 
+USING (public.safe_is_family_member(family_id));
+```
+
 ## Event Management Issues
 
 ### Error: Event Creation Fails Without Feedback
@@ -282,4 +310,5 @@ const fetchFilteredEvents = async (filters) => {
    - Periodically review this log to identify patterns
    - Refactor components or services that frequently cause issues
    - Update documentation based on recurring problems
+
 

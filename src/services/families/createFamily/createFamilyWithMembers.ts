@@ -73,7 +73,7 @@ export async function createFamilyWithMembers(
 
     console.log("Creating new family with safe_create_family function. User ID:", user.id);
     
-    // Use the security definer function to create the family
+    // Use the security definer function to create the family - this bypasses RLS
     const { data, error: functionError } = await supabase
       .rpc('safe_create_family', { 
         p_name: name, 

@@ -21,11 +21,11 @@ export async function verifyNoDuplicateConstraints() {
     
     const userEmail = user.email?.toLowerCase();
     
-    // Get user's family memberships
-    const { data: memberships, error: membershipError } = await supabase
-      .from('family_members')
-      .select('family_id, email')
-      .eq('user_id', user.id);
+    // Get user's family memberships - using direct query instead of function that might trigger recursion
+    const { data: memberships, error: membershipError } = await supabase.rpc(
+      'get_family_members', 
+      { p_family_ids: [] }  // Empty array will return all memberships for current user
+    );
     
     if (membershipError) {
       testLogger.error('VERIFY_CONSTRAINTS', 'Failed to fetch user family memberships', membershipError);
