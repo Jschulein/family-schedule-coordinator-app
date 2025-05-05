@@ -15,11 +15,10 @@ export async function fetchUserFamilies() {
     const { data, error } = await supabase.rpc('get_user_families');
     
     if (error) {
+      console.error("Error fetching user families:", error);
       throw error;
     }
     
-    // The get_user_families function now returns the complete family data
-    // so we can directly use the results
     return {
       data: data as Family[],
       isError: false,
@@ -53,6 +52,7 @@ export async function fetchFamilyMembers() {
       .rpc('get_all_family_members_for_user');
       
     if (membersError) {
+      console.error("Error fetching family members:", membersError);
       throw membersError;
     }
     

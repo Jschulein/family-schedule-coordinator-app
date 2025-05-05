@@ -3,7 +3,6 @@
  * Family creation testing module
  */
 import { supabase } from "@/integrations/supabase/client";
-import { createFamilyWithMembers } from "@/services/families";
 import { testLogger } from "@/utils/testLogger";
 import { verifyFamilyInDatabase } from "./verifyFamily";
 import { verifyInvitationsCreated } from "./verifyInvitations";
@@ -30,18 +29,6 @@ export async function testFamilyCreation() {
       members
     });
     
-    // Test for potential duplicate emails before submission
-    const emails = members.map(m => m.email.toLowerCase());
-    const uniqueEmails = new Set(emails);
-    
-    if (uniqueEmails.size !== members.length) {
-      testLogger.warning('FAMILY_CREATE', 'Duplicate emails detected in test data', {
-        emails,
-        uniqueCount: uniqueEmails.size,
-        totalCount: members.length
-      });
-    }
-    
     // Get current user's ID before running the test
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
@@ -55,52 +42,133 @@ export async function testFamilyCreation() {
       userEmail: user.email
     });
 
-    // First try - Check if user already has a family with the same user_id to avoid duplicate constraints
+    // First attempt: Create a completely new family using direct SQL to bypass RLS
     try {
-      // Use a direct query to bypass RLS
-      const { data: existingMemberships, error: checkError } = await supabase.rpc(
-        'get_all_family_members_for_user'
-      );
-      
-      if (checkError) {
-        testLogger.warning('FAMILY_CREATE', 'Failed to check existing memberships', checkError);
-      } else if (existingMemberships && existingMemberships.length > 0) {
-        testLogger.info('FAMILY_CREATE', `User already has ${existingMemberships.length} existing family memberships`);
-      }
-    } catch (error) {
-      testLogger.warning('FAMILY_CREATE', 'Error checking existing memberships', error);
-    }
-    
-    // Create a new family directly using the security definer function
-    try {
-      testLogger.info('FAMILY_CREATE', 'Creating family using safe_create_family function');
-      
-      const { data: familyId, error: createError } = await supabase
-        .rpc('safe_create_family', { 
+      // Insert family directly using a transaction
+      const { data: familyData, error: insertError } = await supabase.rpc(
+        'safe_create_family', 
+        { 
           p_name: familyName, 
           p_user_id: user.id 
+        }
+      );
+      
+      if (insertError) {
+        // If there's a duplicate constraint or other error
+        testLogger.error('FAMILY_CREATE', 'Error creating family with security definer function', insertError);
+        
+        // Try an alternative approach - direct insert
+        const { data: directFamilyData, error: directError } = await supabase
+          .from('families')
+          .insert({ 
+            name: familyName, 
+            created_by: user.id
+          })
+          .select()
+          .maybeSingle();
+          
+        if (directError) {
+          testLogger.error('FAMILY_CREATE', 'Direct family creation failed', directError);
+          throw directError;
+        }
+        
+        if (!directFamilyData) {
+          testLogger.error('FAMILY_CREATE', 'No family data returned from direct creation');
+          throw new Error('No family data returned');
+        }
+        
+        testLogger.success('FAMILY_CREATE', 'Direct family creation succeeded', {
+          family: directFamilyData
         });
         
-      if (createError) {
-        testLogger.error('FAMILY_CREATE', 'Error creating family with safe function', createError);
-        throw createError;
+        // Create family_member record explicitly
+        try {
+          const { error: memberError } = await supabase
+            .from('family_members')
+            .insert({
+              family_id: directFamilyData.id,
+              user_id: user.id,
+              email: user.email?.toLowerCase() || '',
+              role: 'admin',
+              name: user.user_metadata?.full_name || user.email || ''
+            })
+            .select()
+            .maybeSingle();
+            
+          if (memberError) {
+            // If member already exists, that's ok
+            if (memberError.code === '23505') {
+              testLogger.warning('FAMILY_CREATE', 'Family member already exists - continuing', {
+                familyId: directFamilyData.id,
+                userId: user.id
+              });
+            } else {
+              testLogger.warning('FAMILY_CREATE', 'Error creating family member', memberError);
+            }
+          }
+        } catch (memberErr) {
+          testLogger.warning('FAMILY_CREATE', 'Exception creating family member', memberErr);
+        }
+        
+        await verifyFamilyInDatabase(directFamilyData.id);
+        
+        // Add members by direct insertion to invitations
+        if (members && members.length > 0) {
+          testLogger.info('FAMILY_CREATE', `Adding ${members.length} members directly`);
+          
+          for (const member of members) {
+            try {
+              const { error: inviteError } = await supabase
+                .from('invitations')
+                .insert({
+                  family_id: directFamilyData.id,
+                  email: member.email.toLowerCase(),
+                  name: member.name,
+                  role: member.role,
+                  invited_by: user.id,
+                  status: 'pending',
+                  last_invited: new Date().toISOString()
+                });
+                
+              if (inviteError) {
+                testLogger.warning('FAMILY_CREATE', `Failed to create invitation for ${member.email}`, inviteError);
+              } else {
+                testLogger.success('FAMILY_CREATE', `Created invitation for ${member.email}`);
+              }
+            } catch (inviteError) {
+              testLogger.warning('FAMILY_CREATE', `Exception creating invitation for ${member.email}`, inviteError);
+            }
+          }
+          
+          // Verify invitations were created
+          await verifyInvitationsCreated(directFamilyData.id, members);
+        }
+        
+        return directFamilyData;
       }
       
-      if (!familyId) {
+      if (!familyData) {
         testLogger.error('FAMILY_CREATE', 'No family ID returned from safe creation');
         throw new Error('No family ID returned');
       }
       
-      // Fetch the family using the ID returned by the function
+      const familyId = familyData;
+      
+      // Fetch the family using direct SQL to avoid RLS
       const { data: family, error: fetchError } = await supabase
         .from('families')
         .select('*')
         .eq('id', familyId)
-        .single();
+        .maybeSingle();
         
       if (fetchError) {
         testLogger.error('FAMILY_CREATE', 'Error fetching created family', fetchError);
         throw fetchError;
+      }
+      
+      if (!family) {
+        testLogger.error('FAMILY_CREATE', 'Family not found after creation');
+        throw new Error('Family not found after creation');
       }
       
       testLogger.success('FAMILY_CREATE', 'Family created successfully', {
@@ -150,34 +218,7 @@ export async function testFamilyCreation() {
         errorObj: error
       });
       
-      // Try one more fallback approach - direct insert with ON CONFLICT DO NOTHING
-      try {
-        testLogger.info('FAMILY_CREATE', 'Attempting final fallback for family creation');
-        
-        // Insert family directly
-        const { data: familyData, error: insertError } = await supabase
-          .from('families')
-          .insert({ 
-            name: familyName, 
-            created_by: user.id
-          })
-          .select()
-          .single();
-          
-        if (insertError) {
-          testLogger.error('FAMILY_CREATE', 'Final fallback family creation failed', insertError);
-          return null;
-        }
-        
-        testLogger.success('FAMILY_CREATE', 'Final fallback family creation succeeded', {
-          family: familyData
-        });
-        
-        return familyData;
-      } catch (fallbackError) {
-        testLogger.error('FAMILY_CREATE', 'All family creation attempts failed', fallbackError);
-        return null;
-      }
+      throw error;
     }
   } catch (error) {
     testLogger.error('FAMILY_CREATE', 'Exception during family creation process', {

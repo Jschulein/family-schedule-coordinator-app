@@ -21,10 +21,11 @@ export async function verifyNoDuplicateConstraints() {
     
     const userEmail = user.email?.toLowerCase();
     
-    // Use our security definer function to get family memberships
-    const { data: memberships, error: membershipError } = await supabase.rpc(
-      'get_all_family_members_for_user'
-    );
+    // Use direct query to bypass RLS
+    const { data: memberships, error: membershipError } = await supabase
+      .from('family_members')
+      .select('*')
+      .eq('user_id', user.id);
     
     if (membershipError) {
       testLogger.error('VERIFY_CONSTRAINTS', 'Failed to fetch user family memberships', membershipError);
@@ -87,7 +88,6 @@ export async function verifyNoDuplicateConstraints() {
       testLogger.info('VERIFY_CONSTRAINTS', 'User has no family memberships, skipping invitation conflict check');
     }
     
-    // Skip checking for duplicate family members as it's causing recursion issues
     testLogger.success('VERIFY_CONSTRAINTS', 'Completed constraint violation checks');
   } catch (error) {
     testLogger.error('VERIFY_CONSTRAINTS', 'Exception during constraint verification', error);
@@ -108,11 +108,12 @@ export async function verifyDatabaseConsistency() {
       return;
     }
     
-    // Use our security definer function to get user families safely
+    // Use direct query to get user families
     try {
-      const { data: userFamilies, error: familiesError } = await supabase.rpc(
-        'get_user_families'
-      );
+      const { data: userFamilies, error: familiesError } = await supabase
+        .from('families')
+        .select('*')
+        .order('name');
         
       if (familiesError) {
         testLogger.error('VERIFY_CONSISTENCY', 'Failed to fetch user families', familiesError);
@@ -123,11 +124,11 @@ export async function verifyDatabaseConsistency() {
         testLogger.info('VERIFY_CONSISTENCY', `Found ${userFamilies.length} families to check`);
         
         for (const family of userFamilies) {
-          // Use our security definer function to get members
-          const { data: members, error: membersError } = await supabase.rpc(
-            'get_family_members_by_family_id',
-            { p_family_id: family.id }
-          );
+          // Use direct query to get members
+          const { data: members, error: membersError } = await supabase
+            .from('family_members')
+            .select('*')
+            .eq('family_id', family.id);
           
           if (membersError) {
             testLogger.error('VERIFY_CONSISTENCY', `Failed to fetch members for family ${family.name}`, membersError);
@@ -145,7 +146,7 @@ export async function verifyDatabaseConsistency() {
           }
         }
       } else {
-        testLogger.info('VERIFY_CONSISTENCY', 'User has no families');
+        testLogger.info('VERIFY_CONSISTENCY', 'No families found in database');
       }
       
       testLogger.success('VERIFY_CONSISTENCY', 'Completed database consistency checks');
