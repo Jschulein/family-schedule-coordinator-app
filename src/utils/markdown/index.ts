@@ -1,6 +1,9 @@
 
 /**
- * Centralized markdown utilities
- * Exports all markdown-related utility functions
+ * Markdown utility functions
+ * Centralized exports for all markdown-related utilities
  */
+
+// Export individual utilities
 export * from './markdownConverter';
+export * from './extractReportStats';

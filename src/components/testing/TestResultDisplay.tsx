@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertCircle, CheckCircle, AlertTriangle, Clock, Loader2 } from "lucide-react";
@@ -12,7 +11,7 @@ interface TestResultDisplayProps {
   testDescription: string;
 }
 
-const TestResultDisplay = ({ result, isRunning, testTitle, testDescription }: TestResultDisplayProps) => {
+const TestResultDisplay = ({ result, isRunning, testDescription, testTitle }: TestResultDisplayProps) => {
   if (isRunning) {
     return (
       <div className="py-8 text-center text-muted-foreground">

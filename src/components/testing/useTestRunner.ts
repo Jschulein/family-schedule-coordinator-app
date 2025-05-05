@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import { TestResult, TestResults } from './types';
 import { testFamilyCreationFlow } from "@/tests";
 import { testFamilyMembersHook, testFamilyMembersPerformance } from "@/tests/useFamilyMembers.test";
+import { extractReportStats } from "@/utils/markdown";
 
 export const useTestRunner = () => {
   const [activeTab, setActiveTab] = useState("family-creation");
@@ -38,18 +38,14 @@ export const useTestRunner = () => {
           throw new Error(`Unknown test ID: ${testId}`);
       }
       
-      // Extract test statistics from the report
-      const errorCount = parseInt(report.match(/Errors:\*\* (\d+)/)?.[1] || '0', 10);
-      const warningCount = parseInt(report.match(/Warnings:\*\* (\d+)/)?.[1] || '0', 10);
+      // Extract test statistics using the centralized utility
+      const stats = extractReportStats(report);
       
       setResults(prev => ({
         ...prev,
         [testId]: {
           report,
-          success: errorCount === 0,
-          hasWarnings: warningCount > 0,
-          errorCount,
-          warningCount
+          ...stats
         }
       }));
     } catch (err) {
