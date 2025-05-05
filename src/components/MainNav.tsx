@@ -38,7 +38,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
 
   return (
     <nav
-      className={cn("flex items-center space-x-4 lg:space-x-6", className)}
+      className={cn("flex flex-col items-start space-y-4 p-4", className)}
       {...props}
     >
       {navItems.map((item) => (
@@ -47,7 +47,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
           to={item.href}
           className={({ isActive }) => 
             cn(
-              "flex items-center text-sm font-medium transition-colors hover:text-primary",
+              "flex items-center text-sm font-medium transition-colors hover:text-primary w-full",
               isActive ? "text-primary" : "text-muted-foreground"
             )
           }

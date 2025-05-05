@@ -7,7 +7,9 @@ export default function AppLayout({ children }: { children?: React.ReactNode }) 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
-        <MainNav />
+        <div className="border-r bg-white shadow-sm">
+          <MainNav />
+        </div>
         <div className="flex-1">
           <SidebarTrigger className="m-2 md:hidden" />
           <Outlet />
