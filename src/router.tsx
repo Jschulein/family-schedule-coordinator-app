@@ -1,17 +1,18 @@
+
 import {
   createBrowserRouter,
 } from "react-router-dom";
-import AppLayout from "./components/layout/AppLayout";
+import AppLayout from "./components/AppLayout"; // Fixed path
 import Calendar from "./pages/Calendar";
 import NotFound from "./pages/NotFound";
 import Families from "./pages/Families";
-import Events from "./pages/Events";
-import EventEdit from "./pages/EventEdit";
-import EventCreate from "./pages/EventCreate";
+import NewEvent from "./pages/NewEvent"; // Using existing page
+import EditEvent from "./pages/EditEvent"; // Using existing page
 import TestingPage from "./pages/Testing";
 import TestFamilyFlowPage from "./pages/TestFamilyFlow";
 
-const router = createBrowserRouter([
+// Export as a named export to match how it's imported in App.tsx
+export const router = createBrowserRouter([
   {
     path: "/",
     element: <AppLayout />,
@@ -27,15 +28,15 @@ const router = createBrowserRouter([
       },
       {
         path: "/events",
-        element: <Events />,
+        element: <Calendar />, // Temporarily point to Calendar
       },
       {
         path: "/events/:eventId/edit",
-        element: <EventEdit />,
+        element: <EditEvent />,
       },
       {
         path: "/event/create",
-        element: <EventCreate />,
+        element: <NewEvent />,
       },
       // Add testing routes
       {

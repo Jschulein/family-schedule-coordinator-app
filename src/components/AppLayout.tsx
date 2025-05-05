@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { MainNav } from "@/components/MainNav";
 import { Outlet } from "react-router-dom";
