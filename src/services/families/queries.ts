@@ -48,7 +48,7 @@ export async function fetchFamilyMembers() {
   try {    
     console.log("Fetching all family members for the current user");
     
-    // Use our new non-recursive function
+    // Use our security definer function
     const { data: membersData, error: membersError } = await supabase
       .rpc('get_all_family_members_for_user');
       
