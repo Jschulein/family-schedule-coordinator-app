@@ -1,4 +1,7 @@
 
+/**
+ * Event formatting and validation utilities
+ */
 import { Event, UserProfile } from "@/types/eventTypes";
 
 /**

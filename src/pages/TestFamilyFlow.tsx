@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, CheckCircle2, AlertCircle, AlertTriangle } from "lucide-react";
 import { testFamilyCreationFlow } from "@/tests";
-import { convertMarkdownToHtml } from "@/__tests__/utils/markdownUtils";
+import { convertMarkdownToHtml, extractReportStats } from "@/utils/markdown";
 
 const TestFamilyFlowPage = () => {
   const [isRunning, setIsRunning] = useState(false);
@@ -28,16 +28,8 @@ const TestFamilyFlowPage = () => {
       const result = await testFamilyCreationFlow();
       setReport(result);
       
-      // Extract test statistics from the report
-      const errorCount = (result.match(/Errors:\*\* (\d+)/)?.[1] || '0');
-      const warningCount = (result.match(/Warnings:\*\* (\d+)/)?.[1] || '0');
-      
-      setTestStats({
-        success: errorCount === '0',
-        hasWarnings: warningCount !== '0',
-        errorCount: parseInt(errorCount, 10),
-        warningCount: parseInt(warningCount, 10)
-      });
+      // Use the centralized utility to extract test statistics
+      setTestStats(extractReportStats(result));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       console.error('Test error:', err);
