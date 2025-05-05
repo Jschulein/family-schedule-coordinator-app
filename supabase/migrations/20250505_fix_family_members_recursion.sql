@@ -23,7 +23,7 @@ END;
 $$;
 
 -- Create security definer function to get family members
-CREATE OR REPLACE FUNCTION public.get_family_members()
+CREATE OR REPLACE FUNCTION public.get_family_members(p_family_ids uuid[])
 RETURNS SETOF family_members
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -33,8 +33,7 @@ BEGIN
   RETURN QUERY
   SELECT fm.*
   FROM family_members fm
-  JOIN family_members user_membership ON user_membership.family_id = fm.family_id
-  WHERE user_membership.user_id = auth.uid()
+  WHERE fm.family_id = ANY(p_family_ids)
   ORDER BY fm.email;
 END;
 $$;
