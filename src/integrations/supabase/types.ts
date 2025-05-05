@@ -397,6 +397,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_families_and_members_for_user: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          family_id: string
+          family_name: string
+          family_color: string
+          family_created_by: string
+          family_created_at: string
+          member_id: string
+          member_user_id: string
+          member_email: string
+          member_role: Database["public"]["Enums"]["family_role"]
+          member_name: string
+        }[]
+      }
       get_family_members: {
         Args: { p_family_ids: string[] }
         Returns: {

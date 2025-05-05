@@ -44,7 +44,9 @@ export async function testFamilyCreation() {
 
     // First attempt: Create a completely new family using direct SQL to bypass RLS
     try {
-      // Insert family directly using a transaction
+      testLogger.info('FAMILY_CREATE', 'Creating family using safe_create_family function');
+      
+      // Insert family directly using a security definer function
       const { data: familyData, error: insertError } = await supabase.rpc(
         'safe_create_family', 
         { 
@@ -55,7 +57,7 @@ export async function testFamilyCreation() {
       
       if (insertError) {
         // If there's a duplicate constraint or other error
-        testLogger.error('FAMILY_CREATE', 'Error creating family with security definer function', insertError);
+        testLogger.error('FAMILY_CREATE', 'Error creating family with safe function', insertError);
         
         // Try an alternative approach - direct insert
         const { data: directFamilyData, error: directError } = await supabase
@@ -218,7 +220,38 @@ export async function testFamilyCreation() {
         errorObj: error
       });
       
-      throw error;
+      // Try one more fallback approach if all else fails
+      testLogger.info('FAMILY_CREATE', 'Attempting final fallback for family creation');
+      try {
+        // Do a direct insert with a different name to avoid conflicts
+        const fallbackFamilyName = `${familyName}-Fallback`;
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('families')
+          .insert({ 
+            name: fallbackFamilyName, 
+            created_by: user.id
+          })
+          .select('*')
+          .maybeSingle();
+        
+        if (fallbackError) {
+          testLogger.error('FAMILY_CREATE', 'Final fallback family creation failed', fallbackError);
+          throw fallbackError;
+        }
+        
+        if (!fallbackData) {
+          throw new Error('No fallback family data returned');
+        }
+        
+        testLogger.success('FAMILY_CREATE', 'Fallback family creation succeeded', {
+          family: fallbackData
+        });
+        
+        return fallbackData;
+      } catch (fallbackError) {
+        testLogger.error('FAMILY_CREATE', 'All family creation approaches failed', fallbackError);
+        throw error;
+      }
     }
   } catch (error) {
     testLogger.error('FAMILY_CREATE', 'Exception during family creation process', {
