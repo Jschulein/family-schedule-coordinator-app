@@ -1,7 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Family, FamilyMember } from "./types";
-import { handleError } from "@/utils/errorHandler";
+import { handleError } from "@/utils/error";
 
 /**
  * Fetches all families that the current user is a member of

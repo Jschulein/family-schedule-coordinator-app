@@ -4,4 +4,4 @@
  * 
  * @deprecated - Use the utilities from src/utils/markdown directly instead
  */
-export { convertMarkdownToHtml, extractReportStats } from '@/utils/markdown/markdownConverter';
+export { convertMarkdownToHtml, extractReportStats } from '@/utils/markdown';

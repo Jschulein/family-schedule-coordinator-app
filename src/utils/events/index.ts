@@ -1,6 +1,6 @@
 
 /**
- * Centralized event utilities
- * Exports all event-related utility functions
+ * Event utilities 
+ * Centralized exports for all event-related utility functions
  */
 export * from './eventFormatter';

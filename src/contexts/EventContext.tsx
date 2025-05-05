@@ -1,12 +1,13 @@
 import { createContext, useContext, ReactNode } from 'react';
-import { Event, EventContextType } from '@/types/eventTypes';
-import { useEventData } from '@/hooks/useEventData';
+import { toast } from "@/components/ui/use-toast";
 import { 
   addEventToDb as addEventFn, 
   updateEventInDb as updateEventFn, 
   deleteEventFromDb as deleteEventFn 
 } from '@/services/events';
-import { toast } from "@/hooks/use-toast";
+import type { Event, EventContextType } from '@/types/eventTypes';
+import { handleError } from '@/utils/error';
+import { useEventData } from '@/hooks/useEventData';
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
 

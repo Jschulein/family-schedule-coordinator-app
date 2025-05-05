@@ -1,9 +1,8 @@
-
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { fetchUserFamilies, createFamily as createFamilyService } from "@/services/families";
 import type { Family, FamilyContextType } from "@/types/familyTypes";
-import { handleError } from "@/utils/errorHandler";
+import { handleError } from "@/utils/error";
 
 // Create context with default values
 const FamilyContext = createContext<FamilyContextType>({

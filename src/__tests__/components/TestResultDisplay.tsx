@@ -3,7 +3,7 @@ import React from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertCircle, CheckCircle, AlertTriangle, Clock, Loader2 } from "lucide-react";
 import { TestResult } from '../types';
-import { convertMarkdownToHtml } from '../utils/markdownUtils';
+import { convertMarkdownToHtml } from '@/utils/markdown';
 
 interface TestResultDisplayProps {
   result: TestResult | null;

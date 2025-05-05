@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { fromDbEvent } from "@/utils/eventFormatter";
+import { fromDbEvent } from "@/utils/events";
 import { UserProfile, Event } from "@/types/eventTypes";
-import { handleError } from "@/utils/errorHandler";
+import { handleError } from "@/utils/error";
 
 /**
  * Helper function to fetch personal events for a user

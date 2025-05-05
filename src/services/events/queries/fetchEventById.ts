@@ -1,8 +1,7 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
-import { fromDbEvent } from "@/utils/eventFormatter";
-import { handleError } from "@/utils/errorHandler";
+import { fromDbEvent } from "@/utils/events";
+import { handleError } from "@/utils/error";
 
 /**
  * Fetches a single event by ID from the database

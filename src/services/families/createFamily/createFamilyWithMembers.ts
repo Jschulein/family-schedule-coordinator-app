@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Family, FamilyRole } from "@/types/familyTypes";
-import { handleError } from "@/utils/errorHandler";
+import { handleError } from "@/utils/error";
 import { FamilyServiceResponse } from "../types";
 import { sendFamilyInvitations } from "./familyInvitationUtils";
 

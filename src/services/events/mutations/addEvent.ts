@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
-import { handleError } from "@/utils/errorHandler";
+import { handleError } from "@/utils/error";
 import { prepareEventData, fetchCreatorProfile, getCreatorDisplayName, associateFamilyMembers } from "../helpers";
 
 /**

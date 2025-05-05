@@ -1,6 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { handleError } from "@/utils/errorHandler";
+import { handleError } from "@/utils/error";
 import { verifyEventOwnership, deleteFamilyAssociations, deleteEvent } from "../helpers";
 
 /**
