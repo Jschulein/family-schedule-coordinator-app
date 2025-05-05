@@ -1,37 +1,53 @@
+import {
+  createBrowserRouter,
+} from "react-router-dom";
+import AppLayout from "./components/layout/AppLayout";
+import Calendar from "./pages/Calendar";
+import NotFound from "./pages/NotFound";
+import Families from "./pages/Families";
+import Events from "./pages/Events";
+import EventEdit from "./pages/EventEdit";
+import EventCreate from "./pages/EventCreate";
+import TestingPage from "./pages/Testing";
+import TestFamilyFlowPage from "./pages/TestFamilyFlow";
 
-import { Navigate, createBrowserRouter } from "react-router-dom";
-import AppLayout from "@/components/AppLayout";
-import Index from "@/pages/Index";
-import Calendar from "@/pages/Calendar";
-import NewEvent from "@/pages/NewEvent";
-import EditEvent from "@/pages/EditEvent";
-import NotFound from "@/pages/NotFound";
-import Families from "@/pages/Families";
-import Auth from "@/pages/Auth";
-import Settings from "@/pages/Settings";
-import TestFamilyFlow from "@/pages/TestFamilyFlow";
-
-export const router = createBrowserRouter([
+const router = createBrowserRouter([
   {
     path: "/",
     element: <AppLayout />,
+    errorElement: <NotFound />,
     children: [
-      { index: true, element: <Index /> },
-      { path: "calendar", element: <Calendar /> },
-      { path: "events/new", element: <NewEvent /> },
-      { path: "events/:eventId/edit", element: <EditEvent /> },
-      { path: "families", element: <Families /> },
-      { path: "settings", element: <Settings /> },
-      { path: "test-family-flow", element: <TestFamilyFlow /> },
-      { path: "*", element: <NotFound /> },
-    ],
-  },
-  {
-    path: "/auth",
-    element: <Auth />,
-  },
-  {
-    path: "/*",
-    element: <Navigate to="/auth" replace />,
-  },
+      {
+        index: true,
+        element: <Calendar />,
+      },
+      {
+        path: "/families",
+        element: <Families />,
+      },
+      {
+        path: "/events",
+        element: <Events />,
+      },
+      {
+        path: "/events/:eventId/edit",
+        element: <EventEdit />,
+      },
+      {
+        path: "/event/create",
+        element: <EventCreate />,
+      },
+      // Add testing routes
+      {
+        path: "/testing",
+        element: <TestingPage />
+      },
+      {
+        path: "/test-family-flow",
+        element: <TestFamilyFlowPage />
+      }
+    ]
+  }
 ]);
+
+export default router;
