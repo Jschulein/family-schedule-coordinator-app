@@ -5,7 +5,7 @@
 import { testLogger } from "@/utils/testLogger";
 import { testAuthentication } from "./testAuthentication";
 import { testFamilyCreation } from "./testFamilyCreation";
-import { verifyNoDuplicateConstraints } from "./verifyConstraints";
+import { verifyNoDuplicateConstraints, verifyDatabaseConsistency } from "./verifyConstraints";
 
 /**
  * Tests the complete family creation flow
@@ -22,14 +22,20 @@ export async function testFamilyCreationFlow() {
     return testLogger.generateReport();
   }
   
-  // Test 2: Family Creation with Members
+  // Test 2: Verify no existing database consistency issues
+  await verifyDatabaseConsistency();
+  
+  // Test 3: Check for constraint issues before family creation
+  await verifyNoDuplicateConstraints();
+  
+  // Test 4: Family Creation with Members
   const familyResult = await testFamilyCreation();
   if (!familyResult) {
     testLogger.error('FAMILY_CREATE', 'Family creation test failed');
     return testLogger.generateReport();
   }
   
-  // Test 3: Verify no duplicate constraint violations
+  // Test 5: Verify no duplicate constraint violations after creation
   await verifyNoDuplicateConstraints();
   
   // Generate and return report

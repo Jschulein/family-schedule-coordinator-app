@@ -397,6 +397,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_family_members_without_recursion: {
+        Args: { p_family_ids: string[] }
+        Returns: {
+          email: string
+          family_id: string
+          id: string
+          joined_at: string | null
+          name: string
+          role: Database["public"]["Enums"]["family_role"]
+          user_id: string
+        }[]
+      }
       get_user_families: {
         Args: Record<PropertyKey, never>
         Returns: {
