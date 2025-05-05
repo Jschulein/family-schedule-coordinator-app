@@ -81,10 +81,12 @@ export async function createFamilyWithMembers(
       });
 
     if (functionError) {
+      console.error("Error creating family with RPC function:", functionError);
+      
       // Handle cases where the error is due to a constraint violation but the family was created
       if (functionError.message.includes("duplicate key value violates unique constraint") ||
           functionError.message.includes("violates row-level security policy")) {
-        console.warn("Constraint violation detected - checking if family was still created:", functionError.message);
+        console.warn("Constraint violation detected - checking if family was still created");
         
         // Check if the family was actually created despite the error
         const { data: familiesCheck, error: checkError } = await supabase
@@ -101,22 +103,17 @@ export async function createFamilyWithMembers(
           // Continue with invitations for this family
           const familyId = familiesCheck[0].id;
           
-          if (members && members.length > 0) {
-            // Get current user's email from the user object
-            const currentUserEmail = user.email;
+          if (members && members.length > 0 && user.email) {
+            const invitationResults = await sendFamilyInvitations(familyId, members, user.email);
             
-            if (currentUserEmail) {
-              const invitationResults = await sendFamilyInvitations(familyId, members, currentUserEmail);
-              
-              if (invitationResults.error) {
-                console.error("Error sending invitations:", invitationResults.error);
-                // We continue even if invitations fail
-                return {
-                  data: familiesCheck[0] as Family,
-                  error: "Family created but there was an error inviting some members",
-                  isError: false
-                };
-              }
+            if (invitationResults.error) {
+              console.error("Error sending invitations:", invitationResults.error);
+              // We continue even if invitations fail
+              return {
+                data: familiesCheck[0] as Family,
+                error: "Family created but there was an error inviting some members",
+                isError: false
+              };
             }
           }
           
@@ -128,7 +125,6 @@ export async function createFamilyWithMembers(
         }
       }
       
-      console.error("Error creating family with RPC function:", functionError);
       return {
         data: null,
         error: functionError.message,
@@ -149,27 +145,20 @@ export async function createFamilyWithMembers(
     console.log(`Family created with ID: ${familyId}`);
     
     // Only send invitations if there are members to invite
-    if (members && members.length > 0) {
-      // Get current user's email from the user object we already have
-      const currentUserEmail = user.email;
+    if (members && members.length > 0 && user.email) {
+      const invitationResults = await sendFamilyInvitations(familyId, members, user.email);
       
-      if (currentUserEmail) {
-        const invitationResults = await sendFamilyInvitations(familyId, members, currentUserEmail);
-        
-        if (invitationResults.error) {
-          console.error("Error sending invitations:", invitationResults.error);
-          // We continue even if invitations fail, as the family was created successfully
-          return {
-            data: { id: familyId, name, created_by: user.id } as Family,
-            error: "Family created but there was an error inviting some members",
-            isError: false
-          };
-        }
-        
-        console.log("Invitations sent successfully:", invitationResults.data?.length || 0);
-      } else {
-        console.warn("Could not get current user email, skipping member filtering");
+      if (invitationResults.error) {
+        console.error("Error sending invitations:", invitationResults.error);
+        // We continue even if invitations fail, as the family was created successfully
+        return {
+          data: { id: familyId, name, created_by: user.id } as Family,
+          error: "Family created but there was an error inviting some members",
+          isError: false
+        };
       }
+      
+      console.log("Invitations sent successfully:", invitationResults.data?.length || 0);
     }
     
     // Fetch the complete family data to return

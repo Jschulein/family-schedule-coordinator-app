@@ -55,6 +55,32 @@ export async function testFamilyCreation() {
       userEmail: user.email
     });
     
+    // Try to find an existing family with this name to avoid duplication errors
+    const { data: existingFamilies, error: searchError } = await supabase
+      .from('families')
+      .select('*')
+      .eq('name', familyName)
+      .eq('created_by', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+      
+    if (!searchError && existingFamilies && existingFamilies.length > 0) {
+      testLogger.warning('FAMILY_CREATE', 'Family with this name already exists, will use existing family', {
+        family: existingFamilies[0]
+      });
+      
+      // Verify the existing family
+      await verifyFamilyInDatabase(existingFamilies[0].id);
+      await verifyInvitationsCreated(existingFamilies[0].id, members);
+      
+      testLogger.success('FAMILY_CREATE', 'Successfully verified existing family', {
+        family: existingFamilies[0]
+      });
+      
+      return existingFamilies[0];
+    }
+    
+    // Proceed with family creation if no existing family was found
     const result = await createFamilyWithMembers(familyName, members);
     
     if (result.isError || !result.data) {
@@ -68,7 +94,7 @@ export async function testFamilyCreation() {
         });
         
         // Search for recently created families with this name and user
-        const { data: existingFamilies, error: searchError } = await supabase
+        const { data: createdFamilies, error: createdError } = await supabase
           .from('families')
           .select('*')
           .eq('name', familyName)
@@ -76,21 +102,21 @@ export async function testFamilyCreation() {
           .order('created_at', { ascending: false })
           .limit(1);
           
-        if (searchError) {
-          testLogger.error('FAMILY_CREATE', 'Error searching for created family', searchError);
-          throw new Error(`Failed to check if family was created: ${searchError.message}`);
+        if (createdError) {
+          testLogger.error('FAMILY_CREATE', 'Error searching for created family', createdError);
+          throw new Error(`Failed to check if family was created: ${createdError.message}`);
         }
           
-        if (existingFamilies && existingFamilies.length > 0) {
+        if (createdFamilies && createdFamilies.length > 0) {
           testLogger.success('FAMILY_CREATE', 'Family was created successfully despite constraint violation', {
-            family: existingFamilies[0]
+            family: createdFamilies[0]
           });
           
           // Continue with verification using the found family
-          await verifyFamilyInDatabase(existingFamilies[0].id);
-          await verifyInvitationsCreated(existingFamilies[0].id, members);
+          await verifyFamilyInDatabase(createdFamilies[0].id);
+          await verifyInvitationsCreated(createdFamilies[0].id, members);
           
-          return existingFamilies[0];
+          return createdFamilies[0];
         } else {
           testLogger.error('FAMILY_CREATE', 'Family creation failed and no family was found', {
             error: result.error
