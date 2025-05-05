@@ -4,13 +4,14 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { testLogger } from "@/utils/testLogger";
+import { FamilyMember } from "./types";
 
 /**
  * Verify that invitations were created for family members
  */
 export async function verifyInvitationsCreated(
   familyId: string, 
-  members: Array<{name: string, email: string}>
+  members: FamilyMember[]
 ) {
   testLogger.info('VERIFY_INVITATIONS', 'Verifying invitations created', {
     familyId,
