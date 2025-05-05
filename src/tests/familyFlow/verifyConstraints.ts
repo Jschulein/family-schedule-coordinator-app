@@ -21,7 +21,7 @@ export async function verifyNoDuplicateConstraints() {
     
     const userEmail = user.email?.toLowerCase();
     
-    // Directly query family memberships to avoid RLS recursion
+    // Use our non-recursive function to get family memberships
     const { data: memberships, error: membershipError } = await supabase.rpc(
       'get_all_family_members_for_user'
     );
@@ -87,45 +87,50 @@ export async function verifyNoDuplicateConstraints() {
       testLogger.info('VERIFY_CONSTRAINTS', 'User has no family memberships, skipping invitation conflict check');
     }
     
-    // Use a direct query on families table that doesn't rely on RLS
-    const { data: familyData, error: familyError } = await supabase
-      .from('families')
-      .select('id, name')
-      .limit(100);
-      
-    if (familyError) {
-      testLogger.error('VERIFY_CONSTRAINTS', 'Failed to fetch families for duplicate check', familyError);
-    } else if (familyData && familyData.length > 0) {
-      // Check each family for duplicate members, using our non-recursive function
-      for (const family of familyData) {
-        const { data: familyMembers, error: membersError } = await supabase.rpc(
-          'get_family_members_by_family_id',
-          { p_family_id: family.id }
-        );
+    // Use a direct query on families table - bypass RLS completely
+    try {
+      const { data: familyIds, error: familiesError } = await supabase
+        .from('families')
+        .select('id')
+        .limit(100);
         
-        if (membersError) {
-          testLogger.error('VERIFY_CONSTRAINTS', `Failed to check for duplicate members in family ${family.name}`, membersError);
-          continue;
-        }
-        
-        // Check for duplicate email addresses
-        const emailCounts = new Map<string, number>();
-        familyMembers?.forEach(member => {
-          const email = member.email.toLowerCase();
-          emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
-        });
-        
-        const duplicates = Array.from(emailCounts.entries())
-          .filter(([_, count]) => count > 1)
-          .map(([email]) => email);
+      if (familiesError) {
+        testLogger.error('VERIFY_CONSTRAINTS', 'Failed to fetch families for duplicate check', familiesError);
+      } else if (familyIds && familyIds.length > 0) {
+        // Check each family for duplicate members
+        for (const family of familyIds) {
+          // Get family members using our security definer function
+          const { data: familyMembers, error: membersError } = await supabase.rpc(
+            'get_family_members_by_family_id',
+            { p_family_id: family.id }
+          );
           
-        if (duplicates.length > 0) {
-          testLogger.warning('VERIFY_CONSTRAINTS', `Found duplicate members in family ${family.name}`, {
-            familyId: family.id,
-            duplicateEmails: duplicates
+          if (membersError) {
+            testLogger.error('VERIFY_CONSTRAINTS', `Failed to check members in family ${family.id}`, membersError);
+            continue;
+          }
+          
+          // Check for duplicate email addresses
+          const emailCounts = new Map<string, number>();
+          familyMembers?.forEach(member => {
+            const email = member.email.toLowerCase();
+            emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
           });
+          
+          const duplicates = Array.from(emailCounts.entries())
+            .filter(([_, count]) => count > 1)
+            .map(([email]) => email);
+            
+          if (duplicates.length > 0) {
+            testLogger.warning('VERIFY_CONSTRAINTS', `Found duplicate members in family`, {
+              familyId: family.id,
+              duplicateEmails: duplicates
+            });
+          }
         }
       }
+    } catch (error) {
+      testLogger.error('VERIFY_CONSTRAINTS', 'Exception during family constraint check', error);
     }
     
     testLogger.success('VERIFY_CONSTRAINTS', 'Completed constraint violation checks');
@@ -148,43 +153,47 @@ export async function verifyDatabaseConsistency() {
       return;
     }
     
-    // Use a direct query that doesn't rely on RLS
-    const { data: families, error: familiesError } = await supabase
-      .from('families')
-      .select('id, name, created_by, created_at')
-      .limit(100);
-      
-    if (familiesError) {
-      testLogger.error('VERIFY_CONSISTENCY', 'Failed to fetch families', familiesError);
-      return;
-    }
-    
-    if (families && families.length > 0) {
-      testLogger.info('VERIFY_CONSISTENCY', `Found ${families.length} families to check`);
-      
-      for (const family of families) {
-        // Use our new non-recursive function to check if family has members
-        const { data: members, error: membersError } = await supabase.rpc(
-          'get_family_members_by_family_id',
-          { p_family_id: family.id }
-        );
+    // Use a direct query without RLS - bypass all policies
+    try {
+      const { data: families, error: familiesError } = await supabase
+        .from('families')
+        .select('id, name, created_by, created_at')
+        .limit(100);
         
-        if (membersError) {
-          testLogger.error('VERIFY_CONSISTENCY', `Failed to fetch members for family ${family.name}`, membersError);
-          continue;
-        }
+      if (familiesError) {
+        testLogger.error('VERIFY_CONSISTENCY', 'Failed to fetch families', familiesError);
+        return;
+      }
+      
+      if (families && families.length > 0) {
+        testLogger.info('VERIFY_CONSISTENCY', `Found ${families.length} families to check`);
         
-        if (!members || members.length === 0) {
-          testLogger.warning('VERIFY_CONSISTENCY', `Family has no members: ${family.name}`, {
-            familyId: family.id,
-            createdBy: family.created_by,
-            createdAt: family.created_at
-          });
+        for (const family of families) {
+          // Use our security definer function to get members
+          const { data: members, error: membersError } = await supabase.rpc(
+            'get_family_members_by_family_id',
+            { p_family_id: family.id }
+          );
+          
+          if (membersError) {
+            testLogger.error('VERIFY_CONSISTENCY', `Failed to fetch members for family ${family.name}`, membersError);
+            continue;
+          }
+          
+          if (!members || members.length === 0) {
+            testLogger.warning('VERIFY_CONSISTENCY', `Family has no members: ${family.name}`, {
+              familyId: family.id,
+              createdBy: family.created_by,
+              createdAt: family.created_at
+            });
+          }
         }
       }
+      
+      testLogger.success('VERIFY_CONSISTENCY', 'Completed database consistency checks');
+    } catch (error) {
+      testLogger.error('VERIFY_CONSISTENCY', 'Exception checking families', error);
     }
-    
-    testLogger.success('VERIFY_CONSISTENCY', 'Completed database consistency checks');
   } catch (error) {
     testLogger.error('VERIFY_CONSISTENCY', 'Exception during consistency verification', error);
   }

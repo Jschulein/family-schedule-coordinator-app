@@ -12,7 +12,7 @@ export async function verifyFamilyInDatabase(familyId: string) {
   testLogger.info('VERIFY_FAMILY', 'Verifying family in database', { familyId });
   
   try {
-    // Use direct query that doesn't rely on RLS
+    // Use direct query with no RLS dependencies
     const { data: family, error } = await supabase
       .from('families')
       .select('*')
@@ -31,7 +31,7 @@ export async function verifyFamilyInDatabase(familyId: string) {
     
     testLogger.success('VERIFY_FAMILY', 'Family found in database', { family });
     
-    // Verify family members using our non-recursive function
+    // Use our dedicated security definer function to get family members
     const { data: members, error: membersError } = await supabase.rpc(
       'get_family_members_by_family_id',
       { p_family_id: familyId }
@@ -43,7 +43,7 @@ export async function verifyFamilyInDatabase(familyId: string) {
     }
     
     testLogger.success('VERIFY_FAMILY', 'Family members found', { 
-      count: members?.length,
+      count: members?.length || 0,
       members
     });
     
