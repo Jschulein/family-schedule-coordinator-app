@@ -49,10 +49,11 @@ export async function createFamilyWithMembers(
       });
 
     if (functionError) {
-      // Handle duplicate key errors specifically
+      // Handle cases where the error is due to a constraint violation but the family was created
       if (functionError.message.includes("duplicate key value violates unique constraint")) {
         console.warn("Duplicate key detected - checking if family was still created");
-        // We need to check if the family was actually created despite the constraint error
+        
+        // If we get a duplicate key error, we check if the family was actually created
         const { data: familiesCheck, error: checkError } = await supabase
           .from('families')
           .select('*')
@@ -66,14 +67,13 @@ export async function createFamilyWithMembers(
           
           // Continue with invitations for this family
           const familyId = familiesCheck[0].id;
-          let invitationResults = null;
           
           if (members && members.length > 0) {
             // Get current user's email from the user object
             const currentUserEmail = user.email;
             
             if (currentUserEmail) {
-              invitationResults = await sendFamilyInvitations(familyId, members, currentUserEmail);
+              const invitationResults = await sendFamilyInvitations(familyId, members, currentUserEmail);
               
               if (invitationResults.error) {
                 console.error("Error sending invitations:", invitationResults.error);
@@ -116,13 +116,12 @@ export async function createFamilyWithMembers(
     console.log(`Family created with ID: ${familyId}`);
     
     // Only send invitations if there are members to invite
-    let invitationResults = null;
     if (members && members.length > 0) {
       // Get current user's email from the user object we already have
       const currentUserEmail = user.email;
       
       if (currentUserEmail) {
-        invitationResults = await sendFamilyInvitations(familyId, members, currentUserEmail);
+        const invitationResults = await sendFamilyInvitations(familyId, members, currentUserEmail);
         
         if (invitationResults.error) {
           console.error("Error sending invitations:", invitationResults.error);
