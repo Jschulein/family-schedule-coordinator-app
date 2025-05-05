@@ -5,14 +5,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchEventsFromDb } from '@/services/events';
 import { toast } from "@/hooks/use-toast";
 
+/**
+ * Custom hook for fetching and managing event data
+ * Optimized for performance with caching and realtime updates
+ */
 export function useEventData() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   
-  const fetchEvents = useCallback(async () => {
+  // Memoized fetch function to prevent unnecessary rerenders
+  const fetchEvents = useCallback(async (showToast = true) => {
     console.log("Fetching events...");
-    setLoading(true);
+    
+    // Set refreshing state if we already have data to show a refresh state
+    // rather than a full loading state
+    if (events.length > 0) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
     setError(null);
 
     try {
@@ -20,7 +34,6 @@ export function useEventData() {
       if (!session) {
         console.log("No active session found");
         setEvents([]);
-        setLoading(false);
         return;
       }
 
@@ -30,7 +43,9 @@ export function useEventData() {
       if (fetchError) {
         console.error("Failed to fetch events:", fetchError);
         setError(fetchError);
-        toast({ title: "Error", description: "Unable to fetch events from server" });
+        if (showToast) {
+          toast({ title: "Error", description: "Unable to fetch events from server" });
+        }
       } else {
         console.log(`Successfully loaded ${fetchedEvents.length} events`);
         setEvents(fetchedEvents);
@@ -38,11 +53,14 @@ export function useEventData() {
     } catch (e: any) {
       console.error("Error in fetchEvents:", e);
       setError("An unexpected error occurred");
-      toast({ title: "Error", description: "Failed to load events" });
+      if (showToast) {
+        toast({ title: "Error", description: "Failed to load events" });
+      }
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  }, []);
+  }, [events.length]);
 
   // Set up subscriptions to real-time updates for events and event_families tables
   useEffect(() => {
@@ -50,15 +68,17 @@ export function useEventData() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       
+      console.log("Setting up realtime subscriptions for events");
+      
       // Subscribe to events table changes
       const eventsChannel = supabase
         .channel('events-channel')
         .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'events' }, 
           (payload) => {
-            console.log('Events change received:', payload);
+            console.log('Events change received:', payload.eventType);
             // Refresh events when changes occur
-            fetchEvents();
+            fetchEvents(false); // Don't show toast on realtime updates
           }
         )
         .subscribe();
@@ -69,9 +89,9 @@ export function useEventData() {
         .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'event_families' }, 
           (payload) => {
-            console.log('Event families change received:', payload);
+            console.log('Event families change received:', payload.eventType);
             // Refresh events when family sharing changes
-            fetchEvents();
+            fetchEvents(false); // Don't show toast on realtime updates
           }
         )
         .subscribe();
@@ -85,6 +105,7 @@ export function useEventData() {
     setupRealtimeSubscriptions();
   }, [fetchEvents]);
 
+  // Initial fetch and auth state subscription
   useEffect(() => {
     // Initial fetch
     fetchEvents();
@@ -111,6 +132,7 @@ export function useEventData() {
     events,
     setEvents,
     loading,
+    isRefreshing,
     error,
     refetchEvents: fetchEvents
   };

@@ -6,6 +6,7 @@ import { handleError } from "@/utils/errorHandler";
 
 /**
  * Fetches a single event by ID from the database
+ * Optimized to reduce the number of database calls
  * @param eventId The ID of the event to fetch
  * @returns The event data and any error
  */
@@ -13,12 +14,24 @@ export async function fetchEventById(eventId: string): Promise<{ event: Event | 
   try {
     console.log("Fetching event by ID:", eventId);
     
-    // First, fetch the event details
-    const { data: eventData, error: eventError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .maybeSingle(); // Changed from single() to handle not found case gracefully
+    // Fetch the event and associated family members in parallel
+    const [eventResult, familyResult] = await Promise.all([
+      // Fetch event details
+      supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .maybeSingle(),
+        
+      // Fetch family associations
+      supabase
+        .from('event_families')
+        .select('family_id')
+        .eq('event_id', eventId)
+    ]);
+    
+    const { data: eventData, error: eventError } = eventResult;
+    const { data: familyData, error: familyError } = familyResult;
       
     if (eventError) {
       console.error("Error fetching event:", eventError);
@@ -29,12 +42,6 @@ export async function fetchEventById(eventId: string): Promise<{ event: Event | 
       return { event: null, error: "Event not found" };
     }
     
-    // Then fetch family members associated with this event
-    const { data: familyData, error: familyError } = await supabase
-      .from('event_families')
-      .select('family_id')
-      .eq('event_id', eventId);
-      
     if (familyError) {
       console.error("Error fetching event family members:", familyError);
       // We'll continue with the event data without family members
@@ -42,12 +49,12 @@ export async function fetchEventById(eventId: string): Promise<{ event: Event | 
     
     const familyMembers = familyData?.map(item => item.family_id) || [];
     
-    // Fetch creator profile for proper display
+    // Fetch creator profile
     const { data: userProfile } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', eventData.creator_id)
-      .maybeSingle(); // Changed to maybeSingle to handle not found case
+      .maybeSingle();
 
     // Create a user map for the fromDbEvent function
     const userMap = {

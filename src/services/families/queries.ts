@@ -41,18 +41,20 @@ export async function fetchUserFamilies() {
 
 /**
  * Fetches family members for all families the current user has access to
+ * Uses a single optimized RPC call with the family IDs parameter
  * @returns Result containing family members data or error
  */
 export async function fetchFamilyMembers() {
   try {    
     // First get the families the user belongs to
-    const { data: userFamilies, error: userFamiliesError } = await supabase.rpc('get_user_families');
+    const { data: userFamilies, isError: familiesError, error: familiesErrorMessage } = await fetchUserFamilies();
     
-    if (userFamiliesError) {
-      throw userFamiliesError;
-    }
-    
-    if (!userFamilies || userFamilies.length === 0) {
+    if (familiesError || !userFamilies || userFamilies.length === 0) {
+      if (familiesError) {
+        throw new Error(familiesErrorMessage || "Failed to fetch user families");
+      }
+      
+      // No families found, return empty array (not an error)
       return {
         data: [],
         isError: false,
@@ -62,8 +64,10 @@ export async function fetchFamilyMembers() {
     
     // Extract family IDs from the response
     const familyIds = userFamilies.map(family => family.id);
+    console.log(`Fetching members for ${familyIds.length} families using optimized RPC call`);
     
     // Use the security definer function with the family IDs parameter to prevent recursion
+    // and fetch all members in a single database call
     const { data: membersData, error: membersError } = await supabase
       .rpc('get_family_members', { p_family_ids: familyIds });
       
