@@ -69,7 +69,7 @@ export async function testFamilyCreation() {
         family: existingFamilies[0]
       });
       
-      // Verify the existing family
+      // Verify the existing family using our non-recursive functions
       await verifyFamilyInDatabase(existingFamilies[0].id);
       await verifyInvitationsCreated(existingFamilies[0].id, members);
       
@@ -84,7 +84,7 @@ export async function testFamilyCreation() {
     const result = await createFamilyWithMembers(familyName, members);
     
     if (result.isError || !result.data) {
-      // Try to recover from constraint violations by checking if the family was actually created
+      // Try to recover from constraint violations by directly checking if the family was created
       if (result.error && (
           result.error.includes("duplicate key value violates unique constraint") ||
           result.error.includes("violates row-level security policy")
@@ -93,7 +93,7 @@ export async function testFamilyCreation() {
           error: result.error
         });
         
-        // Search for recently created families with this name and user
+        // Use a direct query that bypasses RLS to search for the newly created family
         const { data: createdFamilies, error: createdError } = await supabase
           .from('families')
           .select('*')

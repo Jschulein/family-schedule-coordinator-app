@@ -41,35 +41,16 @@ export async function fetchUserFamilies() {
 
 /**
  * Fetches family members for all families the current user has access to
- * Uses a single optimized RPC call with the family IDs parameter
+ * Uses our non-recursive function to prevent infinite recursion
  * @returns Result containing family members data or error
  */
 export async function fetchFamilyMembers() {
   try {    
-    // First get the families the user belongs to
-    const { data: userFamilies, isError: familiesError, error: familiesErrorMessage } = await fetchUserFamilies();
+    console.log("Fetching all family members for the current user");
     
-    if (familiesError || !userFamilies || userFamilies.length === 0) {
-      if (familiesError) {
-        throw new Error(familiesErrorMessage || "Failed to fetch user families");
-      }
-      
-      // No families found, return empty array (not an error)
-      return {
-        data: [],
-        isError: false,
-        error: null
-      };
-    }
-    
-    // Extract family IDs from the response
-    const familyIds = userFamilies.map(family => family.id);
-    console.log(`Fetching members for ${familyIds.length} families using optimized RPC call`);
-    
-    // Use the security definer function with the family IDs parameter to prevent recursion
-    // and fetch all members in a single database call
+    // Use our new non-recursive function
     const { data: membersData, error: membersError } = await supabase
-      .rpc('get_family_members', { p_family_ids: familyIds });
+      .rpc('get_all_family_members_for_user');
       
     if (membersError) {
       throw membersError;

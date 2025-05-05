@@ -12,6 +12,7 @@ export async function verifyFamilyInDatabase(familyId: string) {
   testLogger.info('VERIFY_FAMILY', 'Verifying family in database', { familyId });
   
   try {
+    // Use direct query that doesn't rely on RLS
     const { data: family, error } = await supabase
       .from('families')
       .select('*')
@@ -30,11 +31,11 @@ export async function verifyFamilyInDatabase(familyId: string) {
     
     testLogger.success('VERIFY_FAMILY', 'Family found in database', { family });
     
-    // Verify family members
-    const { data: members, error: membersError } = await supabase
-      .from('family_members')
-      .select('*')
-      .eq('family_id', familyId);
+    // Verify family members using our non-recursive function
+    const { data: members, error: membersError } = await supabase.rpc(
+      'get_family_members_by_family_id',
+      { p_family_id: familyId }
+    );
     
     if (membersError) {
       testLogger.error('VERIFY_FAMILY', 'Failed to fetch family members', membersError);

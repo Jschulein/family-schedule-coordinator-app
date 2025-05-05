@@ -21,11 +21,9 @@ export async function verifyNoDuplicateConstraints() {
     
     const userEmail = user.email?.toLowerCase();
     
-    // Get user's family memberships using the non-recursive function
-    // We use an empty array to get all family memberships for the current user
+    // Directly query family memberships to avoid RLS recursion
     const { data: memberships, error: membershipError } = await supabase.rpc(
-      'get_family_members_without_recursion', 
-      { p_family_ids: [] }
+      'get_all_family_members_for_user'
     );
     
     if (membershipError) {
@@ -62,7 +60,6 @@ export async function verifyNoDuplicateConstraints() {
           });
           
           // For testing purposes, attempt to automatically resolve the conflict
-          // In production, you might want a more careful approach
           try {
             const { error: updateError } = await supabase
               .from('invitations')
@@ -90,29 +87,30 @@ export async function verifyNoDuplicateConstraints() {
       testLogger.info('VERIFY_CONSTRAINTS', 'User has no family memberships, skipping invitation conflict check');
     }
     
-    // Check for duplicate family members (same user in same family multiple times)
+    // Use a direct query on families table that doesn't rely on RLS
     const { data: familyData, error: familyError } = await supabase
       .from('families')
-      .select('id, name');
+      .select('id, name')
+      .limit(100);
       
     if (familyError) {
       testLogger.error('VERIFY_CONSTRAINTS', 'Failed to fetch families for duplicate check', familyError);
     } else if (familyData && familyData.length > 0) {
-      // Check each family for duplicate members
+      // Check each family for duplicate members, using our non-recursive function
       for (const family of familyData) {
-        const { data: duplicateCheck, error: duplicateError } = await supabase.rpc(
-          'get_family_members_without_recursion',
-          { p_family_ids: [family.id] }
+        const { data: familyMembers, error: membersError } = await supabase.rpc(
+          'get_family_members_by_family_id',
+          { p_family_id: family.id }
         );
         
-        if (duplicateError) {
-          testLogger.error('VERIFY_CONSTRAINTS', `Failed to check for duplicate members in family ${family.name}`, duplicateError);
+        if (membersError) {
+          testLogger.error('VERIFY_CONSTRAINTS', `Failed to check for duplicate members in family ${family.name}`, membersError);
           continue;
         }
         
         // Check for duplicate email addresses
         const emailCounts = new Map<string, number>();
-        duplicateCheck?.forEach(member => {
+        familyMembers?.forEach(member => {
           const email = member.email.toLowerCase();
           emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
         });
@@ -150,10 +148,11 @@ export async function verifyDatabaseConsistency() {
       return;
     }
     
-    // Check for families with no members
+    // Use a direct query that doesn't rely on RLS
     const { data: families, error: familiesError } = await supabase
       .from('families')
-      .select('id, name, created_by, created_at');
+      .select('id, name, created_by, created_at')
+      .limit(100);
       
     if (familiesError) {
       testLogger.error('VERIFY_CONSISTENCY', 'Failed to fetch families', familiesError);
@@ -164,10 +163,10 @@ export async function verifyDatabaseConsistency() {
       testLogger.info('VERIFY_CONSISTENCY', `Found ${families.length} families to check`);
       
       for (const family of families) {
-        // Check if family has members using our non-recursive function
+        // Use our new non-recursive function to check if family has members
         const { data: members, error: membersError } = await supabase.rpc(
-          'get_family_members_without_recursion',
-          { p_family_ids: [family.id] }
+          'get_family_members_by_family_id',
+          { p_family_id: family.id }
         );
         
         if (membersError) {

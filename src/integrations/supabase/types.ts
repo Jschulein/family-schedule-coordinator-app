@@ -385,8 +385,32 @@ export type Database = {
         Args: { user_id: number }
         Returns: undefined
       }
+      get_all_family_members_for_user: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          email: string
+          family_id: string
+          id: string
+          joined_at: string | null
+          name: string
+          role: Database["public"]["Enums"]["family_role"]
+          user_id: string
+        }[]
+      }
       get_family_members: {
         Args: { p_family_ids: string[] }
+        Returns: {
+          email: string
+          family_id: string
+          id: string
+          joined_at: string | null
+          name: string
+          role: Database["public"]["Enums"]["family_role"]
+          user_id: string
+        }[]
+      }
+      get_family_members_by_family_id: {
+        Args: { p_family_id: string }
         Returns: {
           email: string
           family_id: string
@@ -474,6 +498,10 @@ export type Database = {
           family_id: string
         }[]
       }
+      user_is_admin_of_family: {
+        Args: { p_family_id: string; p_user_id: string }
+        Returns: boolean
+      }
       user_is_family_member: {
         Args: { family_id_param: string }
         Returns: boolean
@@ -484,6 +512,10 @@ export type Database = {
       }
       user_is_in_family: {
         Args: { family_id_param: string }
+        Returns: boolean
+      }
+      user_is_member_of_family: {
+        Args: { p_family_id: string; p_user_id: string }
         Returns: boolean
       }
     }
