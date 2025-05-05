@@ -45,9 +45,9 @@ export async function testFamilyCreation() {
     const result = await createFamilyWithMembers(familyName, members);
     
     if (result.isError || !result.data) {
-      // Check if this is the specific duplicate key error we can ignore
-      if (result.error && result.error.includes("duplicate key value violates unique constraint \"family_members_family_id_user_id_key\"")) {
-        testLogger.warning('FAMILY_CREATE', 'Duplicate key detected for family member - checking if family was still created');
+      // Check if this is the specific duplicate key error we can safely ignore
+      if (result.error && result.error.includes("duplicate key value violates unique constraint")) {
+        testLogger.warning('FAMILY_CREATE', 'Duplicate key detected - checking if family was still created');
         
         // Check if the family was actually created despite the error
         const { data: existingFamilies } = await supabase

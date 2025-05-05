@@ -39,7 +39,7 @@ export async function createFamilyWithMembers(
       };
     }
 
-    console.log("Creating new family with secure function. User ID:", user.id);
+    console.log("Creating new family with safe_create_family function. User ID:", user.id);
     
     // Use the security definer function to create the family
     const { data, error: functionError } = await supabase
@@ -49,21 +49,61 @@ export async function createFamilyWithMembers(
       });
 
     if (functionError) {
-      // Check if the error is a duplicate key violation
+      // Handle duplicate key errors specifically
       if (functionError.message.includes("duplicate key value violates unique constraint")) {
-        console.warn("Duplicate key detected in family creation - this is usually okay and means the member already exists");
-        // We can continue despite this error since the family might still be created
-      } else {
-        console.error("Error creating family with RPC function:", functionError);
-        return {
-          data: null,
-          error: functionError.message,
-          isError: true
-        };
+        console.warn("Duplicate key detected - checking if family was still created");
+        // We need to check if the family was actually created despite the constraint error
+        const { data: familiesCheck, error: checkError } = await supabase
+          .from('families')
+          .select('*')
+          .eq('name', name)
+          .eq('created_by', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+          
+        if (!checkError && familiesCheck && familiesCheck.length > 0) {
+          console.log("Family was created successfully despite constraint violation:", familiesCheck[0]);
+          
+          // Continue with invitations for this family
+          const familyId = familiesCheck[0].id;
+          let invitationResults = null;
+          
+          if (members && members.length > 0) {
+            // Get current user's email from the user object
+            const currentUserEmail = user.email;
+            
+            if (currentUserEmail) {
+              invitationResults = await sendFamilyInvitations(familyId, members, currentUserEmail);
+              
+              if (invitationResults.error) {
+                console.error("Error sending invitations:", invitationResults.error);
+                // We continue even if invitations fail
+                return {
+                  data: familiesCheck[0] as Family,
+                  error: "Family created but there was an error inviting some members",
+                  isError: false
+                };
+              }
+            }
+          }
+          
+          return {
+            data: familiesCheck[0] as Family,
+            error: null,
+            isError: false
+          };
+        }
       }
+      
+      console.error("Error creating family with RPC function:", functionError);
+      return {
+        data: null,
+        error: functionError.message,
+        isError: true
+      };
     }
     
-    if (!data && !functionError?.message.includes("duplicate key value")) {
+    if (!data) {
       console.error("No data returned when creating family");
       return {
         data: null,

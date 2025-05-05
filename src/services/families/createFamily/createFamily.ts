@@ -40,10 +40,10 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
       });
 
     if (functionError) {
-      // Check if the error is a duplicate key violation
+      // If there's a duplicate key error but otherwise successful, we can continue
       if (functionError.message.includes("duplicate key value violates unique constraint")) {
-        console.warn("Duplicate key detected in family creation - this is usually okay and means the member already exists");
-        // We need to handle this case by checking if the family was actually created despite the error
+        console.warn("Duplicate key detected - this is usually ok and means the member already exists");
+        // Check if the family was actually created despite the error
         const { data: familyCheck, error: checkError } = await supabase
           .from('families')
           .select('*')
