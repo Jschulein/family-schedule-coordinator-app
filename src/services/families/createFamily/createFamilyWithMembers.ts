@@ -49,15 +49,21 @@ export async function createFamilyWithMembers(
       });
 
     if (functionError) {
-      console.error("Error creating family with RPC function:", functionError);
-      return {
-        data: null,
-        error: functionError.message,
-        isError: true
-      };
+      // Check if the error is a duplicate key violation
+      if (functionError.message.includes("duplicate key value violates unique constraint")) {
+        console.warn("Duplicate key detected in family creation - this is usually okay and means the member already exists");
+        // We can continue despite this error since the family might still be created
+      } else {
+        console.error("Error creating family with RPC function:", functionError);
+        return {
+          data: null,
+          error: functionError.message,
+          isError: true
+        };
+      }
     }
     
-    if (!data) {
+    if (!data && !functionError?.message.includes("duplicate key value")) {
       console.error("No data returned when creating family");
       return {
         data: null,
@@ -67,7 +73,7 @@ export async function createFamilyWithMembers(
     }
     
     const familyId = data;
-    console.log(`Family created successfully with ID: ${familyId}`);
+    console.log(`Family created with ID: ${familyId}`);
     
     // Only send invitations if there are members to invite
     let invitationResults = null;

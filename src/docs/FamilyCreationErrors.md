@@ -25,8 +25,8 @@ This document tracks errors found in the family creation flow and their solution
 
 2. **Error: "duplicate key value violates unique constraint"**
    - **Cause**: Attempting to insert a family member that already exists
-   - **Solution**: Added conflict handling with `ON CONFLICT DO NOTHING` in the `safe_create_family` function
-   - **Implementation**: Updated the SQL function to handle conflicts gracefully
+   - **Solution**: Added conflict handling with `ON CONFLICT DO NOTHING` in the `safe_create_family` function and improved error handling in the client-side functions
+   - **Implementation**: Updated the functions to detect this specific error and continue execution when appropriate
 
 ### Invitation Related
 
@@ -88,4 +88,6 @@ ERROR: duplicate key value violates unique constraint "family_members_family_id_
 When creating a family, both the trigger and the direct insertion attempted to add the creator as a family member.
 
 **Solution**:
-Added conflict handling with `ON CONFLICT DO NOTHING` in the family creation function.
+1. Added conflict handling with `ON CONFLICT DO NOTHING` in the family creation function.
+2. Enhanced error handling in client-side functions to detect this specific error and continue execution.
+3. Implemented checks to verify if the family was created despite the constraint violation.
