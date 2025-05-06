@@ -2,10 +2,11 @@
 import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { FamilyFormValues } from "./validationSchema";
-import { createFamilyWithMembers } from "@/services/families";
+import { createFamily } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
 import { performanceTracker } from "@/utils/testing";
 import { FamilyRole } from "@/types/familyTypes";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface UseFormSubmissionProps {
   form: UseFormReturn<FamilyFormValues>;
@@ -35,24 +36,15 @@ export function useFormSubmission({ form, onSuccess }: UseFormSubmissionProps) {
     try {
       console.log("Creating new family:", data.name);
       
-      // Ensure members data meets required type constraints and remove duplicates
-      let validMembers = data.members?.map(member => ({
-        name: member.name,
-        email: member.email.toLowerCase(), // Normalize email for comparison
-        role: member.role
-      })).filter(member => 
-        member.name && member.email && member.role
-      ) as { name: string; email: string; role: FamilyRole }[] || [];
+      // Get the current user ID from Supabase auth
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // Remove duplicate emails as API will reject them anyway
-      const uniqueEmails = new Set();
-      validMembers = validMembers.filter(member => {
-        const isDuplicate = uniqueEmails.has(member.email);
-        uniqueEmails.add(member.email);
-        return !isDuplicate;
-      });
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
       
-      const result = await createFamilyWithMembers(data.name, validMembers);
+      // Create the family first
+      const result = await createFamily(data.name, user.id);
       
       if (result.isError) {
         // Special handling for constraint violations that might still have created the family
@@ -77,11 +69,11 @@ export function useFormSubmission({ form, onSuccess }: UseFormSubmissionProps) {
         return;
       }
       
+      // At this point we would handle invitations separately if needed
+      
       toast({ 
         title: "Success", 
-        description: validMembers.length > 0 
-          ? `Family created and ${validMembers.length} members invited!`
-          : "Family created successfully!" 
+        description: "Family created successfully!" 
       });
       
       // Reset the form

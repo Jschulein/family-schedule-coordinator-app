@@ -14,5 +14,8 @@ export * from './members';
 // Export types from central location
 export * from './types';
 
+// Export createFamilyWithMembers directly
+export * from './createFamily/createFamilyWithMembers';
+
 // Legacy exports for backward compatibility
 export * from './createFamily';

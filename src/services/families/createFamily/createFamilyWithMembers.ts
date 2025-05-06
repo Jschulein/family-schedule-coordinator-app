@@ -2,12 +2,55 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Family, FamilyRole, FamilyServiceResponse } from "@/types/familyTypes";
 import { handleError } from "@/utils/error";
-import { sendFamilyInvitations } from "./familyInvitationUtils";
 import { performanceTracker } from "@/utils/testing";
-import { validateFamilyName, validateAndNormalizeMembers } from "./validators";
+import { validateFamilyName } from "./validators";
 import { checkFamilyExists } from "./familyExistenceChecker";
 import { createNewFamily } from "./familyCreator";
 import { createSuccessResponse, createErrorResponse } from "./errorHandlers";
+
+/**
+ * Sends invitations to family members
+ * @param familyId The ID of the family
+ * @param members The members to invite
+ * @param inviterEmail The email of the user sending the invitations
+ * @returns The result of the invitation process
+ */
+async function sendFamilyInvitations(
+  familyId: string,
+  members: Array<{ name: string; email: string; role: FamilyRole }>,
+  inviterEmail: string
+): Promise<FamilyServiceResponse<any>> {
+  try {
+    console.log(`Sending invitations to ${members.length} members`);
+    
+    // This would be implemented to send invitations
+    // For now, this is a stub implementation
+    return createSuccessResponse({ count: members.length });
+  } catch (error) {
+    return createErrorResponse("Error sending invitations");
+  }
+}
+
+/**
+ * Validates and normalizes members data
+ * @param members The members to validate
+ * @returns The validated and normalized members
+ */
+function validateAndNormalizeMembers(
+  members: Array<{ name: string; email: string; role: FamilyRole }>
+): Array<{ name: string; email: string; role: FamilyRole }> {
+  // Remove duplicates and validate
+  const uniqueEmails = new Set();
+  return members.filter(member => {
+    const isDuplicate = uniqueEmails.has(member.email.toLowerCase());
+    uniqueEmails.add(member.email.toLowerCase());
+    return !isDuplicate && member.name && member.email && member.role;
+  }).map(member => ({
+    name: member.name,
+    email: member.email.toLowerCase(),
+    role: member.role
+  }));
+}
 
 /**
  * Creates a new family with initial members

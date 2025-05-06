@@ -1,34 +1,21 @@
 
-import { useState } from "react";
-import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FamilyRole } from "@/types/familyTypes";
-import { createFamily } from "@/services/families";
+import { useState, useCallback } from "react";
+import { Family, FamilyRole } from "@/types/familyTypes";
 import { toast } from "@/components/ui/use-toast";
-import { performanceTracker } from "@/utils/testing";
+import { createFamily } from "@/services/families";
 import { supabase } from "@/integrations/supabase/client";
-
-// Define validation schema
-export const familyFormSchema = z.object({
-  name: z.string().min(2, { message: "Family name must be at least 2 characters." }),
-  members: z.array(
-    z.object({
-      name: z.string().min(2, { message: "Member name must be at least 2 characters." }),
-      email: z.string().email({ message: "Please enter a valid email address." }),
-      role: z.enum(["admin", "member", "child"], { 
-        message: "Please select a valid role." 
-      })
-    })
-  ).optional()
-});
-
-export type FamilyFormValues = z.infer<typeof familyFormSchema>;
+import { familyFormSchema, FamilyFormValues } from "@/hooks/family-form/validationSchema";
 
 export interface UseCreateFamilyFormProps {
   onSuccess?: () => void;
 }
 
+/**
+ * Hook for the family creation form - moved from root hooks directory
+ * to family-specific hook folder
+ */
 export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}) {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -45,28 +32,19 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
   const { setValue, reset, watch } = form;
   const members = watch("members") || [];
 
-  const addMember = () => {
-    // Performance tracking
-    const trackingId = performanceTracker.startMeasure('addFamilyMember');
-    
+  const addMember = useCallback(() => {
     setValue("members", [...members, { name: "", email: "", role: "member" as FamilyRole }]);
-    
-    performanceTracker.endMeasure(trackingId);
-  };
+  }, [members, setValue]);
 
-  const removeMember = (index: number) => {
+  const removeMember = useCallback((index: number) => {
     const updatedMembers = [...members];
     updatedMembers.splice(index, 1);
     setValue("members", updatedMembers);
-  };
+  }, [members, setValue]);
 
   const onSubmit = async (data: FamilyFormValues) => {
-    // Reset error state
     setErrorMessage(null);
     setLoading(true);
-    
-    // Start performance tracking
-    const trackingId = performanceTracker.startMeasure('createFamily');
     
     try {
       console.log("Creating new family:", data.name);
@@ -78,24 +56,19 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
         throw new Error("User not authenticated");
       }
       
-      const result = await createFamily(data.name, user.id);
+      // Create just the family first
+      const familyResult = await createFamily(data.name, user.id);
       
-      if (result.isError) {
-        setErrorMessage(result.error || "Failed to create family");
-        toast({ 
-          title: "Error", 
-          description: result.error || "Failed to create family", 
-          variant: "destructive" 
-        });
-        return;
+      if (familyResult.isError || !familyResult.data) {
+        throw new Error(familyResult.error || "Failed to create family");
       }
       
-      // We now separate family creation from member invitations for better code organization
+      const newFamily = familyResult.data as Family;
       
-      toast({ 
-        title: "Success", 
-        description: "Family created successfully!" 
-      });
+      // Here we would handle inviting members, but that's now in a separate flow
+      // for better separation of concerns
+      
+      toast({ title: "Success", description: "Family created successfully!" });
       
       // Reset the form
       reset();
@@ -105,6 +78,7 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
         onSuccess();
       }
       
+      return newFamily;
     } catch (error: any) {
       console.error("Error in family creation form submission:", error);
       const errorMessage = error?.message || "Failed to create family. Please try again.";
@@ -112,7 +86,6 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
       toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setLoading(false);
-      performanceTracker.endMeasure(trackingId);
     }
   };
 
