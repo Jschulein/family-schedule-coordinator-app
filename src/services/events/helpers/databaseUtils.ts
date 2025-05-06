@@ -40,17 +40,7 @@ type DatabaseFunction =
   | "user_is_member_of_family";
 
 // Define the specific table types that are valid in our database
-type DatabaseTable = 
-  | "email_preferences"
-  | "event_families"
-  | "event_invites"
-  | "events"
-  | "families"
-  | "family_members"
-  | "invitations"
-  | "notifications"
-  | "profiles"
-  | "users";
+type DatabaseTable = keyof Database['public']['Tables'];
 
 /**
  * Checks if a database function exists using a secure method
@@ -92,13 +82,13 @@ export async function callWithFallback<T>(
     console.log(`Attempting to call primary function: ${primaryFunction}`);
     
     // Use type assertion to tell TypeScript this is safe
-    const result = await (supabase.rpc(primaryFunction as string, params) as PostgrestSingleResponse<T>);
+    const result = await supabase.rpc(primaryFunction, params) as PostgrestSingleResponse<T>;
     
     if (result.error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
       
       // Try fallback function with type assertion
-      const fallbackResult = await (supabase.rpc(fallbackFunction as string, params) as PostgrestSingleResponse<T>);
+      const fallbackResult = await supabase.rpc(fallbackFunction, params) as PostgrestSingleResponse<T>;
       
       if (fallbackResult.error) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
@@ -139,8 +129,7 @@ export async function directTableQuery<T>(
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
     
-    // Use type assertion to tell TypeScript this is safe
-    let query = supabase.from(table as string).select(options.select || '*');
+    let query = supabase.from(table).select(options.select || '*');
     
     // Apply filters if provided
     if (options.filter) {
@@ -158,15 +147,10 @@ export async function directTableQuery<T>(
     
     const result = await query;
     
-    if (result.error) {
-      console.error(`Direct table query on ${table} failed:`, result.error);
-      throw result.error;
-    }
-    
-    // Properly construct the PostgrestSingleResponse object
+    // Transform to PostgrestSingleResponse
     return {
       data: result.data as unknown as T,
-      error: null,
+      error: result.error,
       count: result.count,
       status: result.status,
       statusText: result.statusText
