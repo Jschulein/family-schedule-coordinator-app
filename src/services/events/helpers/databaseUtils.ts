@@ -76,6 +76,15 @@ export async function callWithFallback<T>(
   }
 }
 
+// Define a simple result type to avoid deep instantiation issues
+interface TableQueryResult<T> {
+  data: T[] | null;
+  error: PostgrestError | null;
+  count: number | null;
+  status: number;
+  statusText: string;
+}
+
 /**
  * Performs a direct database query as a last resort fallback
  * @param table Table to query
@@ -89,13 +98,7 @@ export async function directTableQuery<T>(
     filter?: Record<string, any>,
     order?: Record<string, any>
   }
-): Promise<{
-  data: T[] | null,
-  error: PostgrestError | null,
-  count: number | null,
-  status: number,
-  statusText: string
-}> {
+): Promise<TableQueryResult<T>> {
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
     
