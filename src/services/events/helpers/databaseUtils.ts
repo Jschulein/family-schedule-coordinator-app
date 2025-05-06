@@ -4,7 +4,7 @@ import { PostgrestSingleResponse, PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 
 // Define the specific function types that are valid in our database
-// These must match exactly the functions available in Supabase
+// Use a string type with 'as const' to ensure TypeScript treats it correctly
 type DatabaseFunction = 
   | "create_notification"
   | "delete_user_profile" 
@@ -81,36 +81,36 @@ export async function callWithFallback<T>(
   try {
     console.log(`Attempting to call primary function: ${primaryFunction}`);
     
-    // Cast as specific database function to satisfy TypeScript
-    const result = await supabase.rpc(primaryFunction, params);
+    // Use type assertion to safely call the RPC function
+    const result = await supabase.rpc(primaryFunction as string, params);
     
     if (result.error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
       
       // Try fallback function
-      const fallbackResult = await supabase.rpc(fallbackFunction, params);
+      const fallbackResult = await supabase.rpc(fallbackFunction as string, params);
       
       if (fallbackResult.error) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
       }
       
-      // Return the result properly typed
+      // Return the properly typed result
       return fallbackResult as PostgrestSingleResponse<T>;
     }
     
-    // Return the result properly typed
+    // Return the properly typed result
     return result as PostgrestSingleResponse<T>;
   } catch (error) {
     console.error(`Exception in callWithFallback for ${primaryFunction}/${fallbackFunction}:`, error);
     
-    // Create a complete PostgrestSingleResponse object
+    // Create a complete PostgrestSingleResponse object with the correct structure
     return {
-      data: null,
+      data: null as unknown as T,
       error: error as PostgrestError,
       count: null,
       status: 500,
       statusText: 'Internal Error'
-    };
+    } as PostgrestSingleResponse<T>;
   }
 }
 
@@ -131,6 +131,7 @@ export async function directTableQuery<T>(
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
     
+    // Use the validated table name from our known types
     let query = supabase.from(table).select(options.select || '*');
     
     // Apply filters if provided
@@ -149,24 +150,24 @@ export async function directTableQuery<T>(
     
     const result = await query;
     
-    // Transform to PostgrestSingleResponse with proper null handling
+    // Create a properly structured PostgrestSingleResponse
     return {
-      data: result.data as T | null,
+      data: (result.data || null) as unknown as T,
       error: result.error,
       count: null,
       status: result.status,
       statusText: result.statusText
-    };
+    } as PostgrestSingleResponse<T>;
   } catch (error) {
     console.error(`Exception in directTableQuery for ${table}:`, error);
     
-    // Create a complete PostgrestSingleResponse object
+    // Create a complete PostgrestSingleResponse object with the correct structure
     return {
-      data: null,
+      data: null as unknown as T,
       error: error as PostgrestError,
       count: null,
       status: 500,
       statusText: 'Internal Error'
-    };
+    } as PostgrestSingleResponse<T>;
   }
 }
