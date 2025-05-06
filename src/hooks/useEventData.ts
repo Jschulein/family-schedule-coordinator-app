@@ -3,11 +3,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
 import { fetchEventsFromDb } from '@/services/events';
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 
 /**
  * Custom hook for fetching and managing event data
- * Optimized for performance with caching and realtime updates
+ * Optimized for error handling and performance
  */
 export function useEventData() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -34,17 +34,23 @@ export function useEventData() {
       if (!session) {
         console.log("No active session found");
         setEvents([]);
+        setLoading(false);
+        setIsRefreshing(false);
         return;
       }
 
-      // Using the improved RLS policies that avoid recursion
+      // Using our improved event fetching function that handles recursion errors
       const { events: fetchedEvents, error: fetchError } = await fetchEventsFromDb();
       
       if (fetchError) {
         console.error("Failed to fetch events:", fetchError);
         setError(fetchError);
         if (showToast) {
-          toast({ title: "Error", description: "Unable to fetch events from server" });
+          toast({ 
+            title: "Error", 
+            description: "Unable to fetch events from server. Using available local data.", 
+            variant: "destructive" 
+          });
         }
       } else {
         console.log(`Successfully loaded ${fetchedEvents.length} events`);
@@ -54,56 +60,17 @@ export function useEventData() {
       console.error("Error in fetchEvents:", e);
       setError("An unexpected error occurred");
       if (showToast) {
-        toast({ title: "Error", description: "Failed to load events" });
+        toast({ 
+          title: "Error", 
+          description: "Failed to load events. Please try again later.", 
+          variant: "destructive" 
+        });
       }
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
   }, [events.length]);
-
-  // Set up subscriptions to real-time updates for events and event_families tables
-  useEffect(() => {
-    const setupRealtimeSubscriptions = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      
-      console.log("Setting up realtime subscriptions for events");
-      
-      // Subscribe to events table changes
-      const eventsChannel = supabase
-        .channel('events-channel')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'events' }, 
-          (payload) => {
-            console.log('Events change received:', payload.eventType);
-            // Refresh events when changes occur
-            fetchEvents(false); // Don't show toast on realtime updates
-          }
-        )
-        .subscribe();
-        
-      // Subscribe to event_families table changes
-      const eventFamiliesChannel = supabase
-        .channel('event-families-channel')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'event_families' }, 
-          (payload) => {
-            console.log('Event families change received:', payload.eventType);
-            // Refresh events when family sharing changes
-            fetchEvents(false); // Don't show toast on realtime updates
-          }
-        )
-        .subscribe();
-        
-      return () => {
-        supabase.removeChannel(eventsChannel);
-        supabase.removeChannel(eventFamiliesChannel);
-      };
-    };
-    
-    setupRealtimeSubscriptions();
-  }, [fetchEvents]);
 
   // Initial fetch and auth state subscription
   useEffect(() => {

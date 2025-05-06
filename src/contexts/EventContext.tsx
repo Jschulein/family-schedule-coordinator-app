@@ -1,3 +1,4 @@
+
 import { createContext, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { 
@@ -21,7 +22,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
       if (addError) {
         toast({
           title: "Error",
-          description: addError
+          description: addError,
+          variant: "destructive"
         });
         return;
       }
@@ -32,13 +34,16 @@ export function EventProvider({ children }: { children: ReactNode }) {
           title: "Success",
           description: "Event created successfully!"
         });
+        
+        // Refresh events to ensure we have all the latest data
+        refetchEvents(false);
       }
     } catch (error: any) {
       console.error("Error in addEvent:", error);
-      toast({
+      handleError(error, {
+        context: "Adding event", 
         title: "Error",
-        description: "Failed to add event: " + (error.message || "Unknown error"),
-        variant: "destructive"
+        showToast: true
       });
     }
   };
@@ -58,7 +63,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
       
       if (eventResult) {
         setEvents(prevEvents => prevEvents.map(event => 
-          event.id === updatedEvent.id ? {...updatedEvent, id: event.id} : event
+          event.id === updatedEvent.id ? eventResult : event
         ));
         toast({
           title: "Success", 
@@ -67,10 +72,10 @@ export function EventProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error("Error in updateEvent:", error);
-      toast({
+      handleError(error, {
+        context: "Updating event", 
         title: "Error",
-        description: "Failed to update event: " + (error.message || "Unknown error"),
-        variant: "destructive"
+        showToast: true
       });
     }
   };
@@ -97,10 +102,10 @@ export function EventProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error("Error in deleteEvent:", error);
-      toast({
+      handleError(error, {
+        context: "Deleting event", 
         title: "Error",
-        description: "Failed to delete event: " + (error.message || "Unknown error"),
-        variant: "destructive"
+        showToast: true
       });
     }
   };

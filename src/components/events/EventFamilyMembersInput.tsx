@@ -2,7 +2,9 @@
 import { Check } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import type { FamilyMember } from "@/types/familyTypes";
-import { useFamilyMembers } from "@/hooks/useFamilyMembers";
+import { useFamilyMembers } from "@/hooks/family/useFamilyMembers";
+import { useEffect } from "react";
+import { useFamilyContext } from "@/hooks/family/useFamilyContext";
 
 interface EventFamilyMembersInputProps {
   value: string[];
@@ -10,7 +12,15 @@ interface EventFamilyMembersInputProps {
 }
 
 export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersInputProps) => {
-  const { familyMembers, loading, error } = useFamilyMembers();
+  const { activeFamilyId } = useFamilyContext();
+  const { familyMembers, loading, error, refreshFamilyMembers } = useFamilyMembers();
+
+  // Refresh family members when the component mounts
+  useEffect(() => {
+    if (activeFamilyId) {
+      refreshFamilyMembers();
+    }
+  }, [activeFamilyId, refreshFamilyMembers]);
 
   const toggleMember = (memberId: string) => {
     if (value.includes(memberId)) {
@@ -24,6 +34,17 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
   const getMemberDisplayName = (member: FamilyMember) => {
     return member.name && member.name.trim() !== '' ? member.name : member.email;
   };
+
+  if (!activeFamilyId) {
+    return (
+      <div className="space-y-2">
+        <Label>Family Members</Label>
+        <p className="text-sm text-muted-foreground">
+          Please select a family first to view members
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
