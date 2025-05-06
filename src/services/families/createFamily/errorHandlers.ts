@@ -1,48 +1,29 @@
 
-import { Family } from "@/types/familyTypes";
-import { FamilyServiceResponse } from "../types";
+import { FamilyServiceResponse } from "@/types/familyTypes";
 
 /**
- * Creates a success response object
- * @param family The family data
- * @param errorMessage Optional warning message
- * @returns A success response object
+ * Creates a standardized error response
+ * @param message Error message
+ * @returns A standardized error response object
  */
-export function createSuccessResponse(
-  family: Family, 
-  errorMessage?: string
-): FamilyServiceResponse<Family> {
-  return {
-    data: family,
-    error: errorMessage || null,
-    isError: false
-  };
-}
-
-/**
- * Creates an error response object
- * @param errorMessage The error message
- * @returns An error response object
- */
-export function createErrorResponse(
-  errorMessage: string
-): FamilyServiceResponse<Family> {
+export function createErrorResponse<T>(message: string): FamilyServiceResponse<T> {
   return {
     data: null,
-    error: errorMessage,
+    error: message,
     isError: true
   };
 }
 
 /**
- * Handles database constraint violations during family creation
- * @param error The error object
- * @param family Partial family data (if available)
- * @returns An error response
+ * Creates a standardized success response
+ * @param data The data to include in the response
+ * @param message Optional warning message
+ * @returns A standardized success response object
  */
-export function handleConstraintViolation(
-  error: any
-): FamilyServiceResponse<Family> {
-  console.error("Database constraint violation:", error);
-  return createErrorResponse(`Error creating family: ${error.message}`);
+export function createSuccessResponse<T>(data: T, message: string | null = null): FamilyServiceResponse<T> {
+  return {
+    data,
+    error: message,
+    isError: false
+  };
 }

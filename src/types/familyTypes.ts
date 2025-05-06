@@ -1,5 +1,10 @@
 
 /**
+ * Family-related type definitions
+ * Central location for all family-related types to avoid duplication
+ */
+
+/**
  * Represents a family in the system
  */
 export interface Family {
@@ -19,7 +24,7 @@ export interface FamilyMember {
   user_id: string;
   email: string;
   name?: string;
-  role: string;
+  role: FamilyRole;
   joined_at?: string;
 }
 
@@ -31,12 +36,17 @@ export interface FamilyInvitation {
   family_id: string;
   email: string;
   name?: string;
-  role: string;
+  role: FamilyRole;
   status: string;
   invited_by?: string;
   invited_at: string;
   last_invited?: string;
 }
+
+/**
+ * Family member role types
+ */
+export type FamilyRole = 'admin' | 'member' | 'child';
 
 /**
  * Represents the response from family service functions
@@ -46,11 +56,6 @@ export interface FamilyServiceResponse<T = any> {
   error: string | null;
   isError: boolean;
 }
-
-/**
- * Family member role types
- */
-export type FamilyRole = 'admin' | 'member' | 'child';
 
 /**
  * Context type for the family context provider

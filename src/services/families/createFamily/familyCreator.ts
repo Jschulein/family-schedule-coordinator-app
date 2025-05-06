@@ -1,79 +1,52 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Family } from "@/types/familyTypes";
-import { verifyFamilyCreatedDespiteError, getFamilyById, checkFamilyExists } from "./familyExistenceChecker";
-import { createSuccessResponse, createErrorResponse } from "./errorHandlers";
-import { FamilyServiceResponse } from "../types";
+import { Family, FamilyServiceResponse } from "@/types/familyTypes";
+import { formatDatabaseError } from "@/utils/error/databaseErrorHandler";
+import { createErrorResponse, createSuccessResponse } from "./errorHandlers";
 
 /**
- * Creates a new family using the security definer function
- * @param name Family name
- * @param userId User ID
- * @returns Result of the family creation
+ * Creates a new family using the safe_create_family RPC function
+ * @param name The name of the family to create
+ * @param userId The ID of the user creating the family
+ * @returns The created family or error information
  */
-export async function createNewFamily(
-  name: string,
-  userId: string
-): Promise<FamilyServiceResponse<Family>> {
-  console.log("Creating new family with safe_create_family function. User ID:", userId);
-  
+export async function createNewFamily(name: string, userId: string): Promise<FamilyServiceResponse<Family>> {
   try {
-    // First check if a family with this name already exists for this user
-    const existingFamily = await checkFamilyExists(name, userId);
+    console.log("Creating new family using safe_create_family function");
     
-    if (existingFamily) {
-      console.log("Family with this name already exists, returning existing family:", existingFamily);
-      return createSuccessResponse(existingFamily);
-    }
-    
-    // Call the security definer function to create a new family
-    const { data, error: functionError } = await supabase
+    // Call the security definer function to safely create the family
+    const { data, error } = await supabase
       .rpc('safe_create_family', { 
         p_name: name, 
         p_user_id: userId 
       });
-
-    if (functionError) {
-      console.error("Error creating family with RPC function:", functionError);
       
-      // Enhanced error handling for duplicate key constraint violations
-      if (functionError.code === '23505') {
-        console.warn("Duplicate constraint detected - checking if family was created");
-        
-        // Check if the family was created despite the error
-        const family = await verifyFamilyCreatedDespiteError(name, userId);
-        if (family) {
-          return createSuccessResponse(family);
-        }
-      }
-      
-      // For any other error type
-      return createErrorResponse(`Error creating family: ${functionError.message}`);
+    if (error) {
+      return createErrorResponse(formatDatabaseError(error));
     }
     
     if (!data) {
-      console.error("No data returned when creating family");
-      return createErrorResponse("No data returned when creating family");
+      return createErrorResponse("Failed to create family");
     }
     
+    // Fetch the complete family data
     const familyId = data;
-    console.log(`Family created with ID: ${familyId}`);
+    const { data: families } = await supabase.rpc('get_user_families');
+    const newFamily = families?.find(f => f.id === familyId);
     
-    // Fetch the complete family data to return
-    const family = await getFamilyById(familyId);
-    
-    if (family) {
-      return createSuccessResponse(family);
-    } else {
-      // We still return the family ID as it was created successfully
-      return createSuccessResponse({ 
-        id: familyId, 
-        name, 
-        created_by: userId 
-      } as Family);
+    if (newFamily) {
+      return createSuccessResponse(newFamily as Family);
     }
-  } catch (error: any) {
+    
+    // Fallback in case we can't find the new family
+    return createSuccessResponse({ 
+      id: familyId, 
+      name, 
+      created_by: userId 
+    } as Family);
+    
+  } catch (error) {
     console.error("Exception in createNewFamily:", error);
-    return createErrorResponse(`Error creating family: ${error.message}`);
+    return createErrorResponse("An unexpected error occurred creating the family");
   }
 }
