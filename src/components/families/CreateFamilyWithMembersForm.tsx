@@ -1,11 +1,10 @@
-
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, PlusCircle, UserPlus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { FamilyMemberFormItem } from "./FamilyMemberFormItem";
-import { useCreateFamilyForm } from "@/hooks/useCreateFamilyForm";
+import { useCreateFamilyForm } from "@/hooks/family-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CreateFamilyWithMembersFormProps {
@@ -23,7 +22,7 @@ export const CreateFamilyWithMembersForm = ({ onSuccess }: CreateFamilyWithMembe
     onSubmit 
   } = useCreateFamilyForm({ onSuccess });
 
-  const { handleSubmit, control } = form;
+  const { control } = form;
 
   return (
     <Card className="w-full">
