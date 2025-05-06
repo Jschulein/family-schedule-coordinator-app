@@ -3,8 +3,8 @@
  * Centralized database service for clean and consistent Supabase interactions
  */
 
-// Export core operations with namespaces to avoid name conflicts
-import * as ops from "./operations";
+// Export core operations from the new modular structure
+import * as operations from "./operations";
 import * as fn from "./functions";
 import * as authService from "./auth";
 import * as typeDefinitions from "./types";
@@ -16,7 +16,7 @@ export const {
   insertRecord,
   updateRecord,
   deleteRecord
-} = ops;
+} = operations;
 
 // Explicitly rename exports to avoid conflicts
 export const {
