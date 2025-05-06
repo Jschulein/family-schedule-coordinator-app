@@ -436,6 +436,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_family_members_safe: {
+        Args: { p_family_id: string }
+        Returns: {
+          email: string
+          family_id: string
+          id: string
+          joined_at: string | null
+          name: string
+          role: Database["public"]["Enums"]["family_role"]
+          user_id: string
+        }[]
+      }
       get_family_members_without_recursion: {
         Args: { p_family_ids: string[] }
         Returns: {
@@ -526,6 +538,10 @@ export type Database = {
         Returns: boolean
       }
       user_is_in_family: {
+        Args: { family_id_param: string }
+        Returns: boolean
+      }
+      user_is_in_family_safe: {
         Args: { family_id_param: string }
         Returns: boolean
       }
