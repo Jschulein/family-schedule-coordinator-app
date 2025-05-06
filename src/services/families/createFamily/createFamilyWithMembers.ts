@@ -42,6 +42,7 @@ export async function createFamilyWithMembers(
     // First, check if a family with this name already exists for this user
     const existingFamily = await checkFamilyExists(name, user.id);
     if (existingFamily) {
+      console.log("Found existing family with this name, using it instead of creating new one");
       // If the family exists, just handle the members part
       if (members && members.length > 0 && user.email) {
         const invitationResults = await sendFamilyInvitations(

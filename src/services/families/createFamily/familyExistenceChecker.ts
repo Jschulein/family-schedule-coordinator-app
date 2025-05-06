@@ -31,18 +31,22 @@ export async function checkFamilyExists(name: string, userId: string): Promise<F
  * @returns The family or null if not found
  */
 export async function getFamilyById(familyId: string): Promise<Family | null> {
-  const { data: familyData, error: fetchError } = await supabase
-    .from('families')
-    .select('*')
-    .eq('id', familyId)
-    .single();
+  // Use the get_user_families function instead of direct query to avoid RLS issues
+  try {
+    const { data: allFamilies, error: fetchError } = await supabase
+      .rpc('get_user_families');
+      
+    if (fetchError) {
+      console.error("Error fetching families to get by ID:", fetchError);
+      return null;
+    }
     
-  if (fetchError) {
-    console.error("Error fetching family by ID:", fetchError);
+    const family = allFamilies?.find(f => f.id === familyId);
+    return family || null;
+  } catch (error) {
+    console.error("Error in getFamilyById:", error);
     return null;
   }
-  
-  return familyData as Family;
 }
 
 /**
@@ -55,17 +59,24 @@ export async function verifyFamilyCreatedDespiteError(name: string, userId: stri
   // Wait to ensure any async DB operations complete
   await new Promise(resolve => setTimeout(resolve, 800));
   
-  const { data: checkFamilies, error: checkFamiliesError } = await supabase
-    .from('families')
-    .select('*')
-    .eq('name', name)
-    .eq('created_by', userId)
-    .order('created_at', { ascending: false })
-    .limit(1);
+  try {
+    // Use the get_user_families function to avoid RLS issues
+    const { data: families, error: familiesError } = await supabase
+      .rpc('get_user_families');
     
-  if (!checkFamiliesError && checkFamilies && checkFamilies.length > 0) {
-    console.log("Family was created successfully despite constraint violation:", checkFamilies[0]);
-    return checkFamilies[0] as Family;
+    if (familiesError) {
+      console.error("Error fetching families to verify creation:", familiesError);
+      return null;
+    }
+    
+    const family = families?.find(f => f.name === name && f.created_by === userId);
+    
+    if (family) {
+      console.log("Family was created successfully despite constraint violation:", family);
+      return family as Family;
+    }
+  } catch (error) {
+    console.error("Error in verifyFamilyCreatedDespiteError:", error);
   }
   
   return null;
