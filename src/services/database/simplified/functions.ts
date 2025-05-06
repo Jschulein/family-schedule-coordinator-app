@@ -14,7 +14,7 @@ export async function callFunction<T>(
 ): Promise<DbResponse<T>> {
   try {
     // Since we've defined DbFunction as either a known function name or a string,
-    // we can safely cast it to string for the rpc call
+    // we need to use type assertion to handle the runtime flexibility
     const { data, error } = await supabase.rpc(functionName as string, params);
     
     if (error) {

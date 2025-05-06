@@ -52,7 +52,7 @@ export async function fetchData<T>(
       };
     }
     
-    // Cast the result to the expected type
+    // Use type assertion to avoid recursive type issues
     return {
       data: data as any as T[],
       error: null,
