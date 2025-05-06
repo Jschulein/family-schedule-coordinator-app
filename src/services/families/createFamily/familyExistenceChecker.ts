@@ -31,8 +31,19 @@ export async function checkFamilyExists(name: string, userId: string): Promise<F
  * @returns The family or null if not found
  */
 export async function getFamilyById(familyId: string): Promise<Family | null> {
-  // Use the get_user_families function instead of direct query to avoid RLS issues
   try {
+    // Try to get the family directly first (faster)
+    const { data: family, error: directError } = await supabase
+      .from('families')
+      .select('*')
+      .eq('id', familyId)
+      .single();
+      
+    if (!directError && family) {
+      return family as Family;
+    }
+    
+    // Fallback to using get_user_families function to bypass RLS
     const { data: allFamilies, error: fetchError } = await supabase
       .rpc('get_user_families');
       
@@ -41,8 +52,8 @@ export async function getFamilyById(familyId: string): Promise<Family | null> {
       return null;
     }
     
-    const family = allFamilies?.find(f => f.id === familyId);
-    return family || null;
+    const matchingFamily = allFamilies?.find(f => f.id === familyId);
+    return matchingFamily || null;
   } catch (error) {
     console.error("Error in getFamilyById:", error);
     return null;
@@ -57,22 +68,33 @@ export async function getFamilyById(familyId: string): Promise<Family | null> {
  */
 export async function verifyFamilyCreatedDespiteError(name: string, userId: string): Promise<Family | null> {
   // Wait to ensure any async DB operations complete
-  await new Promise(resolve => setTimeout(resolve, 800));
+  await new Promise(resolve => setTimeout(resolve, 1000));
   
   try {
-    // Query directly against the families table to avoid RLS issues
+    // Query directly against the families table first
     const { data: familyCheck, error: checkError } = await supabase
       .from('families')
       .select('*')
       .eq('name', name)
       .eq('created_by', userId)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
       
-    if (!checkError && familyCheck) {
-      console.log("Family was created successfully despite constraint violation:", familyCheck);
-      return familyCheck as Family;
+    if (!checkError && familyCheck && familyCheck.length > 0) {
+      console.log("Family was created successfully despite constraint violation:", familyCheck[0]);
+      return familyCheck[0] as Family;
+    }
+
+    // As a fallback, try using the RPC function
+    const { data: allFamilies, error: fetchError } = await supabase
+      .rpc('get_user_families');
+    
+    if (!fetchError && allFamilies) {
+      const family = allFamilies.find(f => f.name === name && f.created_by === userId);
+      if (family) {
+        console.log("Found family with RPC function despite constraint violation:", family);
+        return family as Family;
+      }
     }
   } catch (error) {
     console.error("Error in verifyFamilyCreatedDespiteError:", error);

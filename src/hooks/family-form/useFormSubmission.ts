@@ -55,6 +55,19 @@ export function useFormSubmission({ form, onSuccess }: UseFormSubmissionProps) {
       const result = await createFamilyWithMembers(data.name, validMembers);
       
       if (result.isError) {
+        // Special handling for constraint violations that might still have created the family
+        if (result.error?.includes("duplicate key value")) {
+          toast({ 
+            title: "Warning", 
+            description: "Family may have been created with a warning. Please check your families list."
+          });
+          reset();
+          if (onSuccess) {
+            onSuccess();
+          }
+          return;
+        }
+        
         setErrorMessage(result.error || "Failed to create family");
         toast({ 
           title: "Error", 

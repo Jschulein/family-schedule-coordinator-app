@@ -66,6 +66,14 @@ export async function createFamilyWithMembers(
     // Create the new family
     const result = await createNewFamily(name, user.id);
     if (result.isError || !result.data) {
+      if (result.error?.includes("duplicate key value")) {
+        // Try to recover from duplicate key constraint error
+        const recoveredFamily = await checkFamilyExists(name, user.id);
+        if (recoveredFamily) {
+          console.log("Recovered family after constraint error:", recoveredFamily);
+          return createSuccessResponse(recoveredFamily, "Family created despite constraint warning");
+        }
+      }
       return result;
     }
     
