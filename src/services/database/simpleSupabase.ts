@@ -5,12 +5,13 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { Json } from "@/integrations/supabase/types";
 
 // Define concrete type for database tables
 export type DbTable = keyof Database['public']['Tables'];
 
 // Define concrete type for database functions
-export type DbFunction = keyof Database['public']['Functions'];
+export type DbFunction = keyof Database['public']['Functions'] | string;
 
 /**
  * Standard response format for all database operations
@@ -109,10 +110,11 @@ export async function getById<T>(
 
 /**
  * Insert a new record
+ * Type T is now partial to allow for auto-generated fields
  */
 export async function insert<T extends Record<string, any>>(
   table: DbTable,
-  data: T
+  data: Partial<T>
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
@@ -126,7 +128,7 @@ export async function insert<T extends Record<string, any>>(
       return { data: null, error: error.message };
     }
     
-    return { data: result as unknown as T, error: null };
+    return { data: result as T, error: null };
   } catch (err: any) {
     console.error(`Exception inserting into ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -154,7 +156,7 @@ export async function update<T extends Record<string, any>>(
       return { data: null, error: error.message };
     }
     
-    return { data: result as unknown as T, error: null };
+    return { data: result as T, error: null };
   } catch (err: any) {
     console.error(`Exception updating record in ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -190,7 +192,7 @@ export async function remove(
  * Call a database function
  */
 export async function callFunction<T>(
-  functionName: DbFunction | string,
+  functionName: DbFunction,
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {

@@ -43,5 +43,6 @@ export async function createFamily(name: string): Promise<DbResponse<Family>> {
     return { data: null, error: "Family name is required" };
   }
 
+  // Updated to pass a Partial<Family> instead of just { name }
   return insert<Family>("families", { name });
 }

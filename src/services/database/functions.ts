@@ -9,12 +9,13 @@ import { DatabaseResponse, DbFunction, formatError } from "./types";
  * Executes an RPC function
  */
 export async function callFunction<T = any>(
-  functionName: DbFunction | string,
+  functionName: DbFunction,
   params?: Record<string, any>
 ): Promise<DatabaseResponse<T>> {
   try {
     console.log(`Calling function ${functionName}`, params);
     
+    // Use type assertion for the functionName since we've defined DbFunction to allow any string
     const { data, error, status } = await supabase
       .rpc(functionName as string, params);
     
