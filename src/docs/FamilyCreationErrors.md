@@ -41,6 +41,19 @@ This document tracks errors found in the family creation flow and their solution
    - **Solution**: Filter out the current user from the invitation list
    - **Implementation**: Added filtering based on email address comparison
 
+## Code Organization
+
+The family creation code has been refactored into smaller, more focused modules:
+
+1. **createFamilyWithMembers.ts**: Main entry point that orchestrates the family creation process
+2. **validators.ts**: Handles input validation for family names and members
+3. **familyExistenceChecker.ts**: Manages checking for existing families and retrieving family data
+4. **errorHandlers.ts**: Provides consistent error response handling
+5. **familyCreator.ts**: Core logic for creating new families
+6. **familyInvitationUtils.ts**: Logic for sending invitations to family members
+
+This modular approach improves maintainability, testability, and makes the code easier to understand.
+
 ## Testing Workflow
 
 1. **Login Process**

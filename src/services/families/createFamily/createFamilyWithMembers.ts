@@ -5,6 +5,10 @@ import { handleError } from "@/utils/error";
 import { FamilyServiceResponse } from "../types";
 import { sendFamilyInvitations } from "./familyInvitationUtils";
 import { performanceTracker } from "@/utils/testing";
+import { validateFamilyName, validateAndNormalizeMembers } from "./validators";
+import { checkFamilyExists } from "./familyExistenceChecker";
+import { createNewFamily } from "./familyCreator";
+import { createSuccessResponse, createErrorResponse } from "./errorHandlers";
 
 /**
  * Creates a new family with initial members
@@ -21,13 +25,9 @@ export async function createFamilyWithMembers(
   
   try {
     // Validate input parameters
-    if (!name || name.trim() === '') {
-      console.error("Invalid family name provided");
-      return {
-        data: null,
-        error: "Family name is required",
-        isError: true
-      };
+    const nameError = validateFamilyName(name);
+    if (nameError) {
+      return createErrorResponse(nameError);
     }
 
     console.log(`Creating family with members. Name: ${name}, Members count: ${members?.length || 0}`);
@@ -36,178 +36,71 @@ export async function createFamilyWithMembers(
     
     if (userErr || !user) {
       console.error("User authentication error:", userErr);
-      return {
-        data: null,
-        error: "You must be logged in to create a family",
-        isError: true
-      };
+      return createErrorResponse("You must be logged in to create a family");
     }
 
-    // First, check if a family with this name already exists for this user to prevent duplicates
-    const { data: existingFamily, error: checkError } = await supabase
-      .from('families')
-      .select('*')
-      .eq('name', name)
-      .eq('created_by', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1);
-      
-    if (!checkError && existingFamily && existingFamily.length > 0) {
-      console.log("Family with this name already exists:", existingFamily[0]);
-      
+    // First, check if a family with this name already exists for this user
+    const existingFamily = await checkFamilyExists(name, user.id);
+    if (existingFamily) {
       // If the family exists, just handle the members part
       if (members && members.length > 0 && user.email) {
         const invitationResults = await sendFamilyInvitations(
-          existingFamily[0].id, 
+          existingFamily.id, 
           members, 
           user.email
         );
         
         if (invitationResults.error) {
           console.warn("Error sending invitations to existing family:", invitationResults.error);
-          return {
-            data: existingFamily[0] as Family,
-            error: "Family found but there was an error inviting some members",
-            isError: false // Not treating as a critical error
-          };
+          return createSuccessResponse(
+            existingFamily, 
+            "Family found but there was an error inviting some members"
+          );
         }
       }
       
-      return {
-        data: existingFamily[0] as Family,
-        error: null,
-        isError: false
-      };
+      return createSuccessResponse(existingFamily);
     }
 
-    console.log("Creating new family with safe_create_family function. User ID:", user.id);
-    
-    // Use the security definer function to create the family - this bypasses RLS
-    const { data, error: functionError } = await supabase
-      .rpc('safe_create_family', { 
-        p_name: name, 
-        p_user_id: user.id 
-      });
-
-    if (functionError) {
-      console.error("Error creating family with RPC function:", functionError);
-      
-      // Enhanced error handling for duplicate key constraint violations
-      if (functionError.code === '23505' && 
-          functionError.message.includes("family_members_family_id_user_id_key")) {
-        console.warn("Duplicate family member constraint detected - checking if family was created");
-        
-        // Wait to ensure any async DB operations complete
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Check if the family was created despite the error
-        const { data: checkFamilies, error: checkFamiliesError } = await supabase
-          .from('families')
-          .select('*')
-          .eq('name', name)
-          .eq('created_by', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
-          
-        if (!checkFamiliesError && checkFamilies && checkFamilies.length > 0) {
-          console.log("Family was created successfully despite constraint violation:", checkFamilies[0]);
-          
-          // Handle invitations
-          if (members && members.length > 0 && user.email) {
-            try {
-              const invitationResults = await sendFamilyInvitations(
-                checkFamilies[0].id, 
-                members, 
-                user.email
-              );
-              
-              if (invitationResults.error) {
-                console.warn("Error sending invitations:", invitationResults.error);
-              }
-            } catch (inviteError) {
-              console.error("Exception sending invitations:", inviteError);
-            }
-          }
-          
-          return {
-            data: checkFamilies[0] as Family,
-            error: null,
-            isError: false
-          };
-        }
-      }
-      
-      // For any other error type
-      return {
-        data: null,
-        error: `Error creating family: ${functionError.message}`,
-        isError: true
-      };
+    // Create the new family
+    const result = await createNewFamily(name, user.id);
+    if (result.isError || !result.data) {
+      return result;
     }
     
-    if (!data) {
-      console.error("No data returned when creating family");
-      return {
-        data: null,
-        error: "No data returned when creating family",
-        isError: true
-      };
-    }
-    
-    const familyId = data;
-    console.log(`Family created with ID: ${familyId}`);
+    const createdFamily = result.data;
     
     // Only send invitations if there are members to invite
     if (members && members.length > 0 && user.email) {
-      const invitationResults = await sendFamilyInvitations(familyId, members, user.email);
-      
-      if (invitationResults.error) {
-        console.error("Error sending invitations:", invitationResults.error);
-        // We continue even if invitations fail, as the family was created successfully
-        return {
-          data: { id: familyId, name, created_by: user.id } as Family,
-          error: "Family created but there was an error inviting some members",
-          isError: false
-        };
+      const normalizedMembers = validateAndNormalizeMembers(members);
+      if (normalizedMembers.length > 0) {
+        const invitationResults = await sendFamilyInvitations(
+          createdFamily.id, 
+          normalizedMembers, 
+          user.email
+        );
+        
+        if (invitationResults.error) {
+          console.error("Error sending invitations:", invitationResults.error);
+          // We continue even if invitations fail, as the family was created successfully
+          return createSuccessResponse(
+            createdFamily, 
+            "Family created but there was an error inviting some members"
+          );
+        }
+        
+        console.log("Invitations sent successfully:", invitationResults.data?.length || 0);
       }
-      
-      console.log("Invitations sent successfully:", invitationResults.data?.length || 0);
     }
     
-    // Fetch the complete family data to return
-    const { data: familyData, error: fetchError } = await supabase
-      .from('families')
-      .select('*')
-      .eq('id', familyId)
-      .single();
-      
-    if (fetchError) {
-      console.error("Error fetching created family:", fetchError);
-      // We still return the family ID as it was created successfully
-      return {
-        data: { id: familyId, name, created_by: user.id } as Family,
-        error: null,
-        isError: false
-      };
-    }
-    
-    console.log("Family created successfully:", familyData);
-    return {
-      data: familyData as Family,
-      error: null,
-      isError: false
-    };
+    return createSuccessResponse(createdFamily);
   } catch (error: any) {
     const errorMessage = handleError(error, {
       context: "Creating family with members",
       showToast: true
     });
     console.error("Exception in createFamilyWithMembers:", error);
-    return {
-      data: null,
-      error: errorMessage,
-      isError: true
-    };
+    return createErrorResponse(errorMessage);
   } finally {
     performanceTracker.endMeasure(trackingId);
   }
