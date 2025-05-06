@@ -72,24 +72,30 @@ export async function callWithFallback<T = any>(
 ): Promise<PostgrestSingleResponse<T>> {
   try {
     console.log(`Attempting to call primary function: ${primaryFunction}`);
-    const { data, error } = await supabase.rpc<T>(primaryFunction, params);
+    const result = await supabase.rpc<T>(primaryFunction, params);
     
-    if (error) {
-      console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, error);
-      const { data: fallbackData, error: fallbackError } = await supabase.rpc<T>(fallbackFunction, params);
+    if (result.error) {
+      console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
+      const fallbackResult = await supabase.rpc<T>(fallbackFunction, params);
       
-      if (fallbackError) {
-        console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackError);
-        throw fallbackError;
+      if (fallbackResult.error) {
+        console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
+        return fallbackResult;
       }
       
-      return { data: fallbackData, error: null };
+      return fallbackResult;
     }
     
-    return { data, error: null };
+    return result;
   } catch (error) {
     console.error(`Exception in callWithFallback for ${primaryFunction}/${fallbackFunction}:`, error);
-    return { data: null, error };
+    return {
+      data: null,
+      error: error as any,
+      count: null,
+      status: 500,
+      statusText: 'Internal Error'
+    };
   }
 }
 
@@ -125,16 +131,28 @@ export async function directTableQuery<T = any>(
       }
     }
     
-    const { data, error } = await query;
+    const result = await query;
     
-    if (error) {
-      console.error(`Direct table query on ${table} failed:`, error);
-      throw error;
+    if (result.error) {
+      console.error(`Direct table query on ${table} failed:`, result.error);
+      throw result.error;
     }
     
-    return { data, error: null };
+    return {
+      data: result.data as T,
+      error: null,
+      count: result.count,
+      status: result.status,
+      statusText: result.statusText
+    };
   } catch (error) {
     console.error(`Exception in directTableQuery for ${table}:`, error);
-    return { data: null, error };
+    return {
+      data: null,
+      error: error as any,
+      count: null,
+      status: 500,
+      statusText: 'Internal Error'
+    };
   }
 }
