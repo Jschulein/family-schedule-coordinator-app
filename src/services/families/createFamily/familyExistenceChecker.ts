@@ -60,20 +60,19 @@ export async function verifyFamilyCreatedDespiteError(name: string, userId: stri
   await new Promise(resolve => setTimeout(resolve, 800));
   
   try {
-    // Use the get_user_families function to avoid RLS issues
-    const { data: families, error: familiesError } = await supabase
-      .rpc('get_user_families');
-    
-    if (familiesError) {
-      console.error("Error fetching families to verify creation:", familiesError);
-      return null;
-    }
-    
-    const family = families?.find(f => f.name === name && f.created_by === userId);
-    
-    if (family) {
-      console.log("Family was created successfully despite constraint violation:", family);
-      return family as Family;
+    // Query directly against the families table to avoid RLS issues
+    const { data: familyCheck, error: checkError } = await supabase
+      .from('families')
+      .select('*')
+      .eq('name', name)
+      .eq('created_by', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+      
+    if (!checkError && familyCheck) {
+      console.log("Family was created successfully despite constraint violation:", familyCheck);
+      return familyCheck as Family;
     }
   } catch (error) {
     console.error("Error in verifyFamilyCreatedDespiteError:", error);

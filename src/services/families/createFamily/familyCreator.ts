@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Family } from "@/types/familyTypes";
-import { verifyFamilyCreatedDespiteError, getFamilyById } from "./familyExistenceChecker";
+import { verifyFamilyCreatedDespiteError, getFamilyById, checkFamilyExists } from "./familyExistenceChecker";
 import { createSuccessResponse, createErrorResponse } from "./errorHandlers";
 import { FamilyServiceResponse } from "../types";
 
@@ -19,16 +19,11 @@ export async function createNewFamily(
   
   try {
     // First check if a family with this name already exists for this user
-    const { data: existingFamily, error: existingError } = await supabase
-      .from('families')
-      .select('*')
-      .eq('name', name)
-      .eq('created_by', userId)
-      .maybeSingle();
-      
-    if (!existingError && existingFamily) {
+    const existingFamily = await checkFamilyExists(name, userId);
+    
+    if (existingFamily) {
       console.log("Family with this name already exists, returning existing family:", existingFamily);
-      return createSuccessResponse(existingFamily as Family);
+      return createSuccessResponse(existingFamily);
     }
     
     // Call the security definer function to create a new family
@@ -42,9 +37,8 @@ export async function createNewFamily(
       console.error("Error creating family with RPC function:", functionError);
       
       // Enhanced error handling for duplicate key constraint violations
-      if (functionError.code === '23505' && 
-          functionError.message.includes("family_members_family_id_user_id_key")) {
-        console.warn("Duplicate family member constraint detected - checking if family was created");
+      if (functionError.code === '23505') {
+        console.warn("Duplicate constraint detected - checking if family was created");
         
         // Check if the family was created despite the error
         const family = await verifyFamilyCreatedDespiteError(name, userId);
