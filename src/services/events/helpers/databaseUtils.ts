@@ -112,19 +112,17 @@ export async function directTableQuery<T>(
       });
     }
     
-    // Execute the query
+    // Execute the query and get the raw result
     const result = await query;
     
     // Return a properly structured response
-    const successResponse: PostgrestSingleResponse<T[]> = {
+    return {
       data: result.data as T[],
-      error: null,
+      error: result.error,
       count: result.count,
       status: result.status,
       statusText: result.statusText
     };
-    
-    return successResponse;
   } catch (error) {
     console.error(`Exception in directTableQuery for ${table}:`, error);
     

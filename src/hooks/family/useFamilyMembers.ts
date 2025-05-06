@@ -77,10 +77,13 @@ export const useFamilyMembers = () => {
           setRetryCount(prev => prev + 1);
           
           // Try direct table query as last resort
-          const { data: directData, error: directError } = await directTableQuery<FamilyMember[]>('family_members', {
-            select: '*',
-            filter: { family_id: activeFamilyId }
-          });
+          const { data: directData, error: directError } = await directTableQuery<FamilyMember>(
+            'family_members',
+            {
+              select: '*',
+              filter: { family_id: activeFamilyId }
+            }
+          );
           
           if (directError || !directData) {
             console.error("Direct query also failed:", directError);
@@ -95,12 +98,14 @@ export const useFamilyMembers = () => {
             return;
           }
           
-          console.log(`Loaded ${directData.length} family members using direct query`);
-          setFamilyMembers(directData as FamilyMember[]);
+          // Ensure directData is treated as an array
+          const membersArray = Array.isArray(directData) ? directData : [directData];
+          console.log(`Loaded ${membersArray.length} family members using direct query`);
+          setFamilyMembers(membersArray);
           setError(null);
           
           // Cache the data
-          cacheResults(directData);
+          cacheResults(membersArray);
           setRetryCount(0);
           return;
         }
@@ -117,13 +122,15 @@ export const useFamilyMembers = () => {
         return;
       }
       
-      console.log(`Loaded ${data.length} family members`);
-      setFamilyMembers(data as FamilyMember[]);
+      // Ensure data is treated as an array
+      const membersArray = Array.isArray(data) ? data : [data];
+      console.log(`Loaded ${membersArray.length} family members`);
+      setFamilyMembers(membersArray);
       setError(null);
       setRetryCount(0);
       
       // Cache the data
-      cacheResults(data);
+      cacheResults(membersArray);
     } catch (e) {
       console.error("Unexpected error in useFamilyMembers hook:", e);
       

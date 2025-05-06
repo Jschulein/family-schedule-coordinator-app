@@ -37,10 +37,13 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
         console.log("Both RPC functions failed, attempting direct query as last resort");
         
         // Last resort: try direct database query
-        const { data: directData, error: directError } = await directTableQuery<Family[]>('families', {
-          select: '*',
-          order: { name: 'asc' }
-        });
+        const { data: directData, error: directError } = await directTableQuery<Family>(
+          'families',
+          {
+            select: '*',
+            order: { name: 'asc' }
+          }
+        );
         
         if (directError || !directData) {
           setError("Failed to load families. Please try again later.");
@@ -53,14 +56,18 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
         }
         
         console.log(`FamilyContext: fetched ${directData.length} families via direct query`);
-        setFamilies(directData as Family[]);
-        handleFamilySelection(directData as Family[]);
+        // Ensure directData is treated as an array
+        const familiesArray = Array.isArray(directData) ? directData : [directData];
+        setFamilies(familiesArray);
+        handleFamilySelection(familiesArray);
         return;
       }
       
       console.log(`FamilyContext: fetched ${familiesData.length} families via RPC function`);
-      setFamilies(familiesData as Family[]);
-      handleFamilySelection(familiesData as Family[]);
+      // Ensure familiesData is treated as an array
+      const familiesArray = Array.isArray(familiesData) ? familiesData : [familiesData];
+      setFamilies(familiesArray);
+      handleFamilySelection(familiesArray);
     } catch (error: any) {
       console.error("Error in fetchFamilies:", error);
       setError(error.message || "An unexpected error occurred");
