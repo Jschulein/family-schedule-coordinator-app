@@ -22,9 +22,10 @@ export type DbTable = keyof Database['public']['Tables'];
 
 /**
  * Type for database functions
- * This is a workaround to support dynamic function names while still providing type safety
+ * This allows both known function names and dynamic string values
+ * Required for runtime flexibility with RPC calls
  */
-export type DbFunction = keyof Database['public']['Functions'] | string;
+export type DbFunction = keyof Database['public']['Functions'] | (string & {});
 
 /**
  * Query options for fetching data

@@ -1,4 +1,3 @@
-
 /**
  * Database function utilities
  */
@@ -16,11 +15,10 @@ export async function callFunction<T = any>(
   try {
     console.log(`Calling function ${functionName}`, params);
     
-    // Using type assertion with 'as string' to handle dynamic function names
-    // TypeScript will not allow direct string assignment to the strongly typed parameter
-    // but this is necessary for runtime flexibility
-    const { data, error, status } = await supabase
-      .rpc(functionName as string, params);
+    // Use explicit casting approach for the RPC function name
+    // TypeScript needs this to handle dynamic function names that might not be in the type
+    const functionNameStr = functionName as string;
+    const { data, error, status } = await supabase.rpc(functionNameStr, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

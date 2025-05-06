@@ -13,9 +13,10 @@ export async function callFunction<T>(
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
-    // Since we've defined DbFunction as either a known function name or a string,
-    // we need to use type assertion to handle the runtime flexibility
-    const { data, error } = await supabase.rpc(functionName as string, params);
+    // Use explicit casting approach for the RPC function name
+    // This allows us to use any string at runtime while maintaining type safety
+    const functionNameStr = functionName as string;
+    const { data, error } = await supabase.rpc(functionNameStr, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);
