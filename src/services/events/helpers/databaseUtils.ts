@@ -16,7 +16,6 @@ type DatabaseFunction =
   | "get_family_members_safe"
   | "get_family_members_without_recursion"
   | "get_user_families"
-  | "get_user_families_safe"
   | "get_user_profile"
   | "handle_invitation_accept"
   | "handle_new_family"
@@ -92,14 +91,14 @@ export async function callWithFallback<T>(
   try {
     console.log(`Attempting to call primary function: ${primaryFunction}`);
     
-    // Call the primary function with the correct typing
-    const result = await supabase.rpc(primaryFunction, params) as PostgrestSingleResponse<T>;
+    // Use type assertion to tell TypeScript this is safe
+    const result = await (supabase.rpc(primaryFunction as string, params) as PostgrestSingleResponse<T>);
     
     if (result.error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
       
-      // Try fallback function
-      const fallbackResult = await supabase.rpc(fallbackFunction, params) as PostgrestSingleResponse<T>;
+      // Try fallback function with type assertion
+      const fallbackResult = await (supabase.rpc(fallbackFunction as string, params) as PostgrestSingleResponse<T>);
       
       if (fallbackResult.error) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
@@ -139,7 +138,9 @@ export async function directTableQuery<T>(
 ): Promise<PostgrestSingleResponse<T>> {
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
-    let query = supabase.from(table).select(options.select || '*');
+    
+    // Use type assertion to tell TypeScript this is safe
+    let query = supabase.from(table as string).select(options.select || '*');
     
     // Apply filters if provided
     if (options.filter) {
