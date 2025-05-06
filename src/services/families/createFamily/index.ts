@@ -144,16 +144,20 @@ export async function createFamilyWithMembers(
       };
     }
     
-    // Invite each member
-    const invitePromises = members.map(member =>
-      supabase.rpc('invite_family_member', {
-        p_family_id: family.id,
-        p_email: member.email,
-        p_name: member.name,
-        p_role: member.role,
-        p_invited_by: user.id
-      })
-    );
+    // Invite each member - FIX: Use direct insert into invitations table instead of RPC
+    const invitePromises = members.map(async member => {
+      // Using direct insert into invitations table as a workaround for missing RPC function
+      return await supabase
+        .from('invitations')
+        .insert({
+          family_id: family.id,
+          email: member.email,
+          name: member.name,
+          role: member.role,
+          invited_by: user.id,
+          last_invited: new Date().toISOString()
+        });
+    });
     
     await Promise.all(invitePromises);
     
