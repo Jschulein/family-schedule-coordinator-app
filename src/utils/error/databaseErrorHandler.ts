@@ -34,9 +34,31 @@ export function formatDatabaseError(error: any): string {
       return 'Your session has expired. Please log in again.';
     }
     
+    // Check for recursion errors in RLS policies
+    if (error.message.includes('infinite recursion detected')) {
+      return 'A database security policy error occurred. Please try again later or contact support.';
+    }
+    
     // Return the original message if we can't find a better one
     return error.message;
   }
   
   return 'An error occurred while accessing the database.';
+}
+
+/**
+ * Identifies if an error is specifically related to authentication
+ * @param error The error to check
+ * @returns True if it's an auth error
+ */
+export function isAuthError(error: any): boolean {
+  if (!error) return false;
+  
+  // Check for common auth error patterns
+  return (
+    (error.__isAuthError === true) ||
+    (error.message && error.message.toLowerCase().includes('auth')) ||
+    (error.code && ['401', '403'].includes(error.code)) ||
+    (error.status && ['401', '403'].includes(String(error.status)))
+  );
 }

@@ -1,7 +1,8 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { fetchUserFamilies, createFamily as createFamilyService } from "@/services/families";
+import { fetchUserFamilies } from "@/services/families";
+import { createFamily } from "@/services/families/createFamily";
 import type { Family, FamilyContextType } from "@/types/familyTypes";
 import { handleError } from "@/utils/error";
 
@@ -79,7 +80,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     
     try {
       console.log("FamilyContext: creating new family:", name);
-      const result = await createFamilyService(name);
+      const result = await createFamily(name);
       
       if (result.isError) {
         setError(result.error || "Failed to create family");
