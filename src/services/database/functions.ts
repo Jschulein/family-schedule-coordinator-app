@@ -9,7 +9,7 @@ import { DatabaseResponse, DbFunction, formatError } from "./types";
  * Executes an RPC function
  */
 export async function callFunction<T = any>(
-  functionName: DbFunction,
+  functionName: DbFunction | string,
   params?: Record<string, any>
 ): Promise<DatabaseResponse<T>> {
   try {

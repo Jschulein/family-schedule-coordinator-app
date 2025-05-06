@@ -123,9 +123,10 @@ export async function insertRecord<T extends Record<string, any>>(
   try {
     console.log(`Inserting record into ${table}`, data);
     
+    // Use type assertion to handle the generic constraint
     const { data: insertedData, error, status } = await supabase
       .from(table)
-      .insert(data)
+      .insert(data as any)
       .select()
       .single();
     
@@ -140,7 +141,7 @@ export async function insertRecord<T extends Record<string, any>>(
     }
     
     return {
-      data: insertedData as T,
+      data: insertedData as unknown as T,
       error: null,
       status
     };
@@ -166,9 +167,10 @@ export async function updateRecord<T extends Record<string, any>>(
   try {
     console.log(`Updating record in ${table} with id ${id}`, data);
     
+    // Use type assertion to handle the generic constraint
     const { data: updatedData, error, status } = await supabase
       .from(table)
-      .update(data)
+      .update(data as any)
       .eq('id', id)
       .select()
       .single();
@@ -184,7 +186,7 @@ export async function updateRecord<T extends Record<string, any>>(
     }
     
     return {
-      data: updatedData as T,
+      data: updatedData as unknown as T,
       error: null,
       status
     };

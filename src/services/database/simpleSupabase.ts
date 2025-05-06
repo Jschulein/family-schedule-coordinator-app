@@ -57,7 +57,8 @@ export async function getData<T>(
     
     // Apply order
     if (options.order) {
-      query = query.order(options.order[0], { ascending: options.order[1] === 'asc' });
+      const [column, direction] = options.order;
+      query = query.order(column, { ascending: direction === 'asc' });
     }
     
     // Apply limit
@@ -72,7 +73,7 @@ export async function getData<T>(
       return { data: null, error: error.message };
     }
     
-    return { data: data as T[], error: null };
+    return { data: data as unknown as T[], error: null };
   } catch (err: any) {
     console.error(`Exception fetching data from ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -99,7 +100,7 @@ export async function getById<T>(
       return { data: null, error: error.message };
     }
     
-    return { data: data as T, error: null };
+    return { data: data as unknown as T, error: null };
   } catch (err: any) {
     console.error(`Exception fetching record by ID from ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -116,7 +117,7 @@ export async function insert<T extends Record<string, any>>(
   try {
     const { data: result, error } = await supabase
       .from(table)
-      .insert(data)
+      .insert(data as any)
       .select()
       .single();
     
@@ -125,7 +126,7 @@ export async function insert<T extends Record<string, any>>(
       return { data: null, error: error.message };
     }
     
-    return { data: result as T, error: null };
+    return { data: result as unknown as T, error: null };
   } catch (err: any) {
     console.error(`Exception inserting into ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -143,7 +144,7 @@ export async function update<T extends Record<string, any>>(
   try {
     const { data: result, error } = await supabase
       .from(table)
-      .update(data)
+      .update(data as any)
       .eq('id', id)
       .select()
       .single();
@@ -153,7 +154,7 @@ export async function update<T extends Record<string, any>>(
       return { data: null, error: error.message };
     }
     
-    return { data: result as T, error: null };
+    return { data: result as unknown as T, error: null };
   } catch (err: any) {
     console.error(`Exception updating record in ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -189,7 +190,7 @@ export async function remove(
  * Call a database function
  */
 export async function callFunction<T>(
-  functionName: DbFunction,
+  functionName: DbFunction | string,
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {

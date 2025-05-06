@@ -21,9 +21,9 @@ export interface DatabaseResponse<T> {
 export type DbTable = keyof Database['public']['Tables'];
 
 /**
- * Type for database functions
+ * Type for database functions - allowing both string and strong typing
  */
-export type DbFunction = keyof Database['public']['Functions'];
+export type DbFunction = keyof Database['public']['Functions'] | string;
 
 /**
  * Query options for fetching data
