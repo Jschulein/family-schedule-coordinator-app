@@ -92,14 +92,15 @@ export async function createFamilyWithMembers(
     if (functionError) {
       console.error("Error creating family with RPC function:", functionError);
       
-      // Check if this is a duplicate key violation error
-      if (functionError.message.includes("duplicate key value violates unique constraint")) {
-        console.warn("Constraint violation detected - checking if family was still created");
+      // Enhanced error handling for duplicate key constraint violations
+      if (functionError.code === '23505' && 
+          functionError.message.includes("family_members_family_id_user_id_key")) {
+        console.warn("Duplicate family member constraint detected - checking if family was created");
         
-        // Wait a short time to ensure any asynchronous DB operations complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait to ensure any async DB operations complete
+        await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Check if the family was actually created despite the error
+        // Check if the family was created despite the error
         const { data: checkFamilies, error: checkFamiliesError } = await supabase
           .from('families')
           .select('*')
@@ -111,7 +112,7 @@ export async function createFamilyWithMembers(
         if (!checkFamiliesError && checkFamilies && checkFamilies.length > 0) {
           console.log("Family was created successfully despite constraint violation:", checkFamilies[0]);
           
-          // Handle invitations for this family if it exists
+          // Handle invitations
           if (members && members.length > 0 && user.email) {
             try {
               const invitationResults = await sendFamilyInvitations(
@@ -136,6 +137,7 @@ export async function createFamilyWithMembers(
         }
       }
       
+      // For any other error type
       return {
         data: null,
         error: `Error creating family: ${functionError.message}`,
