@@ -3,7 +3,7 @@
  * Hook for accessing the family context
  * Provides type safety and error handling
  */
-import { useFamilyContext as useContext } from "@/contexts/FamilyContext";
+import { useFamilyContext as useContext } from "@/contexts/family";
 
 export const useFamilyContext = () => {
   return useContext();

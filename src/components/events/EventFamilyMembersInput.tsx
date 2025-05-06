@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import type { FamilyMember } from "@/types/familyTypes";
 import { useFamilyMembers } from "@/hooks/family/useFamilyMembers";
 import { useEffect, useState } from "react";
-import { useFamilyContext } from "@/hooks/family/useFamilyContext";
+import { useFamilyContext } from "@/contexts/family";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 

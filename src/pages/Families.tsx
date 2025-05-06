@@ -11,7 +11,7 @@ import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { CreateFamilyWithMembersForm } from "@/components/families/CreateFamilyWithMembersForm";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useFamilyContext } from "@/contexts/FamilyContext";
+import { useFamilyContext } from "@/contexts/family";
 import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 
 // Import the useEvents hook but make it optional to avoid errors when context is not available

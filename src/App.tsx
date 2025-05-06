@@ -5,7 +5,7 @@ import { RouterProvider } from 'react-router-dom';
 import router from './router'; // Using default import
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/ui/theme-provider';
-import { useFamilyContext } from './contexts/FamilyContext';
+import { useFamilyContext } from './contexts/family';
 import { EventProvider } from './contexts/EventContext';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 
