@@ -6,34 +6,32 @@ import { supabase } from "@/integrations/supabase/client";
 import { DatabaseResponse, DbTable, QueryOptions, formatError } from "../types";
 
 /**
- * Fetches data from a table with optional filtering
+ * Fetches data from a table with optional filters
+ * Using more explicit type annotations to avoid excessive type recursion
  */
-export async function fetchData<T = any>(
+export async function fetchData<T>(
   table: DbTable, 
   options: QueryOptions = {}
 ): Promise<DatabaseResponse<T[]>> {
   try {
-    console.log(`Fetching data from ${table}`, options);
+    console.log(`Fetching from ${table} with options:`, options);
     
+    // Start building the query
     let query = supabase.from(table).select(options.select || '*');
     
-    // Apply filters if any
+    // Apply filters if they exist
     if (options.filters) {
       Object.entries(options.filters).forEach(([key, value]) => {
+        // Only apply filter if value is defined
         if (value !== undefined) {
-          if (Array.isArray(value)) {
-            query = query.in(key, value);
-          } else {
-            query = query.eq(key, value);
-          }
+          query = query.eq(key, value);
         }
       });
     }
     
-    // Apply ordering if specified
+    // Apply order if specified
     if (options.order) {
-      const [column, direction] = options.order;
-      query = query.order(column, { ascending: direction === 'asc' });
+      query = query.order(options.order[0], { ascending: options.order[1] === 'asc' });
     }
     
     // Apply limit if specified
@@ -41,10 +39,11 @@ export async function fetchData<T = any>(
       query = query.limit(options.limit);
     }
     
+    // Execute the query
     const { data, error, status } = await query;
     
     if (error) {
-      console.error(`Error fetching data from ${table}:`, error);
+      console.error(`Error fetching from ${table}:`, error);
       const formattedError = formatError(error);
       return {
         data: null,
@@ -53,13 +52,14 @@ export async function fetchData<T = any>(
       };
     }
     
+    // Cast the result to the expected type
     return {
-      data: data as T[],
+      data: data as any as T[],
       error: null,
       status
     };
   } catch (err: any) {
-    console.error(`Exception fetching data from ${table}:`, err);
+    console.error(`Exception fetching from ${table}:`, err);
     const formattedError = formatError(err);
     return {
       data: null,
@@ -70,24 +70,24 @@ export async function fetchData<T = any>(
 }
 
 /**
- * Fetches a single record from a table by ID
+ * Fetches a single record by ID
  */
-export async function fetchById<T = any>(
+export async function fetchById<T>(
   table: DbTable, 
   id: string,
-  options: { select?: string } = {}
+  select: string = '*'
 ): Promise<DatabaseResponse<T>> {
   try {
-    console.log(`Fetching record from ${table} with id ${id}`);
+    console.log(`Fetching ${table} with id ${id}`);
     
     const { data, error, status } = await supabase
       .from(table)
-      .select(options.select || '*')
+      .select(select)
       .eq('id', id)
       .maybeSingle();
     
     if (error) {
-      console.error(`Error fetching record from ${table}:`, error);
+      console.error(`Error fetching ${table} by id:`, error);
       const formattedError = formatError(error);
       return {
         data: null,
@@ -97,12 +97,12 @@ export async function fetchById<T = any>(
     }
     
     return {
-      data: data as T,
+      data: data as any as T,
       error: null,
       status
     };
   } catch (err: any) {
-    console.error(`Exception fetching record from ${table}:`, err);
+    console.error(`Exception fetching ${table} by id:`, err);
     const formattedError = formatError(err);
     return {
       data: null,

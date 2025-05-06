@@ -8,6 +8,7 @@ import * as operations from "./operations";
 import * as fn from "./functions";
 import * as authService from "./auth";
 import * as typeDefinitions from "./types";
+import * as simplified from "./simplified";
 
 // Named exports to avoid ambiguity
 export const {
@@ -39,7 +40,7 @@ export type {
 // Export type definitions without conflicts 
 export const DbTypes = typeDefinitions;
 
-// Export the simplified database service with renamed exports
+// Export the simplified database service 
 export {
   getData,
   getById,
@@ -48,7 +49,7 @@ export {
   remove,
   callFunction as simpleCallFunction,
   checkAuth as simpleCheckAuth
-} from "./simpleSupabase";
+} = simplified;
 
 // Legacy export for backward compatibility
 export * as legacyDB from "./databaseService";
