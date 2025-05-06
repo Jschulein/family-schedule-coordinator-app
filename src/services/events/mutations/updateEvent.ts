@@ -2,7 +2,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
-import { prepareEventData, verifyEventOwnership, updateFamilyMemberAssociations } from "../helpers";
+import { prepareEventData } from "../helpers/eventData";
+import { verifyEventOwnership } from "../helpers/eventOwnership";
+import { updateFamilyMemberAssociations } from "../helpers/familyAssociations";
 
 /**
  * Updates an existing event in the database

@@ -1,6 +1,8 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { handleError } from "@/utils/error";
-import { verifyEventOwnership, deleteFamilyAssociations, deleteEvent } from "../helpers";
+import { verifyEventOwnership } from "../helpers/eventOwnership";
+import { deleteFamilyAssociations, deleteEvent as deleteEventHelper } from "../helpers/familyAssociations";
 
 /**
  * Deletes an event from the database
@@ -15,7 +17,7 @@ export async function deleteEventFromDb(eventId: string) {
     }
 
     await deleteFamilyAssociations(eventId);
-    await deleteEvent(eventId);
+    await deleteEventHelper(eventId);
     
     return { 
       success: true, 

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { fromDbEvent } from "@/utils/events";
 import { UserProfile, Event } from "@/types/eventTypes";

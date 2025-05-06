@@ -2,7 +2,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
-import { prepareEventData, fetchCreatorProfile, getCreatorDisplayName, associateFamilyMembers } from "../helpers";
+import { prepareEventData } from "../helpers/eventData";
+import { fetchCreatorProfile, getCreatorDisplayName } from "../helpers/creatorProfile";
+import { associateFamilyMembers } from "../helpers/familyAssociations";
 
 /**
  * Adds a new event to the database

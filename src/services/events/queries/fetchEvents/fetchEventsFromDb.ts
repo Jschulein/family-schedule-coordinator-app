@@ -1,7 +1,8 @@
+
 import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
 import { supabase } from "@/integrations/supabase/client";
-import { functionExists } from "../../helpers";
+import { functionExists } from "../../helpers/databaseUtils";
 import { fetchPersonalEventsOnly } from './fetchPersonalEvents';
 import { fetchCombinedEvents } from './fetchFamilyEvents';
 
