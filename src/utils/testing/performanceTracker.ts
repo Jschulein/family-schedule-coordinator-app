@@ -1,112 +1,212 @@
 
 /**
- * Utility for tracking test performance metrics
+ * Performance tracking utilities for application monitoring and testing
+ * 
+ * This module provides tools for measuring and analyzing performance
+ * metrics to identify bottlenecks and improve user experience.
  */
 
-interface PerformanceMarker {
+interface PerformanceMetric {
   name: string;
   startTime: number;
   endTime?: number;
-  durationMs?: number;
+  duration?: number;
+  metadata?: Record<string, any>;
 }
 
-export class PerformanceTracker {
-  private markers: Map<string, PerformanceMarker> = new Map();
-  private startTime: number;
-  
-  constructor() {
-    this.startTime = performance.now();
-  }
-  
-  /**
-   * Start tracking a specific operation
-   * @param name Name of the operation to track
-   */
-  start(name: string): void {
-    if (this.markers.has(name)) {
-      console.warn(`Performance marker '${name}' already exists and will be overwritten`);
-    }
-    
-    this.markers.set(name, {
-      name,
-      startTime: performance.now()
-    });
-  }
-  
-  /**
-   * End tracking a specific operation
-   * @param name Name of the operation to track
-   * @returns Duration in milliseconds
-   */
-  end(name: string): number {
-    const marker = this.markers.get(name);
-    
-    if (!marker) {
-      console.warn(`Performance marker '${name}' not found`);
-      return 0;
-    }
-    
-    marker.endTime = performance.now();
-    marker.durationMs = marker.endTime - marker.startTime;
-    
-    return marker.durationMs;
-  }
-  
-  /**
-   * Get the total elapsed time since tracker creation
-   */
-  getTotalElapsedTime(): number {
-    return performance.now() - this.startTime;
-  }
-  
-  /**
-   * Get all performance markers
-   */
-  getAllMarkers(): PerformanceMarker[] {
-    return Array.from(this.markers.values());
-  }
-  
-  /**
-   * Generate a performance report in markdown format
-   */
-  generateReport(): string {
-    const totalTime = this.getTotalElapsedTime();
-    const markers = this.getAllMarkers();
-    
-    let report = '## Performance Metrics\n\n';
-    report += `Total execution time: ${totalTime.toFixed(2)}ms\n\n`;
-    
-    if (markers.length > 0) {
-      report += '| Operation | Duration (ms) | % of Total |\n';
-      report += '|-----------|--------------|------------|\n';
-      
-      markers.forEach(marker => {
-        if (marker.durationMs !== undefined) {
-          const percentage = ((marker.durationMs / totalTime) * 100).toFixed(1);
-          report += `| ${marker.name} | ${marker.durationMs.toFixed(2)} | ${percentage}% |\n`;
-        } else {
-          report += `| ${marker.name} | (incomplete) | - |\n`;
-        }
-      });
-    } else {
-      report += 'No performance markers were recorded.\n';
-    }
-    
-    return report;
-  }
-  
-  /**
-   * Reset all performance markers
-   */
-  reset(): void {
-    this.markers.clear();
-    this.startTime = performance.now();
-  }
+export interface PerformanceReport {
+  metrics: PerformanceMetric[];
+  totalDuration: number;
+  averageDuration: number;
+  startTime: number;
+  endTime: number;
+  memoryUsage: {
+    used: number;
+    total: number;
+  };
+  slowestOperation: {
+    name: string;
+    duration: number;
+  } | null;
+  fastestOperation: {
+    name: string;
+    duration: number;
+  } | null;
 }
 
 /**
- * Create a new performance tracker instance
+ * A utility to track and measure performance during test execution
+ * and application runtime
  */
-export const createPerformanceTracker = (): PerformanceTracker => {
-  return new PerformanceTracker();
+export class PerformanceTracker {
+  private metrics: PerformanceMetric[] = [];
+  private startTime: number = 0;
+  private endTime: number = 0;
+  private isTracking: boolean = false;
+
+  /**
+   * Start performance tracking session
+   */
+  startTracking(): void {
+    this.metrics = [];
+    this.startTime = performance.now();
+    this.isTracking = true;
+    console.log('[PerformanceTracker] Tracking started');
+  }
+
+  /**
+   * Start measuring a specific operation
+   * @param name - Name of the operation to measure
+   * @param metadata - Optional metadata about the operation
+   * @returns The name of the operation for use with endMeasure
+   */
+  startMeasure(name: string, metadata?: Record<string, any>): string {
+    if (!this.isTracking) {
+      console.warn('[PerformanceTracker] Tracking not started, call startTracking() first');
+      this.startTracking();
+    }
+    
+    this.metrics.push({
+      name,
+      startTime: performance.now(),
+      metadata
+    });
+    
+    return name;
+  }
+
+  /**
+   * End measuring a specific operation
+   * @param name - Name of the operation to end measuring
+   * @returns The duration of the operation in milliseconds
+   */
+  endMeasure(name: string): number {
+    const metricIndex = this.metrics.findIndex(m => m.name === name && m.endTime === undefined);
+    
+    if (metricIndex === -1) {
+      console.warn(`[PerformanceTracker] No active measurement found for "${name}"`);
+      return 0;
+    }
+    
+    const now = performance.now();
+    const metric = this.metrics[metricIndex];
+    metric.endTime = now;
+    metric.duration = now - metric.startTime;
+    
+    return metric.duration;
+  }
+
+  /**
+   * Measure a function's execution time
+   * @param name - Name of the operation
+   * @param fn - Function to measure
+   * @param metadata - Optional metadata about the operation
+   * @returns The result of the function
+   */
+  async measure<T>(name: string, fn: () => Promise<T> | T, metadata?: Record<string, any>): Promise<T> {
+    this.startMeasure(name, metadata);
+    try {
+      const result = await Promise.resolve(fn());
+      return result;
+    } finally {
+      this.endMeasure(name);
+    }
+  }
+
+  /**
+   * Stop performance tracking and generate a report
+   * @returns A report of all tracked metrics
+   */
+  stopTracking(): PerformanceReport {
+    this.endTime = performance.now();
+    this.isTracking = false;
+    
+    // Calculate total and average durations
+    let totalDuration = 0;
+    let operationCount = 0;
+    let slowestOperation = null;
+    let fastestOperation = null;
+    
+    for (const metric of this.metrics) {
+      if (metric.duration !== undefined) {
+        totalDuration += metric.duration;
+        operationCount++;
+        
+        // Track slowest operation
+        if (!slowestOperation || metric.duration > slowestOperation.duration) {
+          slowestOperation = {
+            name: metric.name,
+            duration: metric.duration
+          };
+        }
+        
+        // Track fastest operation
+        if (!fastestOperation || metric.duration < fastestOperation.duration) {
+          fastestOperation = {
+            name: metric.name,
+            duration: metric.duration
+          };
+        }
+      }
+    }
+    
+    const averageDuration = operationCount > 0 ? totalDuration / operationCount : 0;
+    
+    // Get memory usage
+    const memoryUsage = getMemoryUsage();
+    
+    console.log('[PerformanceTracker] Tracking stopped');
+    
+    return {
+      metrics: this.metrics,
+      totalDuration: this.endTime - this.startTime,
+      averageDuration,
+      startTime: this.startTime,
+      endTime: this.endTime,
+      memoryUsage,
+      slowestOperation,
+      fastestOperation
+    };
+  }
+
+  /**
+   * Get the current performance metrics without stopping tracking
+   */
+  getCurrentMetrics(): PerformanceMetric[] {
+    return [...this.metrics];
+  }
+  
+  /**
+   * Clear all metrics but keep tracking active
+   */
+  clearMetrics(): void {
+    this.metrics = [];
+  }
+}
+
+// Export a singleton instance for app-wide use
+export const performanceTracker = new PerformanceTracker();
+
+// Helper function to get current memory usage
+const getMemoryUsage = (): { used: number, total: number } => {
+  // In a browser environment, we can use performance.memory if available
+  if (typeof performance !== 'undefined' && 'memory' in performance) {
+    const memory = (performance as any).memory;
+    return {
+      used: memory.usedJSHeapSize,
+      total: memory.totalJSHeapSize
+    };
+  }
+  
+  // Fallback for environments without memory API
+  return { used: 0, total: 0 };
+};
+
+// Helper function to format performance time
+export const formatExecutionTime = (milliseconds: number): string => {
+  if (milliseconds < 1000) {
+    return `${Math.round(milliseconds)}ms`;
+  } else {
+    return `${(milliseconds / 1000).toFixed(2)}s`;
+  }
 };

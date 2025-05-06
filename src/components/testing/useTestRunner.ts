@@ -4,6 +4,7 @@ import { TestResult, TestResults } from './types';
 import { testFamilyCreationFlow } from "@/tests";
 import { testFamilyMembersHook, testFamilyMembersPerformance } from "@/tests/useFamilyMembers.test";
 import { extractReportStats } from "@/utils/markdown";
+import { performanceTracker, getMemoryUsage } from "@/utils/testing";
 
 export const useTestRunner = () => {
   const [activeTab, setActiveTab] = useState("family-creation");
@@ -21,6 +22,8 @@ export const useTestRunner = () => {
       [testId]: null
     }));
     
+    // Start performance tracking
+    performanceTracker.startTracking();
     const startTime = performance.now();
     
     try {
@@ -48,13 +51,17 @@ export const useTestRunner = () => {
       const endTime = performance.now();
       const executionTimeMs = Math.round(endTime - startTime);
       
+      // Get memory usage
+      const memoryUsage = getMemoryUsage();
+      
       setResults(prev => ({
         ...prev,
         [testId]: {
           report,
           ...stats,
           executionTimeMs,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          memoryUsage
         }
       }));
     } catch (err) {
@@ -73,10 +80,13 @@ export const useTestRunner = () => {
           errorCount: 1,
           warningCount: 0,
           executionTimeMs,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          memoryUsage: getMemoryUsage()
         }
       }));
     } finally {
+      // Stop performance tracking
+      performanceTracker.stopTracking();
       setIsRunning(false);
     }
   };

@@ -11,10 +11,8 @@
 // Export performance tracking utilities
 export * from './performanceTracker';
 
-// Export test data generation utilities for consistent application testing
-export const formatTimestamp = (date: Date): string => {
-  return date.toISOString().replace('T', ' ').substring(0, 19);
-};
+// Export test data generation utilities
+export * from './testDataGenerator';
 
 // Export memory usage tracking for identifying resource issues
 export const getMemoryUsage = (): { used: number, total: number } => {
@@ -34,3 +32,8 @@ export const getMemoryUsage = (): { used: number, total: number } => {
 // Simple function to help with time-based testing
 export const delay = (ms: number): Promise<void> => 
   new Promise(resolve => setTimeout(resolve, ms));
+
+// Format timestamp for consistent logging
+export const formatTimestamp = (date: Date): string => {
+  return date.toISOString().replace('T', ' ').substring(0, 19);
+};
