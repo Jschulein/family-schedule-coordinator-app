@@ -13,7 +13,9 @@ export async function callFunction<T>(
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
-    const { data, error } = await supabase.rpc(functionName as any, params);
+    // Since we've defined DbFunction as either a known function name or a string,
+    // we can safely cast it to string for the rpc call
+    const { data, error } = await supabase.rpc(functionName as string, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

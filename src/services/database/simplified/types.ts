@@ -7,8 +7,9 @@ import type { Database } from "@/integrations/supabase/types";
 // Define concrete type for database tables
 export type DbTable = keyof Database['public']['Tables'];
 
-// Define concrete type for database functions (using string for flexibility)
-export type DbFunction = string & {};
+// Define concrete type for database functions using string literal union type
+// This constrains the functions to only known function names from the Database type
+export type DbFunction = keyof Database['public']['Functions'] | string;
 
 /**
  * Standard response format for all database operations

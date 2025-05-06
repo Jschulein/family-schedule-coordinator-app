@@ -1,3 +1,4 @@
+
 /**
  * Common types for database operations
  */
@@ -23,7 +24,7 @@ export type DbTable = keyof Database['public']['Tables'];
  * Type for database functions
  * This is a workaround to support dynamic function names while still providing type safety
  */
-export type DbFunction = string & {};
+export type DbFunction = keyof Database['public']['Functions'] | string;
 
 /**
  * Query options for fetching data

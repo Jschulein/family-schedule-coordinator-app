@@ -4,6 +4,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { DatabaseResponse, DbFunction, formatError } from "./types";
+import type { Database } from "@/integrations/supabase/types";
 
 /**
  * Executes an RPC function
@@ -16,10 +17,10 @@ export async function callFunction<T = any>(
     console.log(`Calling function ${functionName}`, params);
     
     // Call the function with the provided name and parameters
-    // We use "any" as the function name type to bypass TypeScript's strict checking
+    // We use a string type to bypass TypeScript's strict checking
     // since we need to support both known and dynamic function names
     const { data, error, status } = await supabase
-      .rpc(functionName as any, params);
+      .rpc(functionName as string, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

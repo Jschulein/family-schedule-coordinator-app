@@ -49,7 +49,7 @@ export {
   remove,
   callFunction as simpleCallFunction,
   checkAuth as simpleCheckAuth
-} = simplified;
+} from simplified;
 
 // Legacy export for backward compatibility
 export * as legacyDB from "./databaseService";
