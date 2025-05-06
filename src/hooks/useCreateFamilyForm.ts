@@ -46,11 +46,11 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
 
   const addMember = () => {
     // Performance tracking
-    const endTracking = performanceTracker.measure('addFamilyMember', () => {});
+    const trackingId = performanceTracker.startMeasure('addFamilyMember');
     
     setValue("members", [...members, { name: "", email: "", role: "member" as FamilyRole }]);
     
-    endTracking();
+    performanceTracker.endMeasure(trackingId);
   };
 
   const removeMember = (index: number) => {
@@ -65,7 +65,7 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
     setLoading(true);
     
     // Start performance tracking
-    const endTracking = performanceTracker.measure('createFamily', () => {});
+    const trackingId = performanceTracker.startMeasure('createFamily');
     
     try {
       console.log("Creating new family:", data.name);
@@ -121,7 +121,7 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
       toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setLoading(false);
-      endTracking();
+      performanceTracker.endMeasure(trackingId);
     }
   };
 

@@ -17,7 +17,7 @@ export async function createFamilyWithMembers(
   members?: Array<{ name: string; email: string; role: FamilyRole }>
 ): Promise<FamilyServiceResponse<Family>> {
   // Track performance of this function
-  const endTracking = performanceTracker.measure('createFamilyWithMembers', () => {});
+  const trackingId = performanceTracker.startMeasure('createFamilyWithMembers');
   
   try {
     // Validate input parameters
@@ -207,6 +207,6 @@ export async function createFamilyWithMembers(
       isError: true
     };
   } finally {
-    endTracking();
+    performanceTracker.endMeasure(trackingId);
   }
 }
