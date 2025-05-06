@@ -15,9 +15,9 @@ export async function callFunction<T = any>(
   try {
     console.log(`Calling function ${functionName}`, params);
     
-    // Use type assertion for the functionName since we've defined DbFunction to allow any string
+    // Call the function with the provided name and parameters
     const { data, error, status } = await supabase
-      .rpc(functionName as string, params);
+      .rpc(functionName, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

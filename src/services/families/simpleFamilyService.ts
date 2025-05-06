@@ -71,7 +71,7 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
     };
   }
   
-  // Updated to pass a Partial<Family> instead of just { name }
-  const result = await insert<Family>("families", { name });
+  // Using Partial<Family> for insert operation
+  const result = await insert<Family>("families", { name } as Partial<Family>);
   return toServiceResponse(result);
 }

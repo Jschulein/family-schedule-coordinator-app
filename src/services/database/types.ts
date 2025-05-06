@@ -21,10 +21,10 @@ export interface DatabaseResponse<T> {
 export type DbTable = keyof Database['public']['Tables'];
 
 /**
- * Type for database functions - allowing both string and strong typing
- * Using a more permissive approach to avoid TypeScript errors with dynamic function names
+ * Type for database functions
+ * We use a loose typing approach to support both known and dynamic function names
  */
-export type DbFunction = keyof Database['public']['Functions'] | string;
+export type DbFunction = string;
 
 /**
  * Query options for fetching data

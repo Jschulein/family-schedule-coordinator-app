@@ -1,4 +1,3 @@
-
 /**
  * Core database operations for CRUD functionality
  */
@@ -118,7 +117,7 @@ export async function fetchById<T = any>(
  */
 export async function insertRecord<T extends Record<string, any>>(
   table: DbTable, 
-  data: T
+  data: Partial<T>
 ): Promise<DatabaseResponse<T>> {
   try {
     console.log(`Inserting record into ${table}`, data);
@@ -126,7 +125,7 @@ export async function insertRecord<T extends Record<string, any>>(
     // Use type assertion to handle the generic constraint
     const { data: insertedData, error, status } = await supabase
       .from(table)
-      .insert(data as any)
+      .insert(data)
       .select()
       .single();
     
@@ -170,7 +169,7 @@ export async function updateRecord<T extends Record<string, any>>(
     // Use type assertion to handle the generic constraint
     const { data: updatedData, error, status } = await supabase
       .from(table)
-      .update(data as any)
+      .update(data)
       .eq('id', id)
       .select()
       .single();

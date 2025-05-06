@@ -1,10 +1,9 @@
 
 /**
- * Simplified family service that directly uses the database service
- * without excessive error handling or fallbacks
+ * Simplified family service with cleaner data access patterns
  */
+import { Family, FamilyMember } from "@/types/familyTypes";
 import { getData, getById, insert, callFunction, DbResponse } from "../database/simpleSupabase";
-import type { Family, FamilyMember } from "@/types/familyTypes";
 
 /**
  * Get all families for the current user
@@ -43,6 +42,6 @@ export async function createFamily(name: string): Promise<DbResponse<Family>> {
     return { data: null, error: "Family name is required" };
   }
 
-  // Updated to pass a Partial<Family> instead of just { name }
-  return insert<Family>("families", { name });
+  // Passing a Partial<Family> for insert operation
+  return insert<Family>("families", { name } as Partial<Family>);
 }

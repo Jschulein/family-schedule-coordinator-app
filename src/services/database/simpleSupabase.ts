@@ -10,8 +10,8 @@ import { Json } from "@/integrations/supabase/types";
 // Define concrete type for database tables
 export type DbTable = keyof Database['public']['Tables'];
 
-// Define concrete type for database functions
-export type DbFunction = keyof Database['public']['Functions'] | string;
+// Define concrete type for database functions (using string for flexibility)
+export type DbFunction = string;
 
 /**
  * Standard response format for all database operations
@@ -74,7 +74,7 @@ export async function getData<T>(
       return { data: null, error: error.message };
     }
     
-    return { data: data as unknown as T[], error: null };
+    return { data: data as T[], error: null };
   } catch (err: any) {
     console.error(`Exception fetching data from ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -101,7 +101,7 @@ export async function getById<T>(
       return { data: null, error: error.message };
     }
     
-    return { data: data as unknown as T, error: null };
+    return { data: data as T, error: null };
   } catch (err: any) {
     console.error(`Exception fetching record by ID from ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -110,7 +110,7 @@ export async function getById<T>(
 
 /**
  * Insert a new record
- * Type T is now partial to allow for auto-generated fields
+ * Uses Partial<T> to allow for auto-generated fields
  */
 export async function insert<T extends Record<string, any>>(
   table: DbTable,
@@ -119,7 +119,7 @@ export async function insert<T extends Record<string, any>>(
   try {
     const { data: result, error } = await supabase
       .from(table)
-      .insert(data as any)
+      .insert(data)
       .select()
       .single();
     
@@ -128,7 +128,8 @@ export async function insert<T extends Record<string, any>>(
       return { data: null, error: error.message };
     }
     
-    return { data: result as T, error: null };
+    // Use as unknown as T to handle the type conversion safely
+    return { data: result as unknown as T, error: null };
   } catch (err: any) {
     console.error(`Exception inserting into ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -146,7 +147,7 @@ export async function update<T extends Record<string, any>>(
   try {
     const { data: result, error } = await supabase
       .from(table)
-      .update(data as any)
+      .update(data)
       .eq('id', id)
       .select()
       .single();
@@ -156,7 +157,8 @@ export async function update<T extends Record<string, any>>(
       return { data: null, error: error.message };
     }
     
-    return { data: result as T, error: null };
+    // Use as unknown as T to handle the type conversion safely
+    return { data: result as unknown as T, error: null };
   } catch (err: any) {
     console.error(`Exception updating record in ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -196,7 +198,7 @@ export async function callFunction<T>(
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
-    const { data, error } = await supabase.rpc(functionName as string, params);
+    const { data, error } = await supabase.rpc(functionName, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);
