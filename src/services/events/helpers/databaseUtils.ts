@@ -3,6 +3,12 @@
  * Database utility functions for event-related operations
  */
 import { supabase } from "@/integrations/supabase/client";
+import { checkFunctionExists } from "@/services/database/functions";
+
+/**
+ * Check if a function exists in the database
+ */
+export const functionExists = checkFunctionExists;
 
 /**
  * Check if a user has access to a specific event

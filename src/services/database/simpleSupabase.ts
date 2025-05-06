@@ -9,6 +9,9 @@ import type { Database } from "@/integrations/supabase/types";
 // Define concrete type for database tables
 export type DbTable = keyof Database['public']['Tables'];
 
+// Define concrete type for database functions
+export type DbFunction = keyof Database['public']['Functions'];
+
 /**
  * Standard response format for all database operations
  */
@@ -106,9 +109,9 @@ export async function getById<T>(
 /**
  * Insert a new record
  */
-export async function insert<T>(
+export async function insert<T extends Record<string, any>>(
   table: DbTable,
-  data: any
+  data: T
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
@@ -132,10 +135,10 @@ export async function insert<T>(
 /**
  * Update an existing record
  */
-export async function update<T>(
+export async function update<T extends Record<string, any>>(
   table: DbTable,
   id: string,
-  data: any
+  data: Partial<T>
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
@@ -186,12 +189,11 @@ export async function remove(
  * Call a database function
  */
 export async function callFunction<T>(
-  functionName: string,
+  functionName: DbFunction,
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
-    // Type assertion to handle the dynamic function name
-    const { data, error } = await (supabase.rpc as any)(functionName, params);
+    const { data, error } = await supabase.rpc(functionName as string, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

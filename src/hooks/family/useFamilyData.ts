@@ -1,51 +1,33 @@
 
 import { useState, useCallback } from "react";
-import { toast } from "@/components/ui/use-toast";
-import { Family } from "@/types/familyTypes";
-import { getUserFamilies } from "@/services/families/simplifiedFamilyService";
+import { callFunction } from "@/services/database/functions";
+import type { Family } from "@/types/familyTypes";
 
 /**
- * Custom hook for managing family data fetching and state
+ * Custom hook for managing family data
  */
 export function useFamilyData() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch families data
-  const fetchFamilies = useCallback(async () => {
-    console.log("useFamilyData: fetchFamilies called");
+  // Function to fetch families
+  const fetchFamilies = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     
     try {
-      // Use the simplified service
-      const result = await getUserFamilies();
+      const { data, error: fetchError } = await callFunction<Family[]>("get_user_families");
       
-      if (result.error) {
-        setError(result.error);
-        toast({ 
-          title: "Error", 
-          description: "Failed to load families", 
-          variant: "destructive"
-        });
-        return [];
+      if (fetchError) {
+        setError(fetchError);
+        return;
       }
       
-      const familiesData = result.data || [];
-      console.log(`useFamilyData: fetched ${familiesData.length} families`);
-      
-      setFamilies(familiesData);
-      return familiesData;
-    } catch (error: any) {
-      console.error("Error in fetchFamilies:", error);
-      setError(error.message || "An unexpected error occurred");
-      toast({ 
-        title: "Error", 
-        description: "Failed to load families", 
-        variant: "destructive"
-      });
-      return [];
+      setFamilies(data || []);
+    } catch (err: any) {
+      console.error("Error in fetchFamilies:", err);
+      setError(err.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -55,6 +37,6 @@ export function useFamilyData() {
     families,
     loading,
     error,
-    fetchFamilies
+    fetchFamilies,
   };
 }
