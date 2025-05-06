@@ -3,11 +3,55 @@ import { supabase } from "@/integrations/supabase/client";
 import { PostgrestSingleResponse } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 
-// Use more specific typing that matches the actual database functions
-type DatabaseFunction = keyof Database["public"]["Functions"]
+// Define the specific function types that are valid in our database
+// These must match exactly the functions available in Supabase
+type DatabaseFunction = 
+  | "create_notification"
+  | "delete_user_profile" 
+  | "function_exists"
+  | "get_all_family_members_for_user"
+  | "get_families_and_members_for_user"
+  | "get_family_members"
+  | "get_family_members_by_family_id"
+  | "get_family_members_safe"
+  | "get_family_members_without_recursion"
+  | "get_user_families"
+  | "get_user_families_safe"
+  | "get_user_profile"
+  | "handle_invitation_accept"
+  | "handle_new_family"
+  | "handle_new_user"
+  | "is_event_owner"
+  | "is_family_admin"
+  | "is_family_member"
+  | "is_user_in_family"
+  | "is_user_in_family_safe"
+  | "notify_on_family_invite"
+  | "safe_create_family"
+  | "safe_is_family_admin"
+  | "safe_is_family_member"
+  | "update_user_profile"
+  | "user_can_access_event"
+  | "user_families"
+  | "user_is_admin_of_family"
+  | "user_is_family_member"
+  | "user_is_family_member_safe"
+  | "user_is_in_family"
+  | "user_is_in_family_safe"
+  | "user_is_member_of_family";
 
-// Create a type for valid table names
-type DatabaseTable = keyof Database["public"]["Tables"]
+// Define the specific table types that are valid in our database
+type DatabaseTable = 
+  | "email_preferences"
+  | "event_families"
+  | "event_invites"
+  | "events"
+  | "families"
+  | "family_members"
+  | "invitations"
+  | "notifications"
+  | "profiles"
+  | "users";
 
 /**
  * Checks if a database function exists using a secure method
@@ -48,25 +92,23 @@ export async function callWithFallback<T>(
   try {
     console.log(`Attempting to call primary function: ${primaryFunction}`);
     
-    // Call the primary function with a type assertion to help TypeScript
-    const result = await supabase.rpc(primaryFunction as string, params);
+    // Call the primary function with the correct typing
+    const result = await supabase.rpc(primaryFunction, params) as PostgrestSingleResponse<T>;
     
     if (result.error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
       
-      // Try fallback function with a type assertion
-      const fallbackResult = await supabase.rpc(fallbackFunction as string, params);
+      // Try fallback function
+      const fallbackResult = await supabase.rpc(fallbackFunction, params) as PostgrestSingleResponse<T>;
       
       if (fallbackResult.error) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
       }
       
-      // Return the fallback result with type assertion
-      return fallbackResult as PostgrestSingleResponse<T>;
+      return fallbackResult;
     }
     
-    // Return the successful primary function result with type assertion
-    return result as PostgrestSingleResponse<T>;
+    return result;
   } catch (error) {
     console.error(`Exception in callWithFallback for ${primaryFunction}/${fallbackFunction}:`, error);
     
@@ -97,7 +139,7 @@ export async function directTableQuery<T>(
 ): Promise<PostgrestSingleResponse<T>> {
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
-    let query = supabase.from(table as string).select(options.select || '*');
+    let query = supabase.from(table).select(options.select || '*');
     
     // Apply filters if provided
     if (options.filter) {

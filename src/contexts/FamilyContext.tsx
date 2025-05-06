@@ -50,7 +50,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     try {
       // Try using our secured function first
       const { data: familiesData, error: functionError } = await callWithFallback<Family[]>(
-        'get_user_families_safe', 
+        'get_user_families', 
         'get_user_families'
       );
       
