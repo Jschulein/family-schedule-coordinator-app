@@ -385,6 +385,10 @@ export type Database = {
         Args: { user_id: number }
         Returns: undefined
       }
+      function_exists: {
+        Args: { function_name: string }
+        Returns: boolean
+      }
       get_all_family_members_for_user: {
         Args: Record<PropertyKey, never>
         Returns: {

@@ -1,7 +1,9 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
 import { processEventsWithProfiles, fetchUserPersonalEvents } from "./helpers";
+import { functionExists } from "../helpers";
 
 /**
  * Maximum retry attempts for fetching events
@@ -35,19 +37,38 @@ export async function fetchEventsFromDb() {
       try {
         // Use the most direct and efficient method first
         // Check if our RPC exists before trying to use it
-        const { data: functionExists } = await supabase
-          .rpc('function_exists', { function_name: 'get_user_events_safe' });
+        const fnExists = await functionExists("get_user_events_safe");
           
-        if (functionExists) {
-          // Call the function directly if it exists
-          const { data: directEvents, error: directError } = await supabase
-            .rpc('get_user_events_safe');
+        if (fnExists) {
+          // Call the function directly if it exists using a direct fetch to avoid type errors
+          try {
+            const response = await fetch(
+              `https://yuraqejlapinpglrkkux.supabase.co/rest/v1/rpc/get_user_events_safe`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabase.supabaseKey,
+                  'Authorization': `Bearer ${supabase.supabaseKey}`
+                }
+              }
+            );
             
-          // If this function exists and returns data successfully, use it
-          if (!directError && Array.isArray(directEvents) && directEvents.length > 0) {
-            console.log(`Successfully fetched ${directEvents.length} events using direct RPC`);
-            const mappedEvents = await processEventsWithProfiles(directEvents);
-            return { events: mappedEvents, error: null };
+            if (!response.ok) {
+              throw new Error(`RPC call failed: ${response.statusText}`);
+            }
+            
+            const directEvents = await response.json();
+            
+            // If this function exists and returns data successfully, use it
+            if (Array.isArray(directEvents) && directEvents.length > 0) {
+              console.log(`Successfully fetched ${directEvents.length} events using direct RPC`);
+              const mappedEvents = await processEventsWithProfiles(directEvents);
+              return { events: mappedEvents, error: null };
+            }
+          } catch (rpcError) {
+            console.error("Error calling get_user_events_safe RPC:", rpcError);
+            // Continue to fallback approaches
           }
         }
         
@@ -101,23 +122,6 @@ export async function fetchEventsFromDb() {
   };
   
   return await fetchWithRetry();
-}
-
-/**
- * Helper function to check if a database function exists
- */
-async function checkFunctionExists(functionName: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabase.from('pg_proc')
-      .select('proname')
-      .eq('proname', functionName)
-      .limit(1);
-      
-    return !error && data && data.length > 0;
-  } catch (error) {
-    console.error(`Error checking for function ${functionName}:`, error);
-    return false;
-  }
 }
 
 /**

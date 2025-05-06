@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { toast } from "@/components/ui/use-toast";
@@ -142,14 +143,37 @@ export function getCreatorDisplayName(profile: any, userId: string) {
 
 /**
  * Creates a helper function to check if a database function exists
+ * Uses a custom RPC call to our function_exists database function
  */
 export async function functionExists(functionName: string): Promise<boolean> {
   try {
-    // We need to check in a way that doesn't cause permission issues
-    // Use a custom SQL query that checks for the function's existence
-    const { data, error } = await supabase.rpc('function_exists', { 
-      function_name: functionName 
-    });
+    // Use our custom function through a direct fetch since RPC is causing type issues
+    const { data, error } = await supabase
+      .from('functions')
+      .select('exists')
+      .eq('name', functionName)
+      .maybeSingle()
+      .then(async () => {
+        // This is a workaround - we'll do a direct fetch instead
+        const response = await fetch(
+          `https://yuraqejlapinpglrkkux.supabase.co/rest/v1/rpc/function_exists`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabase.supabaseKey,
+              'Authorization': `Bearer ${supabase.supabaseKey}`
+            },
+            body: JSON.stringify({ function_name: functionName })
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error(`Error checking function existence: ${response.statusText}`);
+        }
+        
+        return { data: await response.json(), error: null };
+      });
       
     if (error) {
       console.error(`Error checking if function ${functionName} exists:`, error);
