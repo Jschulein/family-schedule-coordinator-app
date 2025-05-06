@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFamilyMembers } from "./useFamilyMembers";
 import { useFormSubmission } from "./useFormSubmission";
-import { familyFormSchema, FamilyFormValues } from "./validationSchema";
+import { familyFormSchema } from "./validationSchema";
+import type { FamilyFormValues } from "./validationSchema";
 
 export interface UseCreateFamilyFormProps {
   onSuccess?: () => void;
@@ -43,5 +44,7 @@ export function useCreateFamilyForm(props: UseCreateFamilyFormProps = {}) {
   };
 }
 
-// Re-export types and schema
-export { FamilyFormValues, familyFormSchema };
+// Re-export schema
+export { familyFormSchema };
+// Re-export type properly with the export type syntax
+export type { FamilyFormValues };

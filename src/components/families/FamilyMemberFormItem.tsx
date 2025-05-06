@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
 import { Control } from "react-hook-form";
-import { FamilyFormValues } from "@/hooks/useCreateFamilyForm";
+import type { FamilyFormValues } from "@/hooks/family-form/validationSchema";
 
 interface FamilyMemberFormItemProps {
   index: number;
