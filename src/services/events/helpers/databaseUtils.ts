@@ -81,29 +81,31 @@ export async function callWithFallback<T>(
   try {
     console.log(`Attempting to call primary function: ${primaryFunction}`);
     
-    // Use type assertion to tell TypeScript this is safe
-    const result = await supabase.rpc(primaryFunction as string, params) as PostgrestSingleResponse<T>;
+    // Cast as specific database function to satisfy TypeScript
+    const result = await supabase.rpc(primaryFunction, params);
     
     if (result.error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
       
-      // Try fallback function with type assertion
-      const fallbackResult = await supabase.rpc(fallbackFunction as string, params) as PostgrestSingleResponse<T>;
+      // Try fallback function
+      const fallbackResult = await supabase.rpc(fallbackFunction, params);
       
       if (fallbackResult.error) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
       }
       
-      return fallbackResult;
+      // Return the result properly typed
+      return fallbackResult as PostgrestSingleResponse<T>;
     }
     
-    return result;
+    // Return the result properly typed
+    return result as PostgrestSingleResponse<T>;
   } catch (error) {
     console.error(`Exception in callWithFallback for ${primaryFunction}/${fallbackFunction}:`, error);
     
     // Create a complete PostgrestSingleResponse object
     return {
-      data: null as any,
+      data: null,
       error: error as PostgrestError,
       count: null,
       status: 500,
@@ -147,11 +149,11 @@ export async function directTableQuery<T>(
     
     const result = await query;
     
-    // Transform to PostgrestSingleResponse
+    // Transform to PostgrestSingleResponse with proper null handling
     return {
-      data: (result.data || null) as any,
-      error: result.error || null,
-      count: result.count,
+      data: result.data as T | null,
+      error: result.error,
+      count: null,
       status: result.status,
       statusText: result.statusText
     };
@@ -160,7 +162,7 @@ export async function directTableQuery<T>(
     
     // Create a complete PostgrestSingleResponse object
     return {
-      data: null as any,
+      data: null,
       error: error as PostgrestError,
       count: null,
       status: 500,
