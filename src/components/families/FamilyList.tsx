@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Family } from "@/hooks/useFamilies";
+import type { Family } from "@/types/familyTypes";
 
 interface FamilyListProps {
   families: Family[];
@@ -10,7 +10,7 @@ interface FamilyListProps {
 }
 
 export const FamilyList = ({ families, activeFamilyId, onSelectFamily }: FamilyListProps) => {
-  if (families.length === 0) {
+  if (!families || families.length === 0) {
     return (
       <Card>
         <CardContent className="py-8">

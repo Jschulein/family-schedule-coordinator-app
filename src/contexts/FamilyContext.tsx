@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { fetchUserFamilies, createFamily } from "@/services/families";
@@ -46,27 +45,46 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     setLoading(true);
     setError(null);
     
-    const result = await fetchUserFamilies();
-    
-    if (result.isError) {
-      setError(result.error || "Failed to load families");
-      toast({ title: "Error", description: "Failed to load families" });
-    } else if (result.data) {
-      setFamilies(result.data);
-      console.log(`FamilyContext: fetched ${result.data.length} families`);
+    try {
+      // Try direct database query as a fallback for RPC error
+      const { data: familiesData, error: familiesError } = await supabase
+        .from('families')
+        .select('*')
+        .order('name');
       
-      // Set first family as active if none selected
-      if (!activeFamilyId && result.data.length > 0) {
-        console.log("No active family, setting first family as active");
-        handleSelectFamily(result.data[0].id);
-      } else if (activeFamilyId && !result.data.some(f => f.id === activeFamilyId)) {
-        console.log("Active family not found in results, clearing selection");
-        setActiveFamilyId(null);
-        localStorage.removeItem("activeFamilyId");
+      if (familiesError) {
+        console.error("Error fetching families directly:", familiesError);
+        setError("Failed to load families. Please try again later.");
+        toast({ 
+          title: "Error", 
+          description: "Failed to load families", 
+          variant: "destructive"
+        });
+      } else if (familiesData) {
+        console.log(`FamilyContext: fetched ${familiesData.length} families directly`);
+        setFamilies(familiesData as Family[]);
+        
+        // Set first family as active if none selected
+        if (!activeFamilyId && familiesData.length > 0) {
+          console.log("No active family, setting first family as active");
+          handleSelectFamily(familiesData[0].id);
+        } else if (activeFamilyId && !familiesData.some(f => f.id === activeFamilyId)) {
+          console.log("Active family not found in results, clearing selection");
+          setActiveFamilyId(null);
+          localStorage.removeItem("activeFamilyId");
+        }
       }
+    } catch (error: any) {
+      console.error("Error in fetchFamilies:", error);
+      setError(error.message || "An unexpected error occurred");
+      toast({ 
+        title: "Error", 
+        description: "Failed to load families", 
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   }, [activeFamilyId]);
 
   const createFamilyHandler = async (name: string) => {
