@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/ui/theme-provider';
 import { useFamilyContext } from './contexts/family';
 import { EventProvider } from './contexts/EventContext';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
+import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
   const { fetchFamilies } = useFamilyContext();
@@ -19,11 +20,13 @@ function App() {
 
   return (
     <ThemeProvider>
-      <EventProvider>
-        <RouterProvider router={router} />
-        <Toaster />
-        <SonnerToaster />
-      </EventProvider>
+      <AuthProvider>
+        <EventProvider>
+          <RouterProvider router={router} />
+          <Toaster />
+          <SonnerToaster />
+        </EventProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

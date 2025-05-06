@@ -1,37 +1,36 @@
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuthForm } from "@/components/AuthForm";
-import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
+  
+  // Redirect to home if already logged in
   useEffect(() => {
-    // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/");
-      }
-    });
-  }, [navigate]);
-
+    if (!loading && user) {
+      navigate("/");
+    }
+  }, [user, loading, navigate]);
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">Welcome</CardTitle>
-          <CardDescription>
-            Sign in to your account or create a new one
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AuthForm />
-        </CardContent>
-      </Card>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md">
+        <Card className="border-none shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Family Schedule</CardTitle>
+            <CardDescription className="text-center">
+              Sign in to manage your family events
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AuthForm />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

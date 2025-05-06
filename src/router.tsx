@@ -13,7 +13,8 @@ import TestFamilyFlowPage from "./pages/TestFamilyFlow";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Events from "./pages/Events";
-import Settings from "./pages/Settings"; // Import the Settings page
+import Settings from "./pages/Settings";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Export as a default export to match how it's imported in App.tsx
 const router = createBrowserRouter([
@@ -24,7 +25,11 @@ const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     errorElement: <NotFound />,
     children: [
       {
@@ -41,7 +46,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/events",
-        element: <Events />, // Using Events component
+        element: <Events />,
       },
       {
         path: "/events/:eventId/edit",
@@ -53,7 +58,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/settings",
-        element: <Settings />, // Add the Settings route
+        element: <Settings />,
       },
       // Add testing routes
       {

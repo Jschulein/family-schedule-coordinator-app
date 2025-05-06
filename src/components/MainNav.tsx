@@ -1,97 +1,82 @@
-
-import * as React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Calendar, Home, Users, Settings, Clipboard, LogOut } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface MainNavProps extends React.HTMLAttributes<HTMLElement> {}
+export function MainNav({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLElement>) {
+  const location = useLocation();
+  const { signOut, user } = useAuth();
 
-export function MainNav({ className, ...props }: MainNavProps) {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  // Add navigation routes in this array
-  const navItems = [
-    {
-      name: "Home",
-      href: "/",
-      icon: <Home className="h-4 w-4 mr-2" />,
-    },
-    {
-      name: "Calendar",
-      href: "/calendar",
-      icon: <Calendar className="h-4 w-4 mr-2" />,
-    },
-    {
-      name: "Families",
-      href: "/families",
-      icon: <Users className="h-4 w-4 mr-2" />,
-    },
-    {
-      name: "Settings",
-      href: "/settings",
-      icon: <Settings className="h-4 w-4 mr-2" />,
-    },
-    {
-      name: "Test Family Flow",
-      href: "/test-family-flow",
-      icon: <Clipboard className="h-4 w-4 mr-2" />,
-    },
-  ];
-
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of your account.",
-      });
-      
-      navigate("/auth");
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error logging out",
-        description: error.message || "There was a problem logging out.",
-      });
-    }
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
   return (
     <nav
-      className={cn("flex flex-col items-start space-y-4 p-4 h-full", className)}
+      className={cn("flex items-center space-x-4 lg:space-x-6", className)}
       {...props}
     >
-      <div className="flex-1 w-full">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.href}
-            to={item.href}
-            className={({ isActive }) => 
-              cn(
-                "flex items-center text-sm font-medium transition-colors hover:text-primary w-full mb-4",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )
-            }
-            end
-          >
-            {item.icon}
-            {item.name}
-          </NavLink>
-        ))}
-      </div>
-      
-      <button
-        onClick={handleLogout}
-        className="flex items-center text-sm font-medium transition-colors hover:text-primary w-full text-muted-foreground mt-auto"
+      <Link
+        to="/"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary",
+          isActive("/") ? "text-primary" : "text-muted-foreground"
+        )}
       >
-        <LogOut className="h-4 w-4 mr-2" />
-        Logout
-      </button>
+        Home
+      </Link>
+      <Link
+        to="/calendar"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary",
+          isActive("/calendar") ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        Calendar
+      </Link>
+      <Link
+        to="/families"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary",
+          isActive("/families") ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        Families
+      </Link>
+      <Link
+        to="/events"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary",
+          isActive("/events") ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        Events
+      </Link>
+      <Link
+        to="/settings"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary",
+          isActive("/settings") ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        Settings
+      </Link>
+      
+      {user && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => signOut()}
+          className="ml-auto"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign Out
+        </Button>
+      )}
     </nav>
   );
 }
