@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { PostgrestSingleResponse } from "@supabase/supabase-js";
+import { PostgrestSingleResponse, PostgrestError } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 
 // Define the specific function types that are valid in our database
@@ -82,13 +82,13 @@ export async function callWithFallback<T>(
     console.log(`Attempting to call primary function: ${primaryFunction}`);
     
     // Use type assertion to tell TypeScript this is safe
-    const result = await supabase.rpc(primaryFunction, params) as PostgrestSingleResponse<T>;
+    const result = await supabase.rpc(primaryFunction as string, params) as PostgrestSingleResponse<T>;
     
     if (result.error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
       
       // Try fallback function with type assertion
-      const fallbackResult = await supabase.rpc(fallbackFunction, params) as PostgrestSingleResponse<T>;
+      const fallbackResult = await supabase.rpc(fallbackFunction as string, params) as PostgrestSingleResponse<T>;
       
       if (fallbackResult.error) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
@@ -103,8 +103,8 @@ export async function callWithFallback<T>(
     
     // Create a complete PostgrestSingleResponse object
     return {
-      data: null as unknown as T,
-      error: error as any,
+      data: null as any,
+      error: error as PostgrestError,
       count: null,
       status: 500,
       statusText: 'Internal Error'
@@ -149,8 +149,8 @@ export async function directTableQuery<T>(
     
     // Transform to PostgrestSingleResponse
     return {
-      data: result.data as unknown as T,
-      error: result.error,
+      data: (result.data || null) as any,
+      error: result.error || null,
       count: result.count,
       status: result.status,
       statusText: result.statusText
@@ -160,8 +160,8 @@ export async function directTableQuery<T>(
     
     // Create a complete PostgrestSingleResponse object
     return {
-      data: null as unknown as T,
-      error: error as any,
+      data: null as any,
+      error: error as PostgrestError,
       count: null,
       status: 500,
       statusText: 'Internal Error'
