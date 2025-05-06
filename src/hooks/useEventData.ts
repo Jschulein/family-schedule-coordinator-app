@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
@@ -52,9 +51,11 @@ export function useEventData() {
             variant: "destructive" 
           });
         }
-      } else {
+        // Keep existing events if we have them
+      } else if (fetchedEvents) {
         console.log(`Successfully loaded ${fetchedEvents.length} events`);
         setEvents(fetchedEvents);
+        setError(null);
       }
     } catch (e: any) {
       console.error("Error in fetchEvents:", e);

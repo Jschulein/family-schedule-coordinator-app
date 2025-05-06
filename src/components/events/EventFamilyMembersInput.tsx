@@ -5,6 +5,8 @@ import type { FamilyMember } from "@/types/familyTypes";
 import { useFamilyMembers } from "@/hooks/family/useFamilyMembers";
 import { useEffect } from "react";
 import { useFamilyContext } from "@/hooks/family/useFamilyContext";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface EventFamilyMembersInputProps {
   value: string[];
@@ -48,32 +50,65 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
 
   return (
     <div className="space-y-2">
-      <Label>Family Members</Label>
-      <div className="grid grid-cols-1 gap-2">
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading family members...</p>
-        ) : (
-          familyMembers.map((member) => (
-            <button
-              key={member.id}
-              type="button"
-              onClick={() => toggleMember(member.id)}
-              className={`flex items-center justify-between p-3 text-left rounded-lg border transition-colors
-                ${value.includes(member.id) 
-                  ? "bg-primary/10 border-primary" 
-                  : "hover:bg-muted"}`}
-            >
-              <span>{getMemberDisplayName(member)}</span>
-              {value.includes(member.id) && (
-                <Check className="h-4 w-4 text-primary" />
-              )}
-            </button>
-          ))
+      <div className="flex items-center justify-between">
+        <Label>Family Members</Label>
+        {loading ? null : (
+          <Button 
+            type="button" 
+            variant="ghost" 
+            size="sm" 
+            onClick={refreshFamilyMembers}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
         )}
       </div>
-      {error && <p className="text-sm text-red-500">{error}</p>}
-      {!loading && familyMembers.length === 0 && !error && (
-        <p className="text-sm text-muted-foreground">No family members found</p>
+      
+      <div className="grid grid-cols-1 gap-2">
+        {loading ? (
+          <div className="flex items-center justify-center p-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Loading family members...</span>
+          </div>
+        ) : (
+          familyMembers.length > 0 ? (
+            familyMembers.map((member) => (
+              <button
+                key={member.id}
+                type="button"
+                onClick={() => toggleMember(member.id)}
+                className={`flex items-center justify-between p-3 text-left rounded-lg border transition-colors
+                  ${value.includes(member.id) 
+                    ? "bg-primary/10 border-primary" 
+                    : "hover:bg-muted"}`}
+              >
+                <span>{getMemberDisplayName(member)}</span>
+                {value.includes(member.id) && (
+                  <Check className="h-4 w-4 text-primary" />
+                )}
+              </button>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground p-2">No family members found</p>
+          )
+        )}
+      </div>
+      
+      {error && (
+        <div className="p-2 text-sm text-red-500 bg-red-50 rounded-md">
+          {error}
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            className="ml-2"
+            onClick={refreshFamilyMembers}
+            disabled={loading}
+          >
+            Try Again
+          </Button>
+        </div>
       )}
     </div>
   );

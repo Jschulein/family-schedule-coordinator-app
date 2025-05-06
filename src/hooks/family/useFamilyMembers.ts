@@ -29,8 +29,8 @@ export const useFamilyMembers = () => {
       
       // Use the direct security definer function to avoid RLS recursion
       const { data, error: fetchError } = await supabase
-        .rpc('get_family_members_without_recursion', { 
-          p_family_ids: [activeFamilyId]
+        .rpc('get_family_members_by_family_id', { 
+          p_family_id: activeFamilyId
         });
       
       if (fetchError) {

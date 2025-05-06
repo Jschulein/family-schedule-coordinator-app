@@ -25,10 +25,9 @@ export async function fetchEventsFromDb() {
     console.log(`Fetching events for user: ${userId}`);
     
     try {
-      // Use the direct security definer function to get family IDs
-      // This avoids the recursive RLS policy issue
+      // First, get all user's families using the security definer function
       const { data: userFamilies, error: familiesError } = await supabase
-        .rpc('user_families');
+        .rpc('get_user_families');
   
       if (familiesError) {
         console.error("Error fetching user families:", familiesError);
@@ -43,7 +42,7 @@ export async function fetchEventsFromDb() {
       }
       
       // User has families, attempt to fetch combined events
-      const familyIds = userFamilies.map(f => f.family_id);
+      const familyIds = userFamilies.map(f => f.id);
       return await fetchCombinedEvents(userId, familyIds);
       
     } catch (error) {
@@ -54,7 +53,7 @@ export async function fetchEventsFromDb() {
   } catch (error: any) {
     const errorMessage = handleError(error, { 
       context: "Fetching events",
-      showToast: true 
+      showToast: false 
     });
     return { events: [], error: errorMessage };
   }
