@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { RefreshCw, AlertCircle } from "lucide-react";
+import { RefreshCw, AlertCircle, Plus } from "lucide-react";
 import { FamilyList } from "@/components/families/FamilyList";
 import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
@@ -10,8 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { CreateFamilyWithMembersForm } from "@/components/families/CreateFamilyWithMembersForm";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useFamilyContext } from "@/contexts/FamilyContext";
+import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 
 // Import the useEvents hook but make it optional to avoid errors when context is not available
 import { useEvents } from "@/contexts/EventContext";
@@ -28,6 +29,9 @@ const FamiliesPage = () => {
   
   const [refreshingInvitations, setRefreshingInvitations] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  
+  // Monitor performance of this page
+  const { trackInteraction } = usePerformanceMonitor('FamiliesPage');
   
   // Try to use the events context if available, otherwise provide a no-op function
   let refetchEvents = () => Promise.resolve();
@@ -51,7 +55,9 @@ const FamiliesPage = () => {
   }, [activeFamilyId, refetchEvents]);
 
   const handleInviteSent = async () => {
+    const endTracking = trackInteraction('invite-sent');
     setRefreshingInvitations(true);
+    
     try {
       // Refresh both families and invitations
       await fetchFamilies();
@@ -61,12 +67,23 @@ const FamiliesPage = () => {
       toast({ title: "Warning", description: "Invitation sent but failed to refresh data" });
     } finally {
       setRefreshingInvitations(false);
+      endTracking();
     }
   };
 
   const handleFamilyCreated = () => {
+    const endTracking = trackInteraction('family-created');
+    
     fetchFamilies();
     setSheetOpen(false);  // Close the sheet when family is created
+    
+    endTracking();
+  };
+
+  const handleRefresh = () => {
+    const endTracking = trackInteraction('refresh-families');
+    fetchFamilies();
+    endTracking();
   };
 
   return (
@@ -78,7 +95,7 @@ const FamiliesPage = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={fetchFamilies} 
+              onClick={handleRefresh} 
               disabled={loading}
               title="Refresh families"
             >
@@ -87,9 +104,15 @@ const FamiliesPage = () => {
             
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetTrigger asChild>
-                <Button>Create New Family</Button>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Family
+                </Button>
               </SheetTrigger>
               <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Create New Family</SheetTitle>
+                </SheetHeader>
                 <CreateFamilyWithMembersForm onSuccess={handleFamilyCreated} />
               </SheetContent>
             </Sheet>
@@ -120,11 +143,25 @@ const FamiliesPage = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            <FamilyList
-              families={families}
-              activeFamilyId={activeFamilyId}
-              onSelectFamily={handleSelectFamily}
-            />
+            {families.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center p-6">
+                  <p className="text-center text-muted-foreground mb-4">
+                    You don't have any families yet. Create your first family to get started!
+                  </p>
+                  <Button onClick={() => setSheetOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Family
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <FamilyList
+                families={families}
+                activeFamilyId={activeFamilyId}
+                onSelectFamily={handleSelectFamily}
+              />
+            )}
 
             {activeFamilyId && (
               <>

@@ -1,11 +1,12 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, PlusCircle, UserPlus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Loader2, PlusCircle, UserPlus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { FamilyMemberFormItem } from "./FamilyMemberFormItem";
 import { useCreateFamilyForm } from "@/hooks/useCreateFamilyForm";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CreateFamilyWithMembersFormProps {
   onSuccess: () => void;
@@ -16,6 +17,7 @@ export const CreateFamilyWithMembersForm = ({ onSuccess }: CreateFamilyWithMembe
     form, 
     loading, 
     members, 
+    errorMessage,
     addMember, 
     removeMember, 
     onSubmit 
@@ -24,11 +26,21 @@ export const CreateFamilyWithMembersForm = ({ onSuccess }: CreateFamilyWithMembe
   const { handleSubmit, control } = form;
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Create a New Family</CardTitle>
+        <CardDescription>
+          Create a family and invite members to join
+        </CardDescription>
       </CardHeader>
       <CardContent>
+        {errorMessage && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+        
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <FormField

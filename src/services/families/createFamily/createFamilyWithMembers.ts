@@ -4,6 +4,7 @@ import { Family, FamilyRole } from "@/types/familyTypes";
 import { handleError } from "@/utils/error";
 import { FamilyServiceResponse } from "../types";
 import { sendFamilyInvitations } from "./familyInvitationUtils";
+import { performanceTracker } from "@/utils/testing";
 
 /**
  * Creates a new family with initial members
@@ -15,6 +16,9 @@ export async function createFamilyWithMembers(
   name: string,
   members?: Array<{ name: string; email: string; role: FamilyRole }>
 ): Promise<FamilyServiceResponse<Family>> {
+  // Track performance of this function
+  const endTracking = performanceTracker.measure('createFamilyWithMembers', () => {});
+  
   try {
     // Validate input parameters
     if (!name || name.trim() === '') {
@@ -61,6 +65,11 @@ export async function createFamilyWithMembers(
         
         if (invitationResults.error) {
           console.warn("Error sending invitations to existing family:", invitationResults.error);
+          return {
+            data: existingFamily[0] as Family,
+            error: "Family found but there was an error inviting some members",
+            isError: false // Not treating as a critical error
+          };
         }
       }
       
@@ -83,13 +92,15 @@ export async function createFamilyWithMembers(
     if (functionError) {
       console.error("Error creating family with RPC function:", functionError);
       
-      // Handle cases where the error is due to a constraint violation but the family was created
-      if (functionError.message.includes("duplicate key value violates unique constraint") ||
-          functionError.message.includes("violates row-level security policy")) {
+      // Check if this is a duplicate key violation error
+      if (functionError.message.includes("duplicate key value violates unique constraint")) {
         console.warn("Constraint violation detected - checking if family was still created");
         
+        // Wait a short time to ensure any asynchronous DB operations complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Check if the family was actually created despite the error
-        const { data: familiesCheck, error: checkError } = await supabase
+        const { data: checkFamilies, error: checkFamiliesError } = await supabase
           .from('families')
           .select('*')
           .eq('name', name)
@@ -97,28 +108,28 @@ export async function createFamilyWithMembers(
           .order('created_at', { ascending: false })
           .limit(1);
           
-        if (!checkError && familiesCheck && familiesCheck.length > 0) {
-          console.log("Family was created successfully despite constraint violation:", familiesCheck[0]);
+        if (!checkFamiliesError && checkFamilies && checkFamilies.length > 0) {
+          console.log("Family was created successfully despite constraint violation:", checkFamilies[0]);
           
-          // Continue with invitations for this family
-          const familyId = familiesCheck[0].id;
-          
+          // Handle invitations for this family if it exists
           if (members && members.length > 0 && user.email) {
-            const invitationResults = await sendFamilyInvitations(familyId, members, user.email);
-            
-            if (invitationResults.error) {
-              console.error("Error sending invitations:", invitationResults.error);
-              // We continue even if invitations fail
-              return {
-                data: familiesCheck[0] as Family,
-                error: "Family created but there was an error inviting some members",
-                isError: false
-              };
+            try {
+              const invitationResults = await sendFamilyInvitations(
+                checkFamilies[0].id, 
+                members, 
+                user.email
+              );
+              
+              if (invitationResults.error) {
+                console.warn("Error sending invitations:", invitationResults.error);
+              }
+            } catch (inviteError) {
+              console.error("Exception sending invitations:", inviteError);
             }
           }
           
           return {
-            data: familiesCheck[0] as Family,
+            data: checkFamilies[0] as Family,
             error: null,
             isError: false
           };
@@ -127,7 +138,7 @@ export async function createFamilyWithMembers(
       
       return {
         data: null,
-        error: functionError.message,
+        error: `Error creating family: ${functionError.message}`,
         isError: true
       };
     }
@@ -195,5 +206,7 @@ export async function createFamilyWithMembers(
       error: errorMessage,
       isError: true
     };
+  } finally {
+    endTracking();
   }
 }

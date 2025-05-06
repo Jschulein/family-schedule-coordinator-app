@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { FamilyRole } from "@/types/familyTypes";
 import { createFamilyWithMembers } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
+import { performanceTracker } from "@/utils/testing";
 
 // Define validation schema
 export const familyFormSchema = z.object({
@@ -29,6 +30,7 @@ export interface UseCreateFamilyFormProps {
 
 export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}) {
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Initialize form with react-hook-form
   const form = useForm<FamilyFormValues>({
@@ -43,7 +45,12 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
   const members = watch("members") || [];
 
   const addMember = () => {
+    // Performance tracking
+    const endTracking = performanceTracker.measure('addFamilyMember', () => {});
+    
     setValue("members", [...members, { name: "", email: "", role: "member" as FamilyRole }]);
+    
+    endTracking();
   };
 
   const removeMember = (index: number) => {
@@ -53,7 +60,13 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
   };
 
   const onSubmit = async (data: FamilyFormValues) => {
+    // Reset error state
+    setErrorMessage(null);
     setLoading(true);
+    
+    // Start performance tracking
+    const endTracking = performanceTracker.measure('createFamily', () => {});
+    
     try {
       console.log("Creating new family:", data.name);
       
@@ -77,7 +90,12 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
       const result = await createFamilyWithMembers(data.name, validMembers);
       
       if (result.isError) {
-        toast({ title: "Error", description: result.error });
+        setErrorMessage(result.error || "Failed to create family");
+        toast({ 
+          title: "Error", 
+          description: result.error || "Failed to create family", 
+          variant: "destructive" 
+        });
         return;
       }
       
@@ -99,9 +117,11 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
     } catch (error: any) {
       console.error("Error in family creation form submission:", error);
       const errorMessage = error?.message || "Failed to create family. Please try again.";
-      toast({ title: "Error", description: errorMessage });
+      setErrorMessage(errorMessage);
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setLoading(false);
+      endTracking();
     }
   };
 
@@ -109,6 +129,7 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
     form,
     loading,
     members,
+    errorMessage,
     addMember,
     removeMember,
     onSubmit
