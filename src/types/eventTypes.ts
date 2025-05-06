@@ -25,5 +25,6 @@ export interface EventContextType {
   deleteEvent: (eventId: string) => Promise<void>;
   loading: boolean;
   error: string | null;
+  offlineMode: boolean;
   refetchEvents: () => Promise<void>;
 }

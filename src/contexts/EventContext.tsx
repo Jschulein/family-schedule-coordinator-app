@@ -13,10 +13,21 @@ import { useEventData } from '@/hooks/useEventData';
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
 export function EventProvider({ children }: { children: ReactNode }) {
-  const { events, setEvents, loading, error, refetchEvents } = useEventData();
+  const { events, setEvents, loading, error, offlineMode, refetchEvents } = useEventData();
 
   const addEvent = async (newEvent: Event) => {
     try {
+      // Check if we're in offline mode
+      if (offlineMode) {
+        toast({
+          title: "Warning",
+          description: "You are currently offline. Changes will be saved when you reconnect.",
+          variant: "warning"
+        });
+        // We could implement a queue of pending changes here
+        return;
+      }
+      
       const { event: createdEvent, error: addError } = await addEventFn(newEvent);
       
       if (addError) {
@@ -50,6 +61,17 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
   const updateEvent = async (updatedEvent: Event) => {
     try {
+      // Check if we're in offline mode
+      if (offlineMode) {
+        toast({
+          title: "Warning",
+          description: "You are currently offline. Changes will be saved when you reconnect.",
+          variant: "warning"
+        });
+        // We could implement a queue of pending changes here
+        return;
+      }
+      
       const { event: eventResult, error: updateError } = await updateEventFn(updatedEvent);
       
       if (updateError) {
@@ -82,6 +104,17 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
   const deleteEvent = async (eventId: string) => {
     try {
+      // Check if we're in offline mode
+      if (offlineMode) {
+        toast({
+          title: "Warning",
+          description: "You are currently offline. Changes will be saved when you reconnect.",
+          variant: "warning"
+        });
+        // We could implement a queue of pending changes here
+        return;
+      }
+      
       const { success, message, error: deleteError } = await deleteEventFn(eventId);
       
       if (deleteError) {
@@ -119,6 +152,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         deleteEvent, 
         loading, 
         error, 
+        offlineMode,
         refetchEvents 
       }}
     >

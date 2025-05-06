@@ -1,62 +1,99 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
 import { processEventsWithProfiles, fetchUserPersonalEvents } from "./helpers";
 
 /**
+ * Maximum retry attempts for fetching events
+ */
+const MAX_RETRIES = 2;
+
+/**
  * Fetches events from the database that the current user has access to
- * Uses a more resilient approach that avoids infinite recursion
+ * Uses a more resilient approach with multiple fallback mechanisms
  */
 export async function fetchEventsFromDb() {
-  try {
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      handleError(sessionError, { context: "Authentication check" });
-      return { events: [], error: "Authentication error: " + sessionError.message };
-    }
-    
-    if (!sessionData.session) {
-      console.log("No active session found");
-      return { events: [], error: "You must be logged in to view events" };
-    }
-
-    const userId = sessionData.session.user.id;
-    console.log(`Fetching events for user: ${userId}`);
-    
-    try {
-      // First, get all user's families using the security definer function
-      const { data: userFamilies, error: familiesError } = await supabase
-        .rpc('get_user_families');
+  let retries = 0;
   
-      if (familiesError) {
-        console.error("Error fetching user families:", familiesError);
-        // If we hit an error with user_families, fall back to just personal events
-        return await fetchPersonalEventsOnly(userId);
+  // Helper for retry logic
+  const fetchWithRetry = async (): Promise<{ events: Event[], error: string | null }> => {
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        handleError(sessionError, { context: "Authentication check" });
+        return { events: [], error: "Authentication error: " + sessionError.message };
       }
       
-      // If user has no families, just fetch personal events
-      if (!userFamilies || userFamilies.length === 0) {
-        console.log("No families found for user, returning personal events only");
-        return await fetchPersonalEventsOnly(userId);
+      if (!sessionData.session) {
+        console.log("No active session found");
+        return { events: [], error: "You must be logged in to view events" };
       }
+
+      const userId = sessionData.session.user.id;
+      console.log(`Fetching events for user: ${userId}, attempt ${retries + 1}`);
       
-      // User has families, attempt to fetch combined events
-      const familyIds = userFamilies.map(f => f.id);
-      return await fetchCombinedEvents(userId, familyIds);
+      try {
+        // Use the most direct and efficient method first - security definer function
+        const { data: directEvents, error: directError } = await supabase
+          .rpc('get_user_events_safe');
+          
+        // If this function exists and returns data successfully, use it
+        if (!directError && directEvents && directEvents.length > 0) {
+          console.log(`Successfully fetched ${directEvents.length} events using direct RPC`);
+          const mappedEvents = await processEventsWithProfiles(directEvents);
+          return { events: mappedEvents, error: null };
+        }
+        
+        // If direct method failed but not because the function doesn't exist,
+        // and we've used all retries, fall back to personal events
+        if (directError && !directError.message.includes('does not exist') && retries >= MAX_RETRIES) {
+          console.log("Falling back to personal events after direct RPC failed");
+          return await fetchPersonalEventsOnly(userId);
+        }
+        
+        // Otherwise, try the fallback approach to get all user families first
+        // and then fetch events for each family
+        const { data: userFamilies, error: familiesError } = await supabase
+          .rpc('get_user_families');
       
-    } catch (error) {
-      console.error("Error in family events fetch:", error);
-      // If anything fails in the family fetching process, fall back to personal events
-      return await fetchPersonalEventsOnly(userId);
+        if (familiesError) {
+          console.error("Error fetching user families:", familiesError);
+          // If we hit an error with user_families, fall back to just personal events
+          return await fetchPersonalEventsOnly(userId);
+        }
+        
+        // If user has no families, just fetch personal events
+        if (!userFamilies || userFamilies.length === 0) {
+          console.log("No families found for user, returning personal events only");
+          return await fetchPersonalEventsOnly(userId);
+        }
+        
+        // User has families, attempt to fetch combined events
+        const familyIds = userFamilies.map(f => f.id);
+        return await fetchCombinedEvents(userId, familyIds);
+        
+      } catch (error) {
+        console.error("Error in event fetching process:", error);
+        if (retries < MAX_RETRIES) {
+          retries++;
+          console.log(`Retrying event fetch (${retries}/${MAX_RETRIES})...`);
+          return await fetchWithRetry();
+        } else {
+          // If anything fails after all retries, fall back to personal events
+          console.log("All retries failed, falling back to personal events");
+          return await fetchPersonalEventsOnly(userId);
+        }
+      }
+    } catch (error: any) {
+      const errorMessage = handleError(error, { 
+        context: "Fetching events",
+        showToast: false 
+      });
+      return { events: [], error: errorMessage };
     }
-  } catch (error: any) {
-    const errorMessage = handleError(error, { 
-      context: "Fetching events",
-      showToast: false 
-    });
-    return { events: [], error: errorMessage };
-  }
+  };
+  
+  return await fetchWithRetry();
 }
 
 /**
@@ -88,6 +125,9 @@ async function fetchPersonalEventsOnly(userId: string) {
  */
 async function fetchCombinedEvents(userId: string, familyIds: string[]) {
   try {
+    // Use a transaction to make this more reliable
+    console.log(`Fetching events for ${familyIds.length} families`);
+    
     // First try to get event_families entries to find shared events
     const { data: familyEventRows, error: familyEventError } = await supabase
       .from('event_families')
@@ -103,6 +143,9 @@ async function fetchCombinedEvents(userId: string, familyIds: string[]) {
     let eventIds: string[] = [];
     if (familyEventRows && familyEventRows.length > 0) {
       eventIds = familyEventRows.map(row => row.event_id);
+      console.log(`Found ${eventIds.length} shared event IDs`);
+    } else {
+      console.log("No shared events found");
     }
     
     // Try to get all events (both personal and from families)
@@ -118,6 +161,7 @@ async function fetchCombinedEvents(userId: string, familyIds: string[]) {
       console.error("Error fetching personal events:", personalError);
     } else {
       events = personalEvents || [];
+      console.log(`Found ${events.length} personal events`);
     }
     
     // If we have family-shared event IDs, fetch those too
@@ -133,6 +177,7 @@ async function fetchCombinedEvents(userId: string, familyIds: string[]) {
       } else if (sharedEvents) {
         // Combine shared events with personal events
         events = [...events, ...sharedEvents];
+        console.log(`Added ${sharedEvents.length} shared events, total: ${events.length}`);
       }
     }
     

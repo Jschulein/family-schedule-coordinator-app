@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
@@ -6,13 +7,36 @@ import { toast } from "@/components/ui/use-toast";
 
 /**
  * Custom hook for fetching and managing event data
- * Optimized for error handling and performance
+ * Enhanced with offline support and multiple fallback mechanisms
  */
 export function useEventData() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
+  const [offlineMode, setOfflineMode] = useState<boolean>(false);
+  
+  // Check for cached events in localStorage on initial load
+  useEffect(() => {
+    const cachedEventsJson = localStorage.getItem('cachedEvents');
+    const cachedTimestamp = localStorage.getItem('cachedEventsTimestamp');
+    
+    if (cachedEventsJson) {
+      try {
+        const parsedEvents = JSON.parse(cachedEventsJson);
+        setEvents(parsedEvents);
+        console.log(`Loaded ${parsedEvents.length} events from cache`);
+        
+        // Only set loading to false if cache is relatively fresh (< 1 hour)
+        if (cachedTimestamp && (Date.now() - Number(cachedTimestamp) < 3600000)) {
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error("Failed to parse cached events:", e);
+      }
+    }
+  }, []);
   
   // Memoized fetch function to prevent unnecessary rerenders
   const fetchEvents = useCallback(async (showToast = true) => {
@@ -27,6 +51,7 @@ export function useEventData() {
     }
     
     setError(null);
+    setOfflineMode(false);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -39,11 +64,14 @@ export function useEventData() {
       }
 
       // Using our improved event fetching function that handles recursion errors
+      // with multiple fallback strategies
       const { events: fetchedEvents, error: fetchError } = await fetchEventsFromDb();
       
       if (fetchError) {
         console.error("Failed to fetch events:", fetchError);
         setError(fetchError);
+        setOfflineMode(true);
+        
         if (showToast) {
           toast({ 
             title: "Error", 
@@ -56,14 +84,26 @@ export function useEventData() {
         console.log(`Successfully loaded ${fetchedEvents.length} events`);
         setEvents(fetchedEvents);
         setError(null);
+        
+        // Cache the events for offline use
+        try {
+          localStorage.setItem('cachedEvents', JSON.stringify(fetchedEvents));
+          localStorage.setItem('cachedEventsTimestamp', Date.now().toString());
+        } catch (e) {
+          console.error("Failed to cache events:", e);
+        }
+        
+        setLastFetchTime(Date.now());
       }
     } catch (e: any) {
       console.error("Error in fetchEvents:", e);
       setError("An unexpected error occurred");
+      setOfflineMode(true);
+      
       if (showToast) {
         toast({ 
           title: "Error", 
-          description: "Failed to load events. Please try again later.", 
+          description: "Failed to load events. Using local data.", 
           variant: "destructive" 
         });
       }
@@ -86,15 +126,48 @@ export function useEventData() {
       } else if (event === 'SIGNED_OUT') {
         console.log("Auth state changed: SIGNED_OUT, clearing events");
         setEvents([]);
+        localStorage.removeItem('cachedEvents');
+        localStorage.removeItem('cachedEventsTimestamp');
       }
     });
+    
+    // Set up periodic refresh (every 5 minutes if tab is active)
+    let refreshInterval: number | undefined;
+    
+    const setupRefreshInterval = () => {
+      refreshInterval = window.setInterval(() => {
+        // Only refresh if user is active and last fetch was > 5 minutes ago
+        if (document.visibilityState === 'visible' && 
+            (!lastFetchTime || (Date.now() - lastFetchTime > 300000))) {
+          console.log("Auto-refreshing events data");
+          fetchEvents(false); // Don't show toast for auto-refresh
+        }
+      }, 300000); // 5 minutes
+    };
+    
+    setupRefreshInterval();
+    
+    // Handle tab visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // When tab becomes active, check if we need a refresh
+        if (lastFetchTime && (Date.now() - lastFetchTime > 300000)) {
+          console.log("Tab active, refreshing stale data");
+          fetchEvents(false); // Don't show toast for visibility-based refresh
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       if (authListener && authListener.subscription) {
         authListener.subscription.unsubscribe();
       }
+      if (refreshInterval) clearInterval(refreshInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchEvents]);
+  }, [fetchEvents, lastFetchTime]);
 
   return {
     events,
@@ -102,6 +175,7 @@ export function useEventData() {
     loading,
     isRefreshing,
     error,
+    offlineMode,
     refetchEvents: fetchEvents
   };
 }
