@@ -20,9 +20,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
       // Check if we're in offline mode
       if (offlineMode) {
         toast({
-          title: "Warning",
+          title: "Offline Mode",
           description: "You are currently offline. Changes will be saved when you reconnect.",
-          variant: "warning"
+          variant: "destructive"
         });
         // We could implement a queue of pending changes here
         return;
@@ -64,9 +64,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
       // Check if we're in offline mode
       if (offlineMode) {
         toast({
-          title: "Warning",
+          title: "Offline Mode",
           description: "You are currently offline. Changes will be saved when you reconnect.",
-          variant: "warning"
+          variant: "destructive"
         });
         // We could implement a queue of pending changes here
         return;
@@ -107,9 +107,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
       // Check if we're in offline mode
       if (offlineMode) {
         toast({
-          title: "Warning",
+          title: "Offline Mode",
           description: "You are currently offline. Changes will be saved when you reconnect.",
-          variant: "warning"
+          variant: "destructive"
         });
         // We could implement a queue of pending changes here
         return;

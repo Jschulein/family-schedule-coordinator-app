@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { toast } from "@/components/ui/use-toast";
@@ -139,4 +138,27 @@ export async function fetchCreatorProfile(userId: string) {
  */
 export function getCreatorDisplayName(profile: any, userId: string) {
   return profile?.full_name || profile?.Email || userId.slice(0, 8) || "Unknown";
+}
+
+/**
+ * Creates a helper function to check if a database function exists
+ */
+export async function functionExists(functionName: string): Promise<boolean> {
+  try {
+    // We need to check in a way that doesn't cause permission issues
+    // Use a custom SQL query that checks for the function's existence
+    const { data, error } = await supabase.rpc('function_exists', { 
+      function_name: functionName 
+    });
+      
+    if (error) {
+      console.error(`Error checking if function ${functionName} exists:`, error);
+      return false;
+    }
+    
+    return !!data;
+  } catch (error) {
+    console.error(`Error checking for function ${functionName}:`, error);
+    return false;
+  }
 }
