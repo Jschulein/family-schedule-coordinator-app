@@ -48,8 +48,8 @@ export async function fetchEventsFromDb() {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'apikey': supabase.supabaseKey,
-                  'Authorization': `Bearer ${supabase.supabaseKey}`
+                  'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1cmFxZWpsYXBpbnBnbHJra3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyNzQ5NTMsImV4cCI6MjA2MDg1MDk1M30.PyS67UKFVi5iriwjDmeJWLrHBOyN4cL-IRBdpLYdpZ4',
+                  'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1cmFxZWpsYXBpbnBnbHJra3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyNzQ5NTMsImV4cCI6MjA2MDg1MDk1M30.PyS67UKFVi5iriwjDmeJWLrHBOyN4cL-IRBdpLYdpZ4`
                 }
               }
             );

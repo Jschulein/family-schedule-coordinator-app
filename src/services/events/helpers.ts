@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { toast } from "@/components/ui/use-toast";
@@ -143,44 +142,31 @@ export function getCreatorDisplayName(profile: any, userId: string) {
 
 /**
  * Creates a helper function to check if a database function exists
- * Uses a custom RPC call to our function_exists database function
+ * Uses a direct API call to our function_exists database function
  */
 export async function functionExists(functionName: string): Promise<boolean> {
   try {
-    // Use our custom function through a direct fetch since RPC is causing type issues
-    const { data, error } = await supabase
-      .from('functions')
-      .select('exists')
-      .eq('name', functionName)
-      .maybeSingle()
-      .then(async () => {
-        // This is a workaround - we'll do a direct fetch instead
-        const response = await fetch(
-          `https://yuraqejlapinpglrkkux.supabase.co/rest/v1/rpc/function_exists`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': supabase.supabaseKey,
-              'Authorization': `Bearer ${supabase.supabaseKey}`
-            },
-            body: JSON.stringify({ function_name: functionName })
-          }
-        );
-        
-        if (!response.ok) {
-          throw new Error(`Error checking function existence: ${response.statusText}`);
-        }
-        
-        return { data: await response.json(), error: null };
-      });
-      
-    if (error) {
-      console.error(`Error checking if function ${functionName} exists:`, error);
-      return false;
+    // Use our custom function through a direct fetch since we can't query pg_proc directly
+    // We'll use the Supabase REST API directly
+    const response = await fetch(
+      `https://yuraqejlapinpglrkkux.supabase.co/rest/v1/rpc/function_exists`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Use the public anon key from our client
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1cmFxZWpsYXBpbnBnbHJra3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyNzQ5NTMsImV4cCI6MjA2MDg1MDk1M30.PyS67UKFVi5iriwjDmeJWLrHBOyN4cL-IRBdpLYdpZ4',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1cmFxZWpsYXBpbnBnbHJra3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyNzQ5NTMsImV4cCI6MjA2MDg1MDk1M30.PyS67UKFVi5iriwjDmeJWLrHBOyN4cL-IRBdpLYdpZ4`
+        },
+        body: JSON.stringify({ function_name: functionName })
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Error checking function existence: ${response.statusText}`);
     }
     
-    return !!data;
+    return await response.json();
   } catch (error) {
     console.error(`Error checking for function ${functionName}:`, error);
     return false;
