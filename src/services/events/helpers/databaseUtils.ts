@@ -66,15 +66,13 @@ export async function callWithFallback<T>(
     console.error(`Exception in callWithFallback for ${primaryFunction}/${fallbackFunction}:`, error);
     
     // Return a properly typed error response
-    const errorResponse: PostgrestSingleResponse<T> = {
+    return {
       data: null,
       error: error as PostgrestError,
       count: null,
       status: 500,
       statusText: 'Internal Error'
     };
-    
-    return errorResponse;
   }
 }
 
@@ -91,7 +89,13 @@ export async function directTableQuery<T>(
     filter?: Record<string, any>,
     order?: Record<string, any>
   }
-): Promise<PostgrestSingleResponse<T[]>> {
+): Promise<{
+  data: T[] | null,
+  error: PostgrestError | null,
+  count: number | null,
+  status: number,
+  statusText: string
+}> {
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
     
@@ -127,14 +131,12 @@ export async function directTableQuery<T>(
     console.error(`Exception in directTableQuery for ${table}:`, error);
     
     // Return a properly typed error response
-    const errorResponse: PostgrestSingleResponse<T[]> = {
+    return {
       data: null,
       error: error as PostgrestError,
       count: null,
       status: 500,
       statusText: 'Internal Error'
     };
-    
-    return errorResponse;
   }
 }
