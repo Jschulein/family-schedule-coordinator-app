@@ -4,7 +4,7 @@
  * Consolidates all family creation logic in one place
  */
 import { supabase } from "@/integrations/supabase/client";
-import { Family } from "@/types/familyTypes";
+import { Family, FamilyRole } from "@/types/familyTypes";
 import { FamilyServiceResponse } from "../types";
 import { formatDatabaseError } from "@/utils/error/databaseErrorHandler";
 import { handleError } from "@/utils/error";
@@ -116,7 +116,7 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
  */
 export async function createFamilyWithMembers(
   name: string,
-  members: { name: string; email: string; role: string }[]
+  members: { name: string; email: string; role: FamilyRole }[]
 ): Promise<FamilyServiceResponse<Family>> {
   // First create the family
   const familyResult = await createFamily(name);
@@ -144,16 +144,16 @@ export async function createFamilyWithMembers(
       };
     }
     
-    // Invite each member - FIX: Use direct insert into invitations table instead of RPC
+    // Invite each member - Fixed: Ensure role is properly typed as FamilyRole
     const invitePromises = members.map(async member => {
-      // Using direct insert into invitations table as a workaround for missing RPC function
+      // Using direct insert into invitations table with correct types
       return await supabase
         .from('invitations')
         .insert({
           family_id: family.id,
           email: member.email,
           name: member.name,
-          role: member.role,
+          role: member.role, // This is now properly typed as FamilyRole
           invited_by: user.id,
           last_invited: new Date().toISOString()
         });
