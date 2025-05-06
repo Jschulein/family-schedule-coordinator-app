@@ -49,7 +49,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     
     try {
       // Try using our secured function first
-      const { data: familiesData, error: functionError } = await callWithFallback(
+      const { data: familiesData, error: functionError } = await callWithFallback<Family[]>(
         'get_user_families_safe', 
         'get_user_families'
       );
@@ -58,7 +58,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
         console.log("Both RPC functions failed, attempting direct query as last resort");
         
         // Last resort: try direct database query
-        const { data: directData, error: directError } = await directTableQuery('families', {
+        const { data: directData, error: directError } = await directTableQuery<Family[]>('families', {
           select: '*',
           order: { name: 'asc' }
         });

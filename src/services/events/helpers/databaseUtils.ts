@@ -1,5 +1,38 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { PostgrestSingleResponse } from "@supabase/supabase-js";
+
+// Create a type for valid database function names
+// This matches the literals expected by the Supabase types
+type DatabaseFunction = 
+  | "create_notification"
+  | "delete_user_profile"
+  | "function_exists"
+  | "get_all_family_members_for_user"
+  | "get_all_family_members_for_user_safe"
+  | "get_family_members"
+  | "get_family_members_by_family_id"
+  | "get_family_members_safe"
+  | "get_family_members_without_recursion"
+  | "get_user_families"
+  | "get_user_families_safe"
+  | "safe_create_family"
+  | "check_user_family_access"
+  | "get_user_events_safe";
+
+// Create a type for valid table names
+// This matches the literals expected by the Supabase types
+type DatabaseTable = 
+  | "email_preferences"
+  | "families"
+  | "event_families"
+  | "events"
+  | "event_invites"
+  | "users"
+  | "family_members"
+  | "invitations"
+  | "notifications"
+  | "profiles";
 
 /**
  * Checks if a database function exists using a secure method
@@ -32,18 +65,18 @@ export async function functionExists(functionName: string): Promise<boolean> {
  * @param params Parameters to pass to the function
  * @returns The result of the function call
  */
-export async function callWithFallback(
-  primaryFunction: string,
-  fallbackFunction: string,
+export async function callWithFallback<T = any>(
+  primaryFunction: DatabaseFunction,
+  fallbackFunction: DatabaseFunction,
   params?: Record<string, any>
-) {
+): Promise<PostgrestSingleResponse<T>> {
   try {
     console.log(`Attempting to call primary function: ${primaryFunction}`);
-    const { data, error } = await supabase.rpc(primaryFunction, params);
+    const { data, error } = await supabase.rpc<T>(primaryFunction, params);
     
     if (error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, error);
-      const { data: fallbackData, error: fallbackError } = await supabase.rpc(fallbackFunction, params);
+      const { data: fallbackData, error: fallbackError } = await supabase.rpc<T>(fallbackFunction, params);
       
       if (fallbackError) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackError);
@@ -66,11 +99,14 @@ export async function callWithFallback(
  * @param options Query options
  * @returns Query result
  */
-export async function directTableQuery(table: string, options: {
-  select?: string,
-  filter?: Record<string, any>,
-  order?: Record<string, any>
-}) {
+export async function directTableQuery<T = any>(
+  table: DatabaseTable,
+  options: {
+    select?: string,
+    filter?: Record<string, any>,
+    order?: Record<string, any>
+  }
+): Promise<PostgrestSingleResponse<T>> {
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
     let query = supabase.from(table).select(options.select || '*');

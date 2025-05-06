@@ -63,9 +63,9 @@ export const useFamilyMembers = () => {
       console.log(`Fetching members for family: ${activeFamilyId}, attempt ${retryCount + 1}`);
       
       // Try using our secured functions first
-      const { data, error: fetchError } = await callWithFallback(
+      const { data, error: fetchError } = await callWithFallback<FamilyMember[]>(
         'get_family_members_by_family_id',
-        'get_all_family_members_for_user_safe',
+        'get_family_members_safe',
         { p_family_id: activeFamilyId }
       );
       
@@ -77,7 +77,7 @@ export const useFamilyMembers = () => {
           setRetryCount(prev => prev + 1);
           
           // Try direct table query as last resort
-          const { data: directData, error: directError } = await directTableQuery('family_members', {
+          const { data: directData, error: directError } = await directTableQuery<FamilyMember[]>('family_members', {
             select: '*',
             filter: { family_id: activeFamilyId }
           });
