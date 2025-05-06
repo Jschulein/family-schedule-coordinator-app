@@ -4,6 +4,7 @@ import { FamilyMember } from "@/types/familyTypes";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useFamilyContext } from "./useFamilyContext";
+import { callWithFallback, directTableQuery } from "@/services/events/helpers/databaseUtils";
 
 /**
  * Custom hook for fetching and managing family members data
@@ -16,7 +17,7 @@ export const useFamilyMembers = () => {
   const [loading, setLoading] = useState(false);
   const { activeFamilyId } = useFamilyContext();
   const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 2;
+  const MAX_RETRIES = 3;
 
   // Cache key based on active family
   const cacheKey = `familyMembers_${activeFamilyId || 'none'}`;
@@ -34,8 +35,6 @@ export const useFamilyMembers = () => {
         if (Date.now() - timestamp < 300000) {
           setFamilyMembers(members);
           console.log(`Loaded ${members.length} family members from cache`);
-          // We'll still fetch fresh data, but we won't show a loading state
-          // if we have recent cached data
         }
       }
     } catch (e) {
@@ -46,7 +45,12 @@ export const useFamilyMembers = () => {
   // Memoized loading function with retry logic
   const loadFamilyMembers = useCallback(async () => {
     // Don't fetch if no active family
-    if (!activeFamilyId) return;
+    if (!activeFamilyId) {
+      setFamilyMembers([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     
     // Don't show loading if we're retrying and already have data
     if (retryCount === 0 || familyMembers.length === 0) {
@@ -58,56 +62,52 @@ export const useFamilyMembers = () => {
     try {
       console.log(`Fetching members for family: ${activeFamilyId}, attempt ${retryCount + 1}`);
       
-      // Try to use the direct security definer function first
-      const { data, error: fetchError } = await supabase
-        .rpc('get_family_members_by_family_id', { 
-          p_family_id: activeFamilyId
-        });
+      // Try using our secured functions first
+      const { data, error: fetchError } = await callWithFallback(
+        'get_family_members_by_family_id',
+        'get_all_family_members_for_user_safe',
+        { p_family_id: activeFamilyId }
+      );
       
-      if (fetchError) {
+      if (fetchError || !data) {
         console.error("Error fetching family members:", fetchError);
         
-        // If we have retries left, try a different approach
+        // If we still have retries left, try direct query
         if (retryCount < MAX_RETRIES) {
           setRetryCount(prev => prev + 1);
           
-          // Try alternative method - using the standard family_members query
-          // with explicit RLS checking to avoid recursion
-          const { data: altData, error: altError } = await supabase
-            .from('family_members')
-            .select('*')
-            .eq('family_id', activeFamilyId);
+          // Try direct table query as last resort
+          const { data: directData, error: directError } = await directTableQuery('family_members', {
+            select: '*',
+            filter: { family_id: activeFamilyId }
+          });
+          
+          if (directError || !directData) {
+            console.error("Direct query also failed:", directError);
             
-          if (altError) {
-            console.error("Alternative fetch also failed:", altError);
-            setError("Failed to load family members");
-            
-            // Return early but don't clear existing data
+            if (retryCount === MAX_RETRIES - 1) {
+              setError("Unable to load family members");
+              toast({ 
+                title: "Error", 
+                description: "Failed to load family members" 
+              });
+            }
             return;
           }
           
-          if (altData && altData.length > 0) {
-            console.log(`Loaded ${altData.length} family members using alternative method`);
-            setFamilyMembers(altData);
-            setError(null);
-            
-            // Cache the data
-            try {
-              localStorage.setItem(cacheKey, JSON.stringify({
-                members: altData,
-                timestamp: Date.now()
-              }));
-            } catch (e) {
-              console.error("Failed to cache family members:", e);
-            }
-            
-            return;
-          }
+          console.log(`Loaded ${directData.length} family members using direct query`);
+          setFamilyMembers(directData as FamilyMember[]);
+          setError(null);
+          
+          // Cache the data
+          cacheResults(directData);
+          setRetryCount(0);
+          return;
         }
         
         setError("Failed to load family members");
         
-        if (retryCount === MAX_RETRIES) {
+        if (retryCount === MAX_RETRIES - 1) {
           toast({ 
             title: "Error", 
             description: "Unable to load family members. Please try again later." 
@@ -117,24 +117,13 @@ export const useFamilyMembers = () => {
         return;
       }
       
-      if (data) {
-        console.log(`Loaded ${data.length} family members`);
-        setFamilyMembers(data);
-        setError(null);
-        setRetryCount(0); // Reset retry count on success
-        
-        // Cache the data
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify({
-            members: data,
-            timestamp: Date.now()
-          }));
-        } catch (e) {
-          console.error("Failed to cache family members:", e);
-        }
-      } else {
-        setFamilyMembers([]);
-      }
+      console.log(`Loaded ${data.length} family members`);
+      setFamilyMembers(data as FamilyMember[]);
+      setError(null);
+      setRetryCount(0);
+      
+      // Cache the data
+      cacheResults(data);
     } catch (e) {
       console.error("Unexpected error in useFamilyMembers hook:", e);
       
@@ -158,6 +147,18 @@ export const useFamilyMembers = () => {
       setLoading(false);
     }
   }, [activeFamilyId, familyMembers.length, retryCount, cacheKey]);
+
+  // Cache helper function
+  const cacheResults = useCallback((data: any[]) => {
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({
+        members: data,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      console.error("Failed to cache family members:", e);
+    }
+  }, [cacheKey]);
 
   // Initial load when active family changes and reset retry count
   useEffect(() => {

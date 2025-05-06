@@ -29,6 +29,7 @@ const FamiliesPage = () => {
   
   const [refreshingInvitations, setRefreshingInvitations] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   
   // Monitor performance of this page
   const { trackInteraction } = usePerformanceMonitor('FamiliesPage');
@@ -43,6 +44,21 @@ const FamiliesPage = () => {
   } catch (e) {
     console.log("EventContext not available, skipping event refetch functionality");
   }
+
+  // Initial data loading
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        await fetchFamilies();
+        setConnectionError(null);
+      } catch (err) {
+        console.error("Failed to load initial data:", err);
+        setConnectionError("Could not connect to the server. Please check your connection and try again.");
+      }
+    };
+    
+    loadInitialData();
+  }, [fetchFamilies]);
 
   // When active family changes, refresh events if context is available
   useEffect(() => {
@@ -83,6 +99,7 @@ const FamiliesPage = () => {
   const handleRefresh = () => {
     const endTracking = trackInteraction('refresh-families');
     fetchFamilies();
+    setConnectionError(null);
     endTracking();
   };
 
@@ -119,7 +136,15 @@ const FamiliesPage = () => {
           </div>
         </div>
         
-        {error && (
+        {connectionError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Connection Error</AlertTitle>
+            <AlertDescription>{connectionError}</AlertDescription>
+          </Alert>
+        )}
+        
+        {error && !connectionError && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
@@ -143,7 +168,15 @@ const FamiliesPage = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {families.length === 0 ? (
+            <FamilyList
+              families={families}
+              activeFamilyId={activeFamilyId}
+              onSelectFamily={handleSelectFamily}
+              onRetry={handleRefresh}
+              error={error}
+            />
+
+            {families.length === 0 && !error && (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center p-6">
                   <p className="text-center text-muted-foreground mb-4">
@@ -155,15 +188,9 @@ const FamiliesPage = () => {
                   </Button>
                 </CardContent>
               </Card>
-            ) : (
-              <FamilyList
-                families={families}
-                activeFamilyId={activeFamilyId}
-                onSelectFamily={handleSelectFamily}
-              />
             )}
 
-            {activeFamilyId && (
+            {activeFamilyId && families.length > 0 && (
               <>
                 <Card>
                   <CardHeader>

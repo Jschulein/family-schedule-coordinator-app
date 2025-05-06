@@ -1,15 +1,43 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Family } from "@/types/familyTypes";
 
 interface FamilyListProps {
   families: Family[];
   activeFamilyId: string | null;
   onSelectFamily: (id: string) => void;
+  onRetry?: () => void;
+  error?: string | null;
 }
 
-export const FamilyList = ({ families, activeFamilyId, onSelectFamily }: FamilyListProps) => {
+export const FamilyList = ({ 
+  families, 
+  activeFamilyId, 
+  onSelectFamily,
+  onRetry,
+  error 
+}: FamilyListProps) => {
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          {onRetry && (
+            <Button onClick={onRetry} className="w-full">
+              Retry Loading Families
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!families || families.length === 0) {
     return (
       <Card>

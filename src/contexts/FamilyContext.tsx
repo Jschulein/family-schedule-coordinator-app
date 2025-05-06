@@ -1,9 +1,11 @@
+
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { fetchUserFamilies, createFamily } from "@/services/families";
 import type { Family, FamilyContextType } from "@/types/familyTypes";
 import { handleError } from "@/utils/error";
 import { supabase } from "@/integrations/supabase/client";
+import { callWithFallback, directTableQuery } from "@/services/events/helpers/databaseUtils";
 
 // Create context with default values
 const FamilyContext = createContext<FamilyContextType>({
@@ -46,34 +48,40 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     setError(null);
     
     try {
-      // Try direct database query as a fallback for RPC error
-      const { data: familiesData, error: familiesError } = await supabase
-        .from('families')
-        .select('*')
-        .order('name');
+      // Try using our secured function first
+      const { data: familiesData, error: functionError } = await callWithFallback(
+        'get_user_families_safe', 
+        'get_user_families'
+      );
       
-      if (familiesError) {
-        console.error("Error fetching families directly:", familiesError);
-        setError("Failed to load families. Please try again later.");
-        toast({ 
-          title: "Error", 
-          description: "Failed to load families", 
-          variant: "destructive"
-        });
-      } else if (familiesData) {
-        console.log(`FamilyContext: fetched ${familiesData.length} families directly`);
-        setFamilies(familiesData as Family[]);
+      if (functionError || !familiesData) {
+        console.log("Both RPC functions failed, attempting direct query as last resort");
         
-        // Set first family as active if none selected
-        if (!activeFamilyId && familiesData.length > 0) {
-          console.log("No active family, setting first family as active");
-          handleSelectFamily(familiesData[0].id);
-        } else if (activeFamilyId && !familiesData.some(f => f.id === activeFamilyId)) {
-          console.log("Active family not found in results, clearing selection");
-          setActiveFamilyId(null);
-          localStorage.removeItem("activeFamilyId");
+        // Last resort: try direct database query
+        const { data: directData, error: directError } = await directTableQuery('families', {
+          select: '*',
+          order: { name: 'asc' }
+        });
+        
+        if (directError || !directData) {
+          setError("Failed to load families. Please try again later.");
+          toast({ 
+            title: "Error", 
+            description: "Failed to load families", 
+            variant: "destructive"
+          });
+          return;
         }
+        
+        console.log(`FamilyContext: fetched ${directData.length} families via direct query`);
+        setFamilies(directData as Family[]);
+        handleFamilySelection(directData as Family[]);
+        return;
       }
+      
+      console.log(`FamilyContext: fetched ${familiesData.length} families via RPC function`);
+      setFamilies(familiesData as Family[]);
+      handleFamilySelection(familiesData as Family[]);
     } catch (error: any) {
       console.error("Error in fetchFamilies:", error);
       setError(error.message || "An unexpected error occurred");
@@ -87,6 +95,18 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     }
   }, [activeFamilyId]);
 
+  const handleFamilySelection = (familiesData: Family[]) => {
+    // Set first family as active if none selected
+    if (!activeFamilyId && familiesData.length > 0) {
+      console.log("No active family, setting first family as active");
+      handleSelectFamily(familiesData[0].id);
+    } else if (activeFamilyId && !familiesData.some(f => f.id === activeFamilyId)) {
+      console.log("Active family not found in results, clearing selection");
+      setActiveFamilyId(null);
+      localStorage.removeItem("activeFamilyId");
+    }
+  };
+
   const createFamilyHandler = async (name: string) => {
     if (!name.trim()) {
       toast({ title: "Error", description: "Please enter a family name" });
@@ -98,6 +118,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     
     try {
       console.log("FamilyContext: creating new family:", name);
+      
       // Get the current user ID from Supabase auth
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -105,8 +126,40 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
         throw new Error("User not authenticated");
       }
       
-      // Pass both required arguments: name and userId
-      const result = await createFamily(name, user.id);
+      // Try to create family with multiple methods
+      let result;
+      try {
+        console.log("Trying to create family with safe_create_family");
+        result = await createFamily(name, user.id);
+      } catch (createError) {
+        console.error("Error with primary family creation method:", createError);
+        
+        // Fallback to direct insert if RPC failed
+        try {
+          console.log("Falling back to direct insert for family creation");
+          const { data: insertData, error: insertError } = await supabase
+            .from('families')
+            .insert({
+              name,
+              created_by: user.id
+            })
+            .select()
+            .single();
+            
+          if (insertError) {
+            throw insertError;
+          }
+          
+          result = {
+            data: insertData,
+            isError: false,
+            error: null
+          };
+        } catch (fallbackError) {
+          console.error("Fallback family creation also failed:", fallbackError);
+          throw fallbackError;
+        }
+      }
       
       if (result.isError) {
         setError(result.error || "Failed to create family");
