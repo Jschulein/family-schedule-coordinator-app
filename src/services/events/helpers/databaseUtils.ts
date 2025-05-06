@@ -76,7 +76,7 @@ export async function callWithFallback<T>(
   }
 }
 
-// Define a simple result type to avoid deep instantiation issues
+// Define a concrete result type to avoid deep instantiation issues
 interface TableQueryResult<T> {
   data: T[] | null;
   error: PostgrestError | null;
@@ -102,27 +102,29 @@ export async function directTableQuery<T>(
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
     
-    // Initialize the query
+    // Use type assertion to avoid deep type checking
     let query = supabase.from(table).select(options.select || '*');
     
     // Apply filters if provided
     if (options.filter) {
       Object.entries(options.filter).forEach(([key, value]) => {
-        query = query.eq(key, value);
+        // Use type assertion to break deep type recursion
+        query = query.eq(key, value) as any;
       });
     }
     
     // Apply ordering if provided
     if (options.order) {
       Object.entries(options.order).forEach(([column, direction]) => {
-        query = query.order(column, { ascending: direction === 'asc' });
+        // Use type assertion to break deep type recursion
+        query = query.order(column, { ascending: direction === 'asc' }) as any;
       });
     }
     
-    // Execute the query and get the raw result
+    // Execute the query
     const result = await query;
     
-    // Return a properly structured response
+    // Return a properly structured response with a simplified type
     return {
       data: result.data as T[],
       error: result.error,
