@@ -1,16 +1,16 @@
+
 /**
  * Simplified Supabase database service
  * Using direct, type-safe approaches to interact with Supabase
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { Json } from "@/integrations/supabase/types";
 
 // Define concrete type for database tables
 export type DbTable = keyof Database['public']['Tables'];
 
 // Define concrete type for database functions (using string for flexibility)
-export type DbFunction = string;
+export type DbFunction = string & {};
 
 /**
  * Standard response format for all database operations
@@ -109,7 +109,7 @@ export async function getById<T>(
 
 /**
  * Insert a new record
- * Uses direct Record<string, any> to avoid generic type issues
+ * Uses type assertion to avoid generic type issues
  */
 export async function insert<T>(
   table: DbTable,
@@ -118,7 +118,7 @@ export async function insert<T>(
   try {
     const { data: result, error } = await supabase
       .from(table)
-      .insert(data)
+      .insert(data as any)
       .select()
       .single();
     
@@ -145,7 +145,7 @@ export async function update<T>(
   try {
     const { data: result, error } = await supabase
       .from(table)
-      .update(data)
+      .update(data as any)
       .eq('id', id)
       .select()
       .single();
@@ -195,7 +195,7 @@ export async function callFunction<T>(
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
-    const { data, error } = await supabase.rpc(functionName, params);
+    const { data, error } = await supabase.rpc(functionName as any, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

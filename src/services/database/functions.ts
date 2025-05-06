@@ -16,9 +16,10 @@ export async function callFunction<T = any>(
     console.log(`Calling function ${functionName}`, params);
     
     // Call the function with the provided name and parameters
-    // Use type assertion to handle the string parameter
+    // We use "any" as the function name type to bypass TypeScript's strict checking
+    // since we need to support both known and dynamic function names
     const { data, error, status } = await supabase
-      .rpc(functionName as string, params);
+      .rpc(functionName as any, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

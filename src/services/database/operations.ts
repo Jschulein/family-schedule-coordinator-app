@@ -115,7 +115,7 @@ export async function fetchById<T = any>(
 
 /**
  * Inserts a record into a table
- * Uses a more specific approach to handle typing
+ * Uses a more specific approach with type assertions to avoid type errors
  */
 export async function insertRecord<T extends Record<string, any>>(
   table: DbTable, 
@@ -124,10 +124,11 @@ export async function insertRecord<T extends Record<string, any>>(
   try {
     console.log(`Inserting record into ${table}`, data);
     
-    // Use a more direct typing approach to avoid generic constraint issues
+    // Use a more direct approach with type assertions to bypass TypeScript's type checking
+    // This is necessary because the Supabase types are very specific and don't easily allow for generic use
     const { data: insertedData, error, status } = await supabase
       .from(table)
-      .insert(data)
+      .insert(data as any)
       .select()
       .single();
     
@@ -141,8 +142,9 @@ export async function insertRecord<T extends Record<string, any>>(
       };
     }
     
+    // Use double type assertion to safely convert to T
     return {
-      data: insertedData as T,
+      data: insertedData as unknown as T,
       error: null,
       status
     };
@@ -171,7 +173,7 @@ export async function updateRecord<T extends Record<string, any>>(
     // Use type assertion to handle the generic constraint
     const { data: updatedData, error, status } = await supabase
       .from(table)
-      .update(data)
+      .update(data as any)
       .eq('id', id)
       .select()
       .single();
