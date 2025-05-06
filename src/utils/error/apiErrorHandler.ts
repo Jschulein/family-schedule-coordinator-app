@@ -21,12 +21,13 @@ export function handleApiError(
 ): string | null {
   if (!error) return null;
   
-  // Extract relevant information from the error
+  // Extract relevant information from the error with type safety
   const errorInfo = {
     message: error.message,
-    code: error.code,
-    details: error.details,
-    hint: (error as PostgrestError).hint
+    code: 'code' in error ? error.code : undefined,
+    // Only access details property if it exists (PostgrestError)
+    details: 'details' in error ? (error as PostgrestError).details : undefined,
+    hint: 'hint' in error ? (error as PostgrestError).hint : undefined
   };
   
   // Handle specific error types

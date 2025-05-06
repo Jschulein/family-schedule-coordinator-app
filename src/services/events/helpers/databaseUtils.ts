@@ -13,7 +13,7 @@ type DatabaseTable = keyof Database['public']['Tables'];
  */
 export async function functionExists(functionName: string): Promise<boolean> {
   try {
-    // Call the special function_exists helper function
+    // Call the special function_exists helper function with type assertion
     const { data, error } = await supabase.rpc('function_exists', {
       function_name: functionName
     });
@@ -31,7 +31,7 @@ export async function functionExists(functionName: string): Promise<boolean> {
 }
 
 /**
- * Attempts to call a database function with fallbacks
+ * Attempts to call a database function with fallbacks using type assertion
  * @param primaryFunction The primary function name to try first
  * @param fallbackFunction The fallback function to use if primary fails
  * @param params Parameters to pass to the function
@@ -46,13 +46,13 @@ export async function callWithFallback<T>(
     console.log(`Attempting to call primary function: ${primaryFunction}`);
     
     // Use type assertion to bypass TypeScript's strict checking for RPC functions
-    const result = await supabase.rpc(primaryFunction, params) as PostgrestSingleResponse<T>;
+    const result = await (supabase.rpc as any)(primaryFunction, params) as PostgrestSingleResponse<T>;
     
     if (result.error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
       
-      // Try fallback function
-      const fallbackResult = await supabase.rpc(fallbackFunction, params) as PostgrestSingleResponse<T>;
+      // Try fallback function with type assertion
+      const fallbackResult = await (supabase.rpc as any)(fallbackFunction, params) as PostgrestSingleResponse<T>;
       
       if (fallbackResult.error) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
@@ -65,9 +65,9 @@ export async function callWithFallback<T>(
   } catch (error) {
     console.error(`Exception in callWithFallback for ${primaryFunction}/${fallbackFunction}:`, error);
     
-    // Create a complete PostgrestSingleResponse object with the correct structure
+    // Create a PostgrestSingleResponse object with correct typing
     return {
-      data: null as unknown as T,
+      data: null,
       error: error as PostgrestError,
       count: null,
       status: 500,
@@ -89,7 +89,7 @@ export async function directTableQuery<T>(
     filter?: Record<string, any>,
     order?: Record<string, any>
   }
-): Promise<PostgrestSingleResponse<T>> {
+): Promise<PostgrestSingleResponse<T[]>> {
   try {
     console.log(`Performing direct table query on ${table} as last resort`);
     
@@ -115,7 +115,7 @@ export async function directTableQuery<T>(
     
     // Return a properly structured response
     return {
-      data: result.data as unknown as T,
+      data: result.data as unknown as T[],
       error: result.error,
       count: result.count,
       status: result.status,
@@ -125,7 +125,7 @@ export async function directTableQuery<T>(
     console.error(`Exception in directTableQuery for ${table}:`, error);
     
     return {
-      data: null as unknown as T,
+      data: null,
       error: error as PostgrestError,
       count: null,
       status: 500,
