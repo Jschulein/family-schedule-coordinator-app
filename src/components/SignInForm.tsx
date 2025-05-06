@@ -1,69 +1,67 @@
 
-import { useState } from "react";
-import { Loader } from "lucide-react";
+import React from "react";
+import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
+interface SignInFormValues {
+  email: string;
+  password: string;
+}
 
 export function SignInForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { register, handleSubmit, formState: { errors } } = useForm<SignInFormValues>();
   const { signIn, loading, error, resetAuthError } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await signIn(email, password);
+  const onSubmit = async (data: SignInFormValues) => {
+    await signIn(data.email, data.password);
+    
+    // Check if sign in was successful by looking for error
+    setTimeout(() => {
+      const { error, user } = useAuth();
+      if (!error && user) {
+        navigate("/");
+      }
+    }, 100);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="signin-email">Email</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
-          id="signin-email"
+          id="email"
           type="email"
-          placeholder="m@example.com"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            resetAuthError();
-          }}
-          disabled={loading}
-          required
-          className="bg-background"
+          placeholder="your@email.com"
+          {...register("email", { required: "Email is required" })}
         />
+        {errors.email && (
+          <p className="text-sm text-red-500">{errors.email.message}</p>
+        )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="signin-password">Password</Label>
+        <Label htmlFor="password">Password</Label>
         <Input
-          id="signin-password"
+          id="password"
           type="password"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            resetAuthError();
-          }}
-          disabled={loading}
-          required
-          className="bg-background"
+          placeholder="••••••••"
+          {...register("password", { required: "Password is required" })}
         />
-      </div>
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? (
-          <>
-            <Loader className="mr-2 h-4 w-4 animate-spin" />
-            Signing in...
-          </>
-        ) : (
-          "Sign In"
+        {errors.password && (
+          <p className="text-sm text-red-500">{errors.password.message}</p>
         )}
+      </div>
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={loading}
+      >
+        {loading ? "Signing in..." : "Sign In"}
       </Button>
     </form>
   );

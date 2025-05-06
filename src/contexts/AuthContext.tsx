@@ -3,7 +3,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   session: Session | null;
@@ -24,7 +23,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Set up the auth state listener
@@ -38,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log(`Auth event: ${event}`);
         }
 
-        // Don't make additional Supabase calls directly here to prevent deadlocks
         // Use setTimeout to defer non-critical operations
         if (currentSession?.user && event === 'SIGNED_IN') {
           setTimeout(() => {
@@ -83,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      navigate('/');
+      // No need for navigate here - we'll handle redirects in components
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
       toast({
@@ -144,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      navigate('/auth');
+      // We'll handle navigation after sign-out in the component that calls signOut
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
       toast({

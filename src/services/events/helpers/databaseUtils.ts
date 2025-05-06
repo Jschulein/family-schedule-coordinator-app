@@ -65,14 +65,16 @@ export async function callWithFallback<T>(
   } catch (error) {
     console.error(`Exception in callWithFallback for ${primaryFunction}/${fallbackFunction}:`, error);
     
-    // Create a PostgrestSingleResponse object with correct typing
-    return {
+    // Return a properly typed error response
+    const errorResponse: PostgrestSingleResponse<T> = {
       data: null,
       error: error as PostgrestError,
       count: null,
       status: 500,
       statusText: 'Internal Error'
     };
+    
+    return errorResponse;
   }
 }
 
@@ -114,22 +116,27 @@ export async function directTableQuery<T>(
     const result = await query;
     
     // Return a properly structured response
-    return {
-      data: result.data as unknown as T[],
-      error: result.error,
+    const successResponse: PostgrestSingleResponse<T[]> = {
+      data: result.data as T[],
+      error: null,
       count: result.count,
       status: result.status,
       statusText: result.statusText
     };
+    
+    return successResponse;
   } catch (error) {
     console.error(`Exception in directTableQuery for ${table}:`, error);
     
-    return {
+    // Return a properly typed error response
+    const errorResponse: PostgrestSingleResponse<T[]> = {
       data: null,
       error: error as PostgrestError,
       count: null,
       status: 500,
       statusText: 'Internal Error'
     };
+    
+    return errorResponse;
   }
 }

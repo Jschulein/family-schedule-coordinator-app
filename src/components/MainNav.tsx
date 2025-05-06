@@ -1,5 +1,6 @@
+
 import { cn } from "@/lib/utils";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,10 +10,16 @@ export function MainNav({
   ...props
 }: React.HTMLAttributes<HTMLElement>) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut, user } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   return (
@@ -70,7 +77,7 @@ export function MainNav({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => signOut()}
+          onClick={handleSignOut}
           className="ml-auto"
         >
           <LogOut className="mr-2 h-4 w-4" />
