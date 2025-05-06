@@ -42,6 +42,6 @@ export async function createFamily(name: string): Promise<DbResponse<Family>> {
     return { data: null, error: "Family name is required" };
   }
 
-  // Passing a Partial<Family> for insert operation
-  return insert<Family>("families", { name } as Partial<Family>);
+  // Use a simple Record for the insert operation
+  return insert<Family>("families", { name });
 }

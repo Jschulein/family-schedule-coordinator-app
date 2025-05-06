@@ -1,3 +1,4 @@
+
 /**
  * Core database operations for CRUD functionality
  */
@@ -114,15 +115,16 @@ export async function fetchById<T = any>(
 
 /**
  * Inserts a record into a table
+ * Uses a more specific approach to handle typing
  */
 export async function insertRecord<T extends Record<string, any>>(
   table: DbTable, 
-  data: Partial<T>
+  data: Record<string, any>
 ): Promise<DatabaseResponse<T>> {
   try {
     console.log(`Inserting record into ${table}`, data);
     
-    // Use type assertion to handle the generic constraint
+    // Use a more direct typing approach to avoid generic constraint issues
     const { data: insertedData, error, status } = await supabase
       .from(table)
       .insert(data)
@@ -140,7 +142,7 @@ export async function insertRecord<T extends Record<string, any>>(
     }
     
     return {
-      data: insertedData as unknown as T,
+      data: insertedData as T,
       error: null,
       status
     };

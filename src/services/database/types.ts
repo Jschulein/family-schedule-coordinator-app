@@ -21,10 +21,16 @@ export interface DatabaseResponse<T> {
 export type DbTable = keyof Database['public']['Tables'];
 
 /**
- * Type for database functions
- * We use a loose typing approach to support both known and dynamic function names
+ * Type for known database functions
+ * These are the exact function names from the Supabase schema
  */
-export type DbFunction = string;
+export type KnownDbFunction = keyof Database['public']['Functions'];
+
+/**
+ * Type for database functions
+ * We use a union type to support both known and dynamic function names
+ */
+export type DbFunction = KnownDbFunction | string;
 
 /**
  * Query options for fetching data

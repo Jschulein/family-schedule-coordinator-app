@@ -1,4 +1,3 @@
-
 /**
  * Simplified Supabase database service
  * Using direct, type-safe approaches to interact with Supabase
@@ -110,11 +109,11 @@ export async function getById<T>(
 
 /**
  * Insert a new record
- * Uses Partial<T> to allow for auto-generated fields
+ * Uses direct Record<string, any> to avoid generic type issues
  */
-export async function insert<T extends Record<string, any>>(
+export async function insert<T>(
   table: DbTable,
-  data: Partial<T>
+  data: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
@@ -128,8 +127,7 @@ export async function insert<T extends Record<string, any>>(
       return { data: null, error: error.message };
     }
     
-    // Use as unknown as T to handle the type conversion safely
-    return { data: result as unknown as T, error: null };
+    return { data: result as T, error: null };
   } catch (err: any) {
     console.error(`Exception inserting into ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };
@@ -139,10 +137,10 @@ export async function insert<T extends Record<string, any>>(
 /**
  * Update an existing record
  */
-export async function update<T extends Record<string, any>>(
+export async function update<T>(
   table: DbTable,
   id: string,
-  data: Partial<T>
+  data: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
@@ -157,8 +155,7 @@ export async function update<T extends Record<string, any>>(
       return { data: null, error: error.message };
     }
     
-    // Use as unknown as T to handle the type conversion safely
-    return { data: result as unknown as T, error: null };
+    return { data: result as T, error: null };
   } catch (err: any) {
     console.error(`Exception updating record in ${table}:`, err);
     return { data: null, error: err.message || 'An unexpected error occurred' };

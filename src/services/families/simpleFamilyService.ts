@@ -71,7 +71,7 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
     };
   }
   
-  // Using Partial<Family> for insert operation
-  const result = await insert<Family>("families", { name } as Partial<Family>);
+  // Using simple Record for insert operation
+  const result = await insert<Family>("families", { name });
   return toServiceResponse(result);
 }
