@@ -1,12 +1,10 @@
 
-import { useState, useCallback, ReactNode } from "react";
+import { useState, useCallback, ReactNode, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { fetchUserFamilies, createFamily } from "@/services/families";
-import type { Family } from "@/types/familyTypes";
-import { handleError } from "@/utils/error";
+import { Family } from "@/types/familyTypes";
 import { supabase } from "@/integrations/supabase/client";
-import { callWithFallback, directTableQuery } from "@/services/events/helpers/databaseUtils";
 import { FamilyContext } from "./FamilyContext";
+import { getUserFamilies, createFamily as createFamilyService } from "@/services/families/simplifiedFamilyService";
 
 interface FamilyProviderProps {
   children: ReactNode;
@@ -27,47 +25,24 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     setError(null);
     
     try {
-      // Try using our secured function first
-      const { data: familiesData, error: functionError } = await callWithFallback<Family[]>(
-        'get_user_families', 
-        'get_user_families'
-      );
+      // Use the simplified service
+      const result = await getUserFamilies();
       
-      if (functionError || !familiesData) {
-        console.log("Both RPC functions failed, attempting direct query as last resort");
-        
-        // Last resort: try direct database query
-        const { data: directData, error: directError } = await directTableQuery<Family>(
-          'families',
-          {
-            select: '*',
-            order: { name: 'asc' }
-          }
-        );
-        
-        if (directError || !directData) {
-          setError("Failed to load families. Please try again later.");
-          toast({ 
-            title: "Error", 
-            description: "Failed to load families", 
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        console.log(`FamilyContext: fetched ${directData.length} families via direct query`);
-        // Ensure directData is treated as an array
-        const familiesArray = Array.isArray(directData) ? directData : [directData];
-        setFamilies(familiesArray);
-        handleFamilySelection(familiesArray);
+      if (result.error) {
+        setError(result.error);
+        toast({ 
+          title: "Error", 
+          description: "Failed to load families", 
+          variant: "destructive"
+        });
         return;
       }
       
-      console.log(`FamilyContext: fetched ${familiesData.length} families via RPC function`);
-      // Ensure familiesData is treated as an array
-      const familiesArray = Array.isArray(familiesData) ? familiesData : [familiesData];
-      setFamilies(familiesArray);
-      handleFamilySelection(familiesArray);
+      const familiesData = result.data || [];
+      console.log(`FamilyContext: fetched ${familiesData.length} families`);
+      
+      setFamilies(familiesData);
+      handleFamilySelection(familiesData);
     } catch (error: any) {
       console.error("Error in fetchFamilies:", error);
       setError(error.message || "An unexpected error occurred");
@@ -79,7 +54,12 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     } finally {
       setLoading(false);
     }
-  }, [activeFamilyId]);
+  }, []);
+
+  // Initial load on mount
+  useEffect(() => {
+    fetchFamilies();
+  }, [fetchFamilies]);
 
   const handleFamilySelection = (familiesData: Family[]) => {
     // Set first family as active if none selected
@@ -96,7 +76,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
   const createFamilyHandler = async (name: string) => {
     if (!name.trim()) {
       toast({ title: "Error", description: "Please enter a family name" });
-      return;
+      return null;
     }
 
     setCreating(true);
@@ -105,52 +85,12 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     try {
       console.log("FamilyContext: creating new family:", name);
       
-      // Get the current user ID from Supabase auth
-      const { data: { user } } = await supabase.auth.getUser();
+      const result = await createFamilyService(name);
       
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-      
-      // Try to create family with multiple methods
-      let result;
-      try {
-        console.log("Trying to create family with safe_create_family");
-        result = await createFamily(name, user.id);
-      } catch (createError) {
-        console.error("Error with primary family creation method:", createError);
-        
-        // Fallback to direct insert if RPC failed
-        try {
-          console.log("Falling back to direct insert for family creation");
-          const { data: insertData, error: insertError } = await supabase
-            .from('families')
-            .insert({
-              name,
-              created_by: user.id
-            })
-            .select()
-            .single();
-            
-          if (insertError) {
-            throw insertError;
-          }
-          
-          result = {
-            data: insertData,
-            isError: false,
-            error: null
-          };
-        } catch (fallbackError) {
-          console.error("Fallback family creation also failed:", fallbackError);
-          throw fallbackError;
-        }
-      }
-      
-      if (result.isError) {
-        setError(result.error || "Failed to create family");
+      if (result.error) {
+        setError(result.error);
         toast({ title: "Error", description: result.error || "Failed to create family" });
-        throw new Error(result.error);
+        return null;
       }
       
       if (!result.data) {
@@ -165,11 +105,14 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
       handleSelectFamily(result.data.id);
       return result.data;
     } catch (error: any) {
-      handleError(error, { 
-        context: "Creating family",
-        showToast: false // Already handled above
+      console.error("Error creating family:", error);
+      setError(error.message || "An unexpected error occurred");
+      toast({ 
+        title: "Error", 
+        description: "Failed to create family", 
+        variant: "destructive"
       });
-      throw error; // Propagate the error so the form can handle it
+      return null;
     } finally {
       setCreating(false);
     }
@@ -180,6 +123,24 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     setActiveFamilyId(familyId);
     localStorage.setItem("activeFamilyId", familyId);
   };
+
+  // Set up realtime subscription for family changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('family-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'families' }, 
+        () => {
+          console.log('Family changes detected, refreshing data');
+          fetchFamilies();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchFamilies]);
 
   return (
     <FamilyContext.Provider

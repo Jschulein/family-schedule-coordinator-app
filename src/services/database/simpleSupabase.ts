@@ -6,7 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-// Define concrete type for database tables to avoid dynamic strings
+// Define concrete type for database tables
 export type DbTable = keyof Database['public']['Tables'];
 
 /**
@@ -108,7 +108,7 @@ export async function getById<T>(
  */
 export async function insert<T>(
   table: DbTable,
-  data: any // Using 'any' here to avoid complex type mapping issues
+  data: any
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
@@ -135,7 +135,7 @@ export async function insert<T>(
 export async function update<T>(
   table: DbTable,
   id: string,
-  data: any // Using 'any' here to avoid complex type mapping issues
+  data: any
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
