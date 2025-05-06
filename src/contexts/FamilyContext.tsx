@@ -1,7 +1,7 @@
+
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { toast } from "@/components/ui/use-toast";
-import { fetchUserFamilies } from "@/services/families";
-import { createFamily } from "@/services/families/createFamily";
+import { fetchUserFamilies, createFamily } from "@/services/families";
 import type { Family, FamilyContextType } from "@/types/familyTypes";
 import { handleError } from "@/utils/error";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,7 +80,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     
     try {
       console.log("FamilyContext: creating new family:", name);
-      // Update here: Get the current user ID from Supabase auth
+      // Get the current user ID from Supabase auth
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
