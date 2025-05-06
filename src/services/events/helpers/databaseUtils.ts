@@ -72,28 +72,32 @@ export async function callWithFallback<T>(
 ): Promise<PostgrestSingleResponse<T>> {
   try {
     console.log(`Attempting to call primary function: ${primaryFunction}`);
-    // Use explicit type parameter with unknown first and T second
-    const result = await supabase.rpc<unknown, T>(primaryFunction, params);
+    
+    // Call the primary function
+    const result = await supabase.rpc(primaryFunction, params);
     
     if (result.error) {
       console.warn(`Error calling ${primaryFunction}, trying fallback ${fallbackFunction}:`, result.error);
-      // Use explicit type parameter with unknown first and T second
-      const fallbackResult = await supabase.rpc<unknown, T>(fallbackFunction, params);
+      
+      // Try fallback function
+      const fallbackResult = await supabase.rpc(fallbackFunction, params);
       
       if (fallbackResult.error) {
         console.error(`Fallback function ${fallbackFunction} also failed:`, fallbackResult.error);
-        return fallbackResult;
       }
       
-      return fallbackResult;
+      // Return the fallback result (success or error)
+      return fallbackResult as PostgrestSingleResponse<T>;
     }
     
-    return result;
+    // Return the successful primary function result
+    return result as PostgrestSingleResponse<T>;
   } catch (error) {
     console.error(`Exception in callWithFallback for ${primaryFunction}/${fallbackFunction}:`, error);
+    
     // Create a complete PostgrestSingleResponse object
     return {
-      data: null as T,
+      data: null as unknown as T,
       error: error as any,
       count: null,
       status: 500,
@@ -143,7 +147,7 @@ export async function directTableQuery<T>(
     
     // Properly construct the PostgrestSingleResponse object
     return {
-      data: result.data as T,
+      data: result.data as unknown as T,
       error: null,
       count: result.count,
       status: result.status,
@@ -151,9 +155,10 @@ export async function directTableQuery<T>(
     };
   } catch (error) {
     console.error(`Exception in directTableQuery for ${table}:`, error);
+    
     // Create a complete PostgrestSingleResponse object
     return {
-      data: null as T,
+      data: null as unknown as T,
       error: error as any,
       count: null,
       status: 500,
