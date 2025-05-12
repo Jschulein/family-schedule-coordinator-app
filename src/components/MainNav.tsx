@@ -2,7 +2,7 @@
 import { cn } from "@/lib/utils";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function MainNav({
@@ -20,6 +20,10 @@ export function MainNav({
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
+  };
+
+  const handleCreateEvent = () => {
+    navigate('/events/new');
   };
 
   return (
@@ -73,17 +77,27 @@ export function MainNav({
         Settings
       </Link>
       
-      {user && (
+      <div className="ml-auto flex items-center space-x-2">
         <Button
           variant="outline"
           size="sm"
-          onClick={handleSignOut}
-          className="ml-auto"
+          onClick={handleCreateEvent}
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
+          <Plus className="mr-1 h-4 w-4" />
+          New Event
         </Button>
-      )}
+        
+        {user && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSignOut}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
+        )}
+      </div>
     </nav>
   );
 }
