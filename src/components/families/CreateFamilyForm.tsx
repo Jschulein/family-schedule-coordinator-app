@@ -119,7 +119,7 @@ export const CreateFamilyForm = ({ onSubmit, creating, retryCount = 0 }: CreateF
             )}
             
             {isHealthy === false && (
-              <Alert variant="warning" className="mt-2">
+              <Alert variant="default" className="mt-2">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
                   System health check failed. The family creation service may be experiencing issues.

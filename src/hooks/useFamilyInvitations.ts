@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { fetchFamilyInvitations, resendFamilyInvitation } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FamilyInvitation } from "@/services/families/types";
+import { FamilyInvitation } from "@/types/familyTypes";
 
 /**
  * Hook for managing family invitations with optimized performance

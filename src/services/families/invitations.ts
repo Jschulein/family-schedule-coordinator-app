@@ -1,8 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { FamilyRole } from "@/types/familyTypes";
+import { FamilyRole, FamilyInvitation } from "@/types/familyTypes";
 import { handleError } from "@/utils/error";
-import { FamilyInvitation, FamilyServiceResponse } from "./types";
+import { FamilyServiceResponse } from "./types";
 
 /**
  * Invites a new member to a family

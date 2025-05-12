@@ -21,6 +21,19 @@ export type FamilyMember = {
 
 export type FamilyRole = "admin" | "member" | "child";
 
+// Add the missing FamilyInvitation type that matches the database schema
+export type FamilyInvitation = {
+  id: string;
+  family_id: string;
+  email: string;
+  name?: string;
+  role: FamilyRole;
+  status: string;
+  invited_at: string;
+  invited_by?: string;
+  last_invited?: string;
+};
+
 // Response type for family service operations
 export interface FamilyServiceResponse<T> {
   data: T | null;
