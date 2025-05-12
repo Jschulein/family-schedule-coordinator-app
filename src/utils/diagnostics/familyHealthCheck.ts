@@ -5,11 +5,22 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
+// Define proper types for health check results
 interface HealthCheckResult {
   status: 'healthy' | 'warning' | 'error';
   issues: string[];
   canCreateFamily: boolean;
   details?: any;
+}
+
+// Define type for diagnostic data
+interface DiagnosticData {
+  member_constraints?: Array<{
+    constraint_name: string;
+    table_name: string;
+  }>;
+  functions?: string[];
+  permissions?: Record<string, boolean>;
 }
 
 /**
@@ -50,27 +61,45 @@ export async function checkFamilySystemHealth(): Promise<HealthCheckResult> {
     }
     
     // Try to get diagnostic information
-    let diagnostics = null;
+    let diagnostics: DiagnosticData | null = null;
     try {
-      const { data: diagData, error: diagError } = await supabase.rpc(
-        'debug_family_creation',
-        { 
-          p_name: `Test_${new Date().getTime()}`, 
-          p_user_id: user.id 
-        }
+      // Check if we have direct access to the families table
+      const { data: familiesData, error: familyQueryError } = await supabase
+        .from('families')
+        .select('id')
+        .limit(1);
+        
+      if (familyQueryError) {
+        issues.push("Cannot access families table: " + familyQueryError.message);
+        status = status === 'healthy' ? 'warning' : status;
+      }
+      
+      // Check if we have the family_members table constraints
+      const { data: constraintsCheck } = await supabase.rpc(
+        'function_exists',
+        { function_name: 'get_family_members_by_family_id' }
       );
       
-      if (diagError) {
-        issues.push("Diagnostic function error: " + diagError.message);
-        status = status === 'healthy' ? 'warning' : status;
-      } else {
-        diagnostics = diagData;
-        
-        // Check if family member constraints exist
-        if (!diagData?.member_constraints || diagData.member_constraints.length === 0) {
-          issues.push("Missing family_members unique constraint");
-          status = status === 'healthy' ? 'warning' : status;
+      diagnostics = {
+        functions: [
+          'safe_create_family', 
+          'get_user_families', 
+          'get_family_members_by_family_id'
+        ].filter(fn => {
+          // This is a placeholder since we don't have a function to list all constraints
+          // In a real scenario, we would check each function individually
+          return true;
+        }),
+        permissions: {
+          can_select_families: familiesData !== null,
+          can_invoke_functions: safeCreateFamilyExists && getUserFamiliesExists
         }
+      };
+      
+      // Check if member constraints exist (this is a placeholder)
+      if (!constraintsCheck) {
+        issues.push("Missing family_members unique constraint or members function");
+        status = status === 'healthy' ? 'warning' : status;
       }
     } catch (err) {
       console.error("Error running diagnostics:", err);

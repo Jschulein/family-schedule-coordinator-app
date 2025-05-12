@@ -1,3 +1,4 @@
+
 /**
  * Simplified Family Service
  * Uses the improved error handling and security patterns
@@ -19,8 +20,8 @@ export async function getUserFamilies(): Promise<FamilyServiceResponse<Family[]>
   try {
     console.log("Fetching user families using security definer function");
     
-    // Use the security definer function to avoid infinite recursion
-    const { data, error } = await supabase.rpc('get_user_families_safe');
+    // Use the security definer function that exists in the database
+    const { data, error } = await supabase.rpc('get_user_families');
     
     if (error) {
       console.error("Error fetching user families:", error);
@@ -213,15 +214,25 @@ async function runDiagnostics(familyId: string, name: string, userId: string) {
       
     console.log("Family members:", members || "None found", membersError);
     
-    // Run the debug function
-    try {
-      const { data: debug } = await supabase.rpc(
-        'debug_family_creation',
-        { p_name: name, p_user_id: userId }
-      );
-      console.log("Debug data:", debug);
-    } catch (err) {
-      console.error("Debug function error:", err);
+    // Check function existence first
+    const { data: fnExists } = await supabase.rpc(
+      'function_exists',
+      { function_name: 'get_family_members_by_family_id' }
+    );
+    
+    if (fnExists) {
+      // Run a simple diagnostic query instead of debug_family_creation
+      try {
+        const { data: diagnosticData } = await supabase.rpc(
+          'get_family_members_by_family_id',
+          { p_family_id: familyId }
+        );
+        console.log("Family members diagnostic data:", diagnosticData);
+      } catch (err) {
+        console.error("Diagnostic query error:", err);
+      }
+    } else {
+      console.log("Family diagnostic function not found");
     }
     
     console.groupEnd();
