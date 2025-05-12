@@ -10,6 +10,7 @@ This document tracks errors found in the application and their solutions. Use th
 - [Navigation Issues](#navigation-issues)
 - [UI/UX Issues](#uiux-issues)
 - [Performance Issues](#performance-issues)
+- [Database and Type Issues](#database-and-type-issues)
 
 ## Authentication Issues
 
@@ -291,6 +292,86 @@ const fetchFilteredEvents = async (filters) => {
 };
 ```
 
+## Database and Type Issues
+
+### Error: TypeScript Error with Function Call Parameters
+**Description**: TypeScript errors occur when attempting to call RPC functions due to strict typing constraints:
+```
+error TS2345: Argument of type 'string' is not assignable to parameter of type '"create_notification" | "delete_user_profile" | "function_exists" | ...
+```
+
+**Solution**: Apply more aggressive type assertions to bypass TypeScript's strict function name checks:
+```typescript
+// Before
+const { data, error } = await supabase.rpc(
+  functionName as unknown as string, 
+  params
+);
+
+// After - using 'any' assertion to completely bypass type checking
+const { data, error } = await (supabase.rpc as any)(
+  functionName,
+  params
+);
+```
+
+### Error: Type Instantiation Is Excessively Deep
+**Description**: Type recursion errors occur in database operation files:
+```
+error TS2589: Type instantiation is excessively deep and possibly infinite.
+```
+
+**Solution**: Break the type recursion by using more direct type assertions:
+```typescript
+// Before
+return {
+  data: (data as unknown) as T[],
+  error: null,
+  status
+};
+
+// After - using 'any' to completely break the type chain
+return {
+  data: (data as any) as T[],
+  error: null,
+  status
+};
+```
+
+### Error: Database Function Return Type Mismatch
+**Description**: The `get_user_families` function doesn't match the expected return type structure.
+**Solution**: Update the function definition to correctly specify the return structure:
+```sql
+CREATE OR REPLACE FUNCTION public.get_user_families()
+RETURNS TABLE (
+  id uuid,
+  name text,
+  color text,
+  created_by uuid,
+  created_at timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT f.id, f.name, f.color, f.created_by, f.created_at
+  FROM families f
+  JOIN family_members fm ON f.id = fm.family_id
+  WHERE fm.user_id = auth.uid()
+  ORDER BY f.name;
+END;
+$$;
+```
+
+### Error: Inconsistent Safe Function Usage
+**Description**: Different functions exist for the same purpose (`is_family_member`, `user_is_family_member`, `safe_is_family_member`), causing confusion and potential bugs.
+**Solution**: Standardize on a single approach (preferably `safe_is_family_member`) and update all references:
+1. Identify all functions serving the same purpose
+2. Use the security definer function consistently
+3. Ensure RLS policies reference the correct function
+
 ---
 
 ## How to Use This Error Log
@@ -310,5 +391,3 @@ const fetchFilteredEvents = async (filters) => {
    - Periodically review this log to identify patterns
    - Refactor components or services that frequently cause issues
    - Update documentation based on recurring problems
-
-

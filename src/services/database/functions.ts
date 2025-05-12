@@ -15,12 +15,9 @@ export async function callFunction<T = any>(
   try {
     console.log(`Calling function ${functionName}`, params);
     
-    // The key pattern: cast to unknown first to bypass TypeScript's type checking
-    // This allows us to call any function name at runtime
-    const { data, error, status } = await supabase.rpc(
-      functionName as unknown as string, 
-      params
-    );
+    // Use type assertion with 'any' to completely bypass TypeScript type checking
+    // This allows us to call any function name at runtime without TypeScript errors
+    const { data, error, status } = await (supabase.rpc as any)(functionName, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);
@@ -54,7 +51,8 @@ export async function callFunction<T = any>(
  */
 export async function checkFunctionExists(functionName: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc('function_exists', { 
+    // Use type assertion with 'any' to bypass TypeScript type checking for function names
+    const { data, error } = await (supabase.rpc as any)('function_exists', { 
       function_name: functionName 
     });
     
