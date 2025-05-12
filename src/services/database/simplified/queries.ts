@@ -3,7 +3,7 @@
  * Data fetching operations for simplified Supabase service
  */
 import { supabase } from "@/integrations/supabase/client";
-import { DbResponse, DbTable, QueryOptions } from "./types";
+import { DbResponse, DbTable, QueryOptions, asTableName } from "./types";
 
 /**
  * Fetch data from a specific table with optional filtering
@@ -13,7 +13,8 @@ export async function getData<T>(
   options: QueryOptions = {}
 ): Promise<DbResponse<T[]>> {
   try {
-    let query = supabase.from(table).select(options.select || '*');
+    // Use type assertion to avoid TypeScript recursive type issues
+    let query = supabase.from(table as any).select(options.select || '*');
     
     // Apply filters
     if (options.filters) {
@@ -60,7 +61,7 @@ export async function getById<T>(
 ): Promise<DbResponse<T>> {
   try {
     const { data, error } = await supabase
-      .from(table)
+      .from(table as any)
       .select(select || '*')
       .eq('id', id)
       .maybeSingle();

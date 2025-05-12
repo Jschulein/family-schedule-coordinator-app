@@ -44,3 +44,11 @@ export interface AuthStatusResponse {
   authenticated: boolean;
   userId?: string;
 }
+
+/**
+ * Helper function to safely cast any string to DbTable
+ * Used to avoid TypeScript errors when passing table names
+ */
+export function asTableName(name: string): DbTable {
+  return name;
+}

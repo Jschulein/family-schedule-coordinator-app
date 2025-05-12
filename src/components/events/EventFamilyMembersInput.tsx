@@ -15,23 +15,23 @@ interface EventFamilyMembersInputProps {
 
 export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersInputProps) => {
   const { activeFamilyId } = useFamilyContext();
-  const { familyMembers, loading, error, refreshFamilyMembers } = useFamilyMembers();
+  const { members, loading, error, refreshMembers } = useFamilyMembers(activeFamilyId);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   // Refresh family members when the component mounts or active family changes
   useEffect(() => {
     if (activeFamilyId) {
-      refreshFamilyMembers();
+      refreshMembers();
     }
-  }, [activeFamilyId, refreshFamilyMembers]);
+  }, [activeFamilyId, refreshMembers]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     setRetryCount(prev => prev + 1);
     
     try {
-      await refreshFamilyMembers();
+      await refreshMembers();
     } catch (err) {
       console.error("Error refreshing family members:", err);
     } finally {
@@ -89,8 +89,8 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Loading family members...</span>
           </div>
-        ) : familyMembers.length > 0 ? (
-          familyMembers.map((member) => (
+        ) : members.length > 0 ? (
+          members.map((member) => (
             <button
               key={member.id}
               type="button"

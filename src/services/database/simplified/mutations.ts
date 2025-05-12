@@ -15,7 +15,7 @@ export async function insert<T>(
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
-      .from(table)
+      .from(table as any)
       .insert(data as any)
       .select()
       .single();
@@ -42,7 +42,7 @@ export async function update<T>(
 ): Promise<DbResponse<T>> {
   try {
     const { data: result, error } = await supabase
-      .from(table)
+      .from(table as any)
       .update(data as any)
       .eq('id', id)
       .select()
@@ -69,7 +69,7 @@ export async function remove(
 ): Promise<DbResponse<null>> {
   try {
     const { error } = await supabase
-      .from(table)
+      .from(table as any)
       .delete()
       .eq('id', id);
     
