@@ -3,10 +3,9 @@
  * Type definitions for simplified Supabase operations
  * Simplified to avoid excessive type recursion
  */
-import type { Database } from "@/integrations/supabase/types";
 
-// Define concrete type for database tables
-export type DbTable = keyof Database['public']['Tables'];
+// Using string literals instead of complex keyof types to avoid recursion
+export type DbTable = string;
 
 /**
  * Simplified type for database function names

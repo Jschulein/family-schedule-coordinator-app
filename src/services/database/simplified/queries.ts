@@ -42,6 +42,7 @@ export async function getData<T>(
       return { data: null, error: error.message };
     }
     
+    // Use type assertion to avoid TypeScript recursion
     return { data: data as T[], error: null };
   } catch (err: any) {
     console.error(`Exception fetching data from ${table}:`, err);
@@ -69,6 +70,7 @@ export async function getById<T>(
       return { data: null, error: error.message };
     }
     
+    // Use type assertion to avoid TypeScript recursion
     return { data: data as T, error: null };
   } catch (err: any) {
     console.error(`Exception fetching record by ID from ${table}:`, err);

@@ -1,145 +1,68 @@
 
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useCallback, useEffect } from "react";
 import { FamilyMember } from "@/types/familyTypes";
-import { getFamilyMembers } from "@/services/families/simplifiedFamilyService";
-
-type FamilyMembersHookOptions = {
-  familyId?: string;
-  enableRealtime?: boolean;
-  enableCache?: boolean;
-  cacheTimeout?: number;
-};
+import { fetchMembersByFamilyId } from "@/services";
+import { toast } from "@/components/ui/use-toast";
+import { MemberManagementResult } from "./types";
 
 /**
- * Custom hook for fetching and managing family members data
- * @param options Configuration options
- * @returns Family members data and utility functions
+ * Hook for managing family member data
+ * @param familyId The ID of the family
+ * @returns Family members data and management functions
  */
-export const useFamilyMembers = ({
-  familyId,
-  enableRealtime = true,
-  enableCache = true,
-  cacheTimeout = 300000  // 5 minutes default cache
-}: FamilyMembersHookOptions = {}) => {
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  const [error, setError] = useState<string | null>(null);
+export function useFamilyMembers(familyId: string | null): MemberManagementResult {
+  const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  // Cache key based on family ID
-  const cacheKey = `familyMembers_${familyId || 'all'}`;
+  const [error, setError] = useState<string | null>(null);
 
-  // Load cached data on mount
-  useEffect(() => {
-    if (!enableCache) return;
-    
-    try {
-      const cachedData = localStorage.getItem(cacheKey);
-      if (cachedData) {
-        const { members, timestamp } = JSON.parse(cachedData);
-        
-        // Use cache if less than configured timeout
-        if (Date.now() - timestamp < cacheTimeout) {
-          setFamilyMembers(members);
-          console.log(`Loaded ${members.length} family members from cache`);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load cached family members:", e);
-    }
-  }, [cacheKey, enableCache, cacheTimeout]);
-
-  // Memoized loading function to prevent unnecessary rerenders
-  const loadFamilyMembers = useCallback(async () => {
-    if (!familyId && !familyId === undefined) {
-      setFamilyMembers([]);
-      setLoading(false);
+  // Function to fetch family members
+  const fetchMembers = useCallback(async () => {
+    if (!familyId) {
+      setMembers([]);
       return;
     }
-    
-    // Don't fetch again if we're already loading
-    if (loading) return;
-    
+
+    console.log(`Fetching members for family ${familyId}`);
     setLoading(true);
     setError(null);
-    
+
     try {
-      console.log(`Fetching family members for family ${familyId || 'all'}`);
-      
-      const result = await getFamilyMembers(familyId || '');
+      const result = await fetchMembersByFamilyId(familyId);
       
       if (result.isError) {
         setError(result.error || "Failed to load family members");
         toast({ 
           title: "Error", 
-          description: "Failed to load family members" 
+          description: "Failed to load family members",
+          variant: "destructive"
         });
       } else if (result.data) {
-        console.log(`Loaded ${result.data.length} family members`);
-        setFamilyMembers(result.data);
-        
-        // Cache the results if enabled
-        if (enableCache) {
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify({
-              members: result.data,
-              timestamp: Date.now()
-            }));
-          } catch (e) {
-            console.error("Failed to cache family members:", e);
-          }
-        }
+        setMembers(result.data);
       } else {
-        // Handle case where no data was returned but no error either
-        setFamilyMembers([]);
+        // Default to empty array if no data
+        setMembers([]);
       }
     } catch (e: any) {
-      console.error("Unexpected error in useFamilyMembers hook:", e);
-      setError("An unexpected error occurred");
+      console.error("Unexpected error in useFamilyMembers:", e);
+      setError(e.message || "An unexpected error occurred");
       toast({ 
         title: "Error", 
-        description: "An unexpected error occurred while loading family members" 
+        description: "An error occurred while loading family members"
       });
     } finally {
       setLoading(false);
     }
-  }, [loading, familyId, cacheKey, enableCache]);
+  }, [familyId]);
 
-  // Initial load
+  // Initial load and when familyId changes
   useEffect(() => {
-    loadFamilyMembers();
-  }, [loadFamilyMembers]);
-
-  // Set up subscription for realtime updates if enabled
-  useEffect(() => {
-    if (!enableRealtime || !familyId) return;
-    
-    const channel = supabase
-      .channel('family-member-changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'family_members',
-          filter: familyId ? `family_id=eq.${familyId}` : undefined 
-        }, 
-        () => {
-          console.log('Family member changes detected, refreshing data');
-          loadFamilyMembers();
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [enableRealtime, familyId, loadFamilyMembers]);
+    fetchMembers();
+  }, [fetchMembers]);
 
   return {
-    familyMembers,
+    members,
     loading,
     error,
-    refreshFamilyMembers: loadFamilyMembers
+    refreshMembers: fetchMembers
   };
-};
+}
