@@ -4,7 +4,7 @@
  * Provides a clean, consistent API for all family-related operations
  */
 import { supabase } from "@/integrations/supabase/client";
-import { Family, FamilyMember, FamilyServiceResponse } from "@/types/familyTypes";
+import { Family, FamilyMember, FamilyServiceResponse, FamilyRole } from "@/types/familyTypes";
 import { handleError } from "@/utils/error";
 import { callFunction } from "../database/functions";
 
@@ -249,7 +249,7 @@ export async function resendInvitation(invitationId: string) {
 export async function inviteFamilyMember(
   familyId: string,
   email: string,
-  role: string,
+  role: FamilyRole,
   name?: string
 ) {
   try {

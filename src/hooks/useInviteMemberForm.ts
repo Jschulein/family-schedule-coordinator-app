@@ -22,7 +22,7 @@ export function useInviteMemberForm(
 
     setLoading(true);
     try {
-      const result = await inviteFamilyMember(familyId, email, name, role);
+      const result = await inviteFamilyMember(familyId, email, role, name);
 
       if (result.isError) {
         throw new Error(result.error);
