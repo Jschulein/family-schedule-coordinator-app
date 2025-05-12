@@ -1,17 +1,29 @@
 
 import { useState, useEffect, useCallback } from "react";
-import { fetchFamilyInvitations, resendFamilyInvitation } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FamilyInvitation } from "@/types/familyTypes";
-import { InvitationHookProps } from "./types";
+import { 
+  getFamilyInvitations, 
+  resendInvitation 
+} from "@/services/families/simplifiedFamilyService";
+
+type InvitationHookOptions = {
+  familyId: string | null;
+  refreshTrigger?: boolean;
+  enableRealtime?: boolean;
+};
 
 /**
- * Hook for managing family invitations
- * @param familyId The ID of the family to fetch invitations for
- * @param refreshTrigger External trigger to refresh invitations
+ * Hook for managing family invitations with optimized performance
+ * @param options Hook configuration options
+ * @returns Invitation data and utility functions
  */
-export function useFamilyInvitations({ familyId, refreshTrigger = false }: InvitationHookProps) {
+export function useFamilyInvitations({
+  familyId, 
+  refreshTrigger = false,
+  enableRealtime = true
+}: InvitationHookOptions) {
   const [invitations, setInvitations] = useState<FamilyInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [resending, setResending] = useState<string | null>(null);
@@ -28,7 +40,7 @@ export function useFamilyInvitations({ familyId, refreshTrigger = false }: Invit
       setLoading(true);
       console.log(`Fetching invitations for family ${familyId}`);
       
-      const result = await fetchFamilyInvitations(familyId);
+      const result = await getFamilyInvitations(familyId);
       
       if (result.isError || !result.data) {
         toast({ 
@@ -39,7 +51,22 @@ export function useFamilyInvitations({ familyId, refreshTrigger = false }: Invit
         return;
       }
       
-      setInvitations(result.data);
+      console.log(`Retrieved ${result.data.length} invitations`);
+      
+      // Map the data to match our FamilyInvitation interface
+      const mappedInvitations: FamilyInvitation[] = result.data.map(invitation => ({
+        id: invitation.id,
+        family_id: invitation.family_id,
+        email: invitation.email,
+        name: invitation.name || invitation.email,
+        role: invitation.role,
+        status: invitation.status,
+        invited_at: invitation.invited_at,
+        invited_by: invitation.invited_by,
+        last_invited: invitation.last_invited || invitation.invited_at
+      }));
+      
+      setInvitations(mappedInvitations);
     } catch (error) {
       console.error("Error in useFamilyInvitations hook:", error);
       setInvitations([]);
@@ -52,12 +79,13 @@ export function useFamilyInvitations({ familyId, refreshTrigger = false }: Invit
     }
   }, [familyId]);
 
+  // Optimized resend invitation function with proper error handling
   const handleResendInvite = useCallback(async (invitationId: string) => {
     try {
       setResending(invitationId);
       console.log(`Resending invitation ${invitationId}`);
       
-      const result = await resendFamilyInvitation(invitationId);
+      const result = await resendInvitation(invitationId);
       
       if (result.isError) {
         toast({ 
@@ -94,7 +122,7 @@ export function useFamilyInvitations({ familyId, refreshTrigger = false }: Invit
 
   // Set up realtime subscription for invitations
   useEffect(() => {
-    if (!familyId) return;
+    if (!enableRealtime || !familyId) return;
     
     console.log(`Setting up realtime subscription for invitations in family ${familyId}`);
     
@@ -112,7 +140,7 @@ export function useFamilyInvitations({ familyId, refreshTrigger = false }: Invit
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [familyId, fetchInvitations]);
+  }, [familyId, fetchInvitations, enableRealtime]);
 
   return {
     invitations,

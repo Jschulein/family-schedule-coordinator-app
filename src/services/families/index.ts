@@ -11,6 +11,9 @@ export * from './core';
 export * from './invitations';
 export * from './members';
 
+// Export simplified family service
+export * from './simplifiedFamilyService';
+
 // Export types from central location
 export * from './types';
 

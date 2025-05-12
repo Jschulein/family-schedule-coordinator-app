@@ -1,42 +1,60 @@
 
-import { useState, useCallback } from "react";
-import { callFunction } from "@/services/database/functions";
-import type { Family } from "@/types/familyTypes";
+import { useState, useCallback, useEffect } from "react";
+import { Family } from "@/types/familyTypes";
+import { getUserFamilies } from "@/services/families/simplifiedFamilyService";
+import { toast } from "@/components/ui/use-toast";
 
 /**
- * Custom hook for managing family data
+ * Hook for fetching and managing family data
+ * @returns Family data and loading/error states
  */
 export function useFamilyData() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch families
-  const fetchFamilies = useCallback(async (): Promise<void> => {
+  const fetchFamilies = useCallback(async () => {
+    console.log("Fetching families data");
     setLoading(true);
     setError(null);
-    
+
     try {
-      const { data, error: fetchError } = await callFunction<Family[]>("get_user_families");
+      const result = await getUserFamilies();
       
-      if (fetchError) {
-        setError(fetchError);
-        return;
+      if (result.isError) {
+        setError(result.error || "Failed to load families");
+        toast({ 
+          title: "Error", 
+          description: "Failed to load families",
+          variant: "destructive"
+        });
+      } else if (result.data) {
+        setFamilies(result.data);
+      } else {
+        // Default to empty array if no data
+        setFamilies([]);
       }
-      
-      setFamilies(data || []);
-    } catch (err: any) {
-      console.error("Error in fetchFamilies:", err);
-      setError(err.message || "An unexpected error occurred");
+    } catch (e: any) {
+      console.error("Unexpected error in useFamilyData:", e);
+      setError(e.message || "An unexpected error occurred");
+      toast({ 
+        title: "Error", 
+        description: "An unexpected error occurred while loading families"
+      });
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Initial load
+  useEffect(() => {
+    fetchFamilies();
+  }, [fetchFamilies]);
+
   return {
     families,
     loading,
     error,
-    fetchFamilies,
+    fetchFamilies
   };
 }

@@ -21,7 +21,7 @@ export interface Family {
 export interface FamilyMember {
   id: string;
   family_id: string;
-  user_id: string;
+  user_id: string | null;
   email: string;
   name?: string;
   role: FamilyRole;
@@ -38,9 +38,9 @@ export interface FamilyInvitation {
   name?: string;
   role: FamilyRole;
   status: string;
-  invited_by?: string;
+  invited_by?: string | null;
   invited_at: string;
-  last_invited?: string;
+  last_invited?: string | null;
 }
 
 /**
@@ -70,3 +70,16 @@ export interface FamilyContextType {
   createFamily: (name: string) => Promise<Family | undefined>;
   handleSelectFamily: (familyId: string) => void;
 }
+
+/**
+ * Options for the invitation hook
+ */
+export interface InvitationHookProps {
+  familyId: string | null;
+  refreshTrigger?: boolean;
+}
+
+/**
+ * The service response type for family invitations
+ */
+export type InvitationServiceResponse = FamilyServiceResponse<FamilyInvitation[]>;

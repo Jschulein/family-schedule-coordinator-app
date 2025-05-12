@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
 import { FamilyContext } from "./FamilyContext";
 import { useFamilyData } from "@/hooks/family/useFamilyData";
 import { useFamilySelection } from "@/hooks/family/useFamilySelection";
@@ -10,6 +10,10 @@ interface FamilyProviderProps {
   children: ReactNode;
 }
 
+/**
+ * Provider component for the Family context
+ * Handles global family state management
+ */
 export const FamilyProvider = ({ children }: FamilyProviderProps) => {
   // Use our custom hooks for state management
   const { families, loading, error, fetchFamilies } = useFamilyData();
@@ -22,12 +26,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
     });
   });
 
-  // Initial load on mount
-  useEffect(() => {
-    fetchFamilies();
-  }, [fetchFamilies]);
-
-  // Set up realtime subscription
+  // Set up realtime subscription for family changes
   useFamilyRealtimeSubscription(fetchFamilies);
 
   // Combine errors from both hooks
