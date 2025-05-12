@@ -105,7 +105,7 @@ export function handleDatabaseError(
     toast({
       title: severity === 'error' ? 'Error' : (severity === 'warning' ? 'Warning' : 'Notice'),
       description: fullMessage + (errorAction ? ` ${errorAction}` : ''),
-      variant: severity === 'error' ? 'destructive' : (severity === 'warning' ? 'default' : 'secondary')
+      variant: severity === 'error' ? 'destructive' : 'default'  // Changed from 'secondary' to 'default'
     });
   }
   

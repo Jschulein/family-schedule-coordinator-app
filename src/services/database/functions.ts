@@ -46,6 +46,9 @@ export async function callFunction<T = any>(
       if (retryCount < maxRetries && isRecoverableError(error)) {
         console.log(`Retrying function ${functionName} in ${retryDelay}ms...`);
         
+        // Implement exponential backoff
+        const nextDelay = retryDelay * 2;
+        
         // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, retryDelay));
         
@@ -53,7 +56,7 @@ export async function callFunction<T = any>(
         return callFunction(functionName, params, {
           retryCount: retryCount + 1,
           maxRetries,
-          retryDelay
+          retryDelay: nextDelay
         });
       }
       
@@ -94,7 +97,9 @@ function isRecoverableError(error: any): boolean {
   // Check for specific error codes that indicate transient issues
   if (error.code === "42P17" || // Infinite recursion
       error.code === "57014" || // Query timeout
-      error.code === "57P01") { // Admin shutdown
+      error.code === "57P01" || // Admin shutdown
+      error.code === "08000" || // Connection exception
+      error.code === "08006") { // Connection failure
     return true;
   }
   
@@ -102,7 +107,10 @@ function isRecoverableError(error: any): boolean {
   if (error.message && (
     error.message.includes("infinite recursion") ||
     error.message.includes("timeout") ||
-    error.message.includes("temporarily unavailable")
+    error.message.includes("temporarily unavailable") ||
+    error.message.includes("connection") ||
+    error.message.includes("too many clients") ||
+    error.message.includes("deadlock detected")
   )) {
     return true;
   }

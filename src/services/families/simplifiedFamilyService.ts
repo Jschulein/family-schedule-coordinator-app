@@ -1,3 +1,4 @@
+
 /**
  * Simplified Family Service
  * Uses the improved error handling and security patterns
@@ -5,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Family, FamilyMember, FamilyServiceResponse, FamilyRole } from "@/types/familyTypes";
 import { handleDatabaseError } from "@/utils/error/databaseErrorMapper";
+import { handleError } from "@/utils/error/errorHandler";
 import { performanceTracker } from "@/utils/testing";
 
 /**
