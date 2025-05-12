@@ -1,4 +1,3 @@
-
 /**
  * Simplified Family Service
  * Uses the improved error handling and security patterns
@@ -8,6 +7,7 @@ import { Family, FamilyMember, FamilyServiceResponse, FamilyRole } from "@/types
 import { handleDatabaseError } from "@/utils/error/databaseErrorMapper";
 import { handleError } from "@/utils/error/errorHandler";
 import { performanceTracker } from "@/utils/testing";
+import { checkFamilySystemHealth } from "@/utils/diagnostics/familyHealthCheck";
 
 /**
  * Gets all families for the current user
@@ -20,7 +20,7 @@ export async function getUserFamilies(): Promise<FamilyServiceResponse<Family[]>
     console.log("Fetching user families using security definer function");
     
     // Use the security definer function to avoid infinite recursion
-    const { data, error } = await supabase.rpc('get_user_families');
+    const { data, error } = await supabase.rpc('get_user_families_safe');
     
     if (error) {
       console.error("Error fetching user families:", error);
@@ -89,7 +89,7 @@ export async function getFamilyMembers(familyId: string): Promise<FamilyServiceR
 }
 
 /**
- * Creates a new family with improved error handling
+ * Creates a new family with improved error handling and diagnostics
  * @param name The name of the family
  * @returns The newly created family
  */
@@ -102,6 +102,17 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
         data: null,
         isError: true,
         error: "Family name cannot be empty"
+      };
+    }
+    
+    // First run a health check to ensure the system is ready
+    const healthResult = await checkFamilySystemHealth();
+    if (healthResult.status === 'error' || !healthResult.canCreateFamily) {
+      console.error("Family system health check failed:", healthResult);
+      return {
+        data: null,
+        isError: true,
+        error: `System check failed: ${healthResult.issues.join(', ')}`
       };
     }
     
@@ -152,13 +163,18 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
       };
     }
     
+    // Run diagnostics if family isn't found
+    console.warn("Family created but not found in getUserFamilies results");
+    runDiagnostics(familyId, name, user.id);
+    
     // Fallback in case we can't find the new family
     return {
       data: { 
         id: familyId, 
         name,
         color: '#8B5CF6',
-        created_by: user.id 
+        created_by: user.id,
+        created_at: new Date().toISOString()
       } as Family,
       isError: false,
       error: null
@@ -172,6 +188,45 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
     };
   } finally {
     performanceTracker.endMeasure(trackingId);
+  }
+}
+
+// Helper function for diagnostics
+async function runDiagnostics(familyId: string, name: string, userId: string) {
+  try {
+    console.group("📊 FAMILY CREATION DIAGNOSTICS");
+    
+    // Check for the family directly
+    const { data: directFamily, error: directError } = await supabase
+      .from('families')
+      .select('*')
+      .eq('id', familyId)
+      .single();
+      
+    console.log("Direct family query:", directFamily || "Not found", directError);
+    
+    // Check for family members
+    const { data: members, error: membersError } = await supabase
+      .from('family_members')
+      .select('*')
+      .eq('family_id', familyId);
+      
+    console.log("Family members:", members || "None found", membersError);
+    
+    // Run the debug function
+    try {
+      const { data: debug } = await supabase.rpc(
+        'debug_family_creation',
+        { p_name: name, p_user_id: userId }
+      );
+      console.log("Debug data:", debug);
+    } catch (err) {
+      console.error("Debug function error:", err);
+    }
+    
+    console.groupEnd();
+  } catch (err) {
+    console.error("Diagnostics error:", err);
   }
 }
 

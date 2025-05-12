@@ -1,7 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { RefreshCw, AlertCircle, Plus, Gauge } from "lucide-react";
+import { RefreshCw, AlertCircle, Plus, Gauge, Bug } from "lucide-react";
 import { FamilyList } from "@/components/families/FamilyList";
 import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
@@ -26,6 +25,7 @@ const FamiliesPage = () => {
     activeFamilyId,
     fetchFamilies,
     handleSelectFamily,
+    debugMode,
   } = useFamilyContext();
   
   const [refreshingInvitations, setRefreshingInvitations] = useState(false);
@@ -131,14 +131,19 @@ const FamiliesPage = () => {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Your Families</h1>
           <div className="flex space-x-2">
-            {(error || connectionError) && (
+            {(error || connectionError || debugMode) && (
               <Button 
                 variant="outline" 
                 size="icon" 
                 onClick={runDiagnostics} 
                 title="Run diagnostics"
+                className={debugMode ? "border-yellow-400 hover:bg-yellow-100" : ""}
               >
-                <Gauge className="h-4 w-4" />
+                {debugMode ? (
+                  <Bug className="h-4 w-4 text-yellow-600" />
+                ) : (
+                  <Gauge className="h-4 w-4" />
+                )}
               </Button>
             )}
             
@@ -163,11 +168,33 @@ const FamiliesPage = () => {
                 <SheetHeader>
                   <SheetTitle>Create New Family</SheetTitle>
                 </SheetHeader>
-                <CreateFamilyWithMembersForm onSuccess={handleFamilyCreated} />
+                <CreateFamilyWithMembersForm 
+                  onSuccess={handleFamilyCreated}
+                  debugMode={debugMode}
+                />
               </SheetContent>
             </Sheet>
           </div>
         </div>
+        
+        {debugMode && (
+          <Alert variant="default" className="bg-yellow-50 border-yellow-300">
+            <Bug className="h-4 w-4 text-yellow-600" />
+            <AlertTitle>Debug Mode Enabled</AlertTitle>
+            <AlertDescription className="flex flex-col space-y-1">
+              <span>Additional diagnostic information will be available in the console.</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={runDiagnostics} 
+                className="w-fit bg-yellow-100 border-yellow-400 hover:bg-yellow-200"
+              >
+                <Gauge className="h-4 w-4 mr-2" />
+                Run Full Diagnostics
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         
         {connectionError && (
           <Alert variant="destructive">

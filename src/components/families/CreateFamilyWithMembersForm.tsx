@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, PlusCircle, UserPlus, AlertCircle } from "lucide-react";
+import { Loader2, PlusCircle, UserPlus, AlertCircle, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CreateFamilyWithMembersFormProps {
   onSuccess: () => void;
+  debugMode?: boolean;
 }
 
-export const CreateFamilyWithMembersForm = ({ onSuccess }: CreateFamilyWithMembersFormProps) => {
+export const CreateFamilyWithMembersForm = ({ 
+  onSuccess,
+  debugMode = false
+}: CreateFamilyWithMembersFormProps) => {
   const { 
     form, 
     loading, 
@@ -34,6 +38,15 @@ export const CreateFamilyWithMembersForm = ({ onSuccess }: CreateFamilyWithMembe
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {debugMode && (
+          <Alert variant="default" className="mb-4 bg-yellow-50 border-yellow-200">
+            <Bug className="h-4 w-4 text-yellow-600" />
+            <AlertDescription>
+              Debug mode enabled. Additional diagnostics information will be logged to console.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {errorMessage && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />

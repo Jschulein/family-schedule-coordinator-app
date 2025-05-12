@@ -48,7 +48,8 @@ export interface FamilyContextType {
   loading: boolean;
   error: string | null;
   creating: boolean;
-  retryCount?: number; // New property to track retries
+  retryCount?: number; // Property to track retries
+  debugMode?: boolean; // New property to track debug mode
   fetchFamilies: () => Promise<void>;
   createFamily: (name: string) => Promise<Family | undefined>;
   handleSelectFamily: (id: string | null) => void;

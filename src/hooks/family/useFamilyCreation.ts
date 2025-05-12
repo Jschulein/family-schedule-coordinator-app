@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { createFamily } from '@/services/families/simplifiedFamilyService';
 import type { Family } from '@/types/familyTypes';
 import { toast } from '@/components/ui/use-toast';
-import { checkFamilySystemHealth } from '@/utils/diagnostics/familyHealthCheck';
+import { checkFamilySystemHealth, runFamilySystemDiagnostics } from '@/utils/diagnostics/familyHealthCheck';
 
 type OnSuccessCallback = (family?: Family) => void;
 
@@ -11,6 +11,7 @@ interface FamilyCreationOptions {
   onSuccess?: OnSuccessCallback;
   performHealthCheck?: boolean;
   maxRetries?: number;
+  debug?: boolean;
 }
 
 /**
@@ -19,7 +20,13 @@ interface FamilyCreationOptions {
  * @returns Object with creating state, error state, and createFamily function
  */
 export function useFamilyCreation(options: FamilyCreationOptions = {}) {
-  const { onSuccess, performHealthCheck = true, maxRetries = 2 } = options;
+  const { 
+    onSuccess, 
+    performHealthCheck = true, 
+    maxRetries = 2,
+    debug = false
+  } = options;
+  
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
@@ -37,10 +44,14 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
         setError(`System check failed: ${issues}`);
         toast({ 
           title: "System Issue Detected", 
-          description: "The family creation system is currently experiencing issues. Please try again later.", 
+          description: "The family creation system is experiencing issues. Please try again later.", 
           variant: "destructive" 
         });
         console.error("Family system health check failed:", healthResult);
+        
+        if (debug) {
+          await runFamilySystemDiagnostics();
+        }
       }
       
       return canProceed;
@@ -49,7 +60,7 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
       setIsHealthy(false);
       return false;
     }
-  }, []);
+  }, [debug]);
 
   const createFamilyHandler = useCallback(async (name: string) => {
     if (!name.trim()) {
@@ -65,11 +76,20 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
     setError(null);
 
     try {
+      // Enable debug mode for diagnostics
+      if (debug) {
+        console.group(`🔍 CREATE FAMILY "${name}"`);
+        console.time("createFamily");
+      }
+      
       // Optionally perform a health check before attempting creation
       if (performHealthCheck) {
         const isSystemHealthy = await checkHealth();
         if (!isSystemHealthy) {
           setCreating(false);
+          if (debug) {
+            console.groupEnd();
+          }
           return;
         }
       }
@@ -84,6 +104,11 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
                             result.error?.includes("timeout") ||
                             result.error?.includes("connection"));
         
+        if (debug) {
+          console.error("Family creation failed:", result.error);
+          console.log("Should retry?", shouldRetry, "Current retry count:", retryCount);
+        }
+        
         if (shouldRetry) {
           // Increment retry count
           setRetryCount(prev => prev + 1);
@@ -96,11 +121,19 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
             description: `Encountered a temporary issue. Retrying in ${delay/1000}s...`
           });
           
+          if (debug) {
+            console.log(`Retrying in ${delay}ms...`);
+          }
+          
           // Wait for backoff period
           await new Promise(resolve => setTimeout(resolve, delay));
           
           // Recursive retry after delay
           setCreating(false);
+          if (debug) {
+            console.timeEnd("createFamily");
+            console.groupEnd();
+          }
           return createFamilyHandler(name);
         }
         
@@ -108,8 +141,15 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
         setError(result.error || "Failed to create family");
         toast({ 
           title: "Error", 
-          description: result.error || "Failed to create family" 
+          description: result.error || "Failed to create family", 
+          variant: "destructive"
         });
+        
+        if (debug) {
+          console.error("All retries failed. Final error:", result.error);
+          await runFamilySystemDiagnostics();
+        }
+        
         return;
       }
 
@@ -120,6 +160,11 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
         title: "Success", 
         description: "Family created successfully!" 
       });
+      
+      if (debug) {
+        console.log("Family created successfully:", result.data);
+        console.timeEnd("createFamily");
+      }
 
       if (onSuccess) {
         onSuccess(result.data);
@@ -132,12 +177,20 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
       
       toast({ 
         title: "Error", 
-        description: errorMessage 
+        description: errorMessage,
+        variant: "destructive" 
       });
+      
+      if (debug) {
+        console.error("Exception in createFamilyHandler:", err);
+      }
     } finally {
       setCreating(false);
+      if (debug) {
+        console.groupEnd();
+      }
     }
-  }, [onSuccess, performHealthCheck, checkHealth, retryCount, maxRetries]);
+  }, [onSuccess, performHealthCheck, checkHealth, retryCount, maxRetries, debug]);
 
   return {
     creating,
@@ -145,6 +198,7 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
     isHealthy,
     retryCount,
     createFamily: createFamilyHandler,
-    checkHealth
+    checkHealth,
+    runDiagnostics: debug ? runFamilySystemDiagnostics : undefined
   };
 }

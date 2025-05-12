@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, AlertCircle, AlertTriangle } from "lucide-react";
+import { Loader2, AlertCircle, AlertTriangle, Bug } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { checkFamilySystemHealth } from "@/utils/diagnostics/familyHealthCheck";
@@ -12,9 +12,15 @@ interface CreateFamilyFormProps {
   onSubmit: (name: string) => Promise<unknown>; 
   creating: boolean;
   retryCount?: number;
+  debugMode?: boolean;
 }
 
-export const CreateFamilyForm = ({ onSubmit, creating, retryCount = 0 }: CreateFamilyFormProps) => {
+export const CreateFamilyForm = ({ 
+  onSubmit, 
+  creating, 
+  retryCount = 0,
+  debugMode = false
+}: CreateFamilyFormProps) => {
   const [newFamilyName, setNewFamilyName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
@@ -22,7 +28,7 @@ export const CreateFamilyForm = ({ onSubmit, creating, retryCount = 0 }: CreateF
 
   // Check system health on mount or when retry count changes
   useEffect(() => {
-    if (retryCount > 0) {
+    if (retryCount > 0 || debugMode) {
       const checkHealth = async () => {
         setIsCheckingHealth(true);
         try {
@@ -43,7 +49,7 @@ export const CreateFamilyForm = ({ onSubmit, creating, retryCount = 0 }: CreateF
       
       checkHealth();
     }
-  }, [retryCount]);
+  }, [retryCount, debugMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,6 +129,15 @@ export const CreateFamilyForm = ({ onSubmit, creating, retryCount = 0 }: CreateF
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
                   System health check failed. The family creation service may be experiencing issues.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {debugMode && (
+              <Alert variant="default" className="mt-2 bg-yellow-50 border-yellow-200">
+                <Bug className="h-4 w-4" />
+                <AlertDescription>
+                  Debug mode enabled. Check console for diagnostics information.
                 </AlertDescription>
               </Alert>
             )}
