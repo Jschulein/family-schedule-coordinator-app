@@ -4,8 +4,8 @@
  * This module exports all family-related services organized by category
  */
 
-// Core family services
-export * from './core';
+// Core family services - use named exports to avoid conflicts with createFamily
+export { fetchUserFamilies } from './core';
 
 // Membership services - use named exports to avoid conflicts
 export { fetchFamilyInvitations, resendFamilyInvitation } from './invitations';

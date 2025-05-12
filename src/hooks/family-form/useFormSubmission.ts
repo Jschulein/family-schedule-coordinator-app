@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { FamilyFormValues } from "./validationSchema";
-import { createFamily } from "@/services/families";
+import { createFamilyCore } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
 import { performanceTracker } from "@/utils/testing";
 import { FamilyRole } from "@/types/familyTypes";
@@ -44,7 +44,7 @@ export function useFormSubmission({ form, onSuccess }: UseFormSubmissionProps) {
       }
       
       // Create the family first
-      const result = await createFamily(data.name, user.id);
+      const result = await createFamilyCore(data.name, user.id);
       
       if (result.isError) {
         // Special handling for constraint violations that might still have created the family
