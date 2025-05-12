@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { createFamily } from "@/services/families";
+import { createFamilyCore } from "@/services/families";
 import { toast } from "@/components/ui/use-toast";
 import { Family } from "@/types/familyTypes";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +31,8 @@ export function useCreateFamily(options: CreateFamilyOptions = {}) {
         throw new Error("User not authenticated");
       }
       
-      const result = await createFamily(name, user.id);
+      // Updated to use createFamilyCore instead of createFamily
+      const result = await createFamilyCore(name, user.id);
       
       if (result.isError || !result.data) {
         const errorMsg = result.error || "Failed to create family";

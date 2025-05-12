@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useCallback } from "react";
 import { Family, FamilyRole } from "@/types/familyTypes";
 import { toast } from "@/components/ui/use-toast";
-import { createFamily } from "@/services/families";
+import { createFamilyCore } from "@/services/families";
 import { supabase } from "@/integrations/supabase/client";
 import { familyFormSchema, FamilyFormValues } from "@/hooks/family-form/validationSchema";
 
@@ -56,8 +56,8 @@ export function useCreateFamilyForm({ onSuccess }: UseCreateFamilyFormProps = {}
         throw new Error("User not authenticated");
       }
       
-      // Create just the family first
-      const familyResult = await createFamily(data.name, user.id);
+      // Updated to use createFamilyCore instead of createFamily
+      const familyResult = await createFamilyCore(data.name, user.id);
       
       if (familyResult.isError || !familyResult.data) {
         throw new Error(familyResult.error || "Failed to create family");
