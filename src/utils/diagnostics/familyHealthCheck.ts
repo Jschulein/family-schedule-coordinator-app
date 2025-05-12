@@ -21,6 +21,8 @@ interface DiagnosticData {
   }>;
   functions?: string[];
   permissions?: Record<string, boolean>;
+  user_families?: any[]; 
+  event_access?: boolean;
 }
 
 /**
@@ -54,6 +56,11 @@ export async function checkFamilySystemHealth(): Promise<HealthCheckResult> {
       'function_exists', 
       { function_name: 'get_user_families' }
     );
+
+    const { data: getUserEventsSafeExists, error: fnError3 } = await supabase.rpc(
+      'function_exists', 
+      { function_name: 'get_user_events_safe' }
+    );
     
     if (fnError1 || fnError2 || !safeCreateFamilyExists || !getUserFamiliesExists) {
       issues.push("Missing required database functions");
@@ -80,20 +87,48 @@ export async function checkFamilySystemHealth(): Promise<HealthCheckResult> {
         { function_name: 'get_family_members_by_family_id' }
       );
       
+      // Check if event access works
+      let eventAccessWorks = false;
+      if (getUserEventsSafeExists) {
+        const { data: eventCheck, error: eventError } = await supabase.rpc('get_user_events_safe');
+        eventAccessWorks = !eventError && eventCheck !== null;
+        
+        if (eventError) {
+          issues.push("Events access error: " + eventError.message);
+          status = status === 'healthy' ? 'warning' : status;
+        }
+      } else {
+        issues.push("Missing get_user_events_safe function");
+        status = status === 'healthy' ? 'warning' : status;
+      }
+      
+      // Try to fetch user families directly to diagnose issues
+      const { data: userFamilies, error: userFamiliesError } = await supabase.rpc('get_user_families');
+      
+      if (userFamiliesError) {
+        issues.push("Cannot fetch user families: " + userFamiliesError.message);
+        status = status === 'healthy' ? 'warning' : status;
+      }
+      
       diagnostics = {
         functions: [
           'safe_create_family', 
           'get_user_families', 
-          'get_family_members_by_family_id'
-        ].filter(fn => {
-          // This is a placeholder since we don't have a function to list all constraints
-          // In a real scenario, we would check each function individually
-          return true;
+          'get_family_members_by_family_id',
+          'get_user_events_safe'
+        ].filter((fn, index) => {
+          if (index === 0) return safeCreateFamilyExists;
+          if (index === 1) return getUserFamiliesExists; 
+          if (index === 2) return constraintsCheck;
+          if (index === 3) return getUserEventsSafeExists;
+          return false;
         }),
         permissions: {
           can_select_families: familiesData !== null,
-          can_invoke_functions: safeCreateFamilyExists && getUserFamiliesExists
-        }
+          can_invoke_functions: safeCreateFamilyExists && getUserFamiliesExists,
+          events_access_works: eventAccessWorks
+        },
+        user_families: userFamilies || []
       };
       
       // Check if member constraints exist (this is a placeholder)
@@ -154,11 +189,35 @@ export async function runFamilySystemDiagnostics(): Promise<void> {
       
       if (familiesError) {
         console.error("Error fetching families:", familiesError);
+        
+        // Try fallback approach to fetch families
+        const { data: directFamilies, error: directError } = await supabase
+          .from('families')
+          .select('*')
+          .order('name');
+          
+        if (!directError && directFamilies) {
+          console.log("Direct family query returned:", directFamilies);
+        } else {
+          console.error("Direct family query also failed:", directError);
+        }
       } else {
         console.log(`User has ${families?.length || 0} families`);
         if (families && families.length > 0) {
           console.table(families);
         }
+      }
+      
+      // Check if get_user_events_safe function works
+      try {
+        const { data: events, error: eventsError } = await supabase.rpc('get_user_events_safe');
+        if (eventsError) {
+          console.error("Error using get_user_events_safe:", eventsError);
+        } else {
+          console.log(`User has access to ${events?.length || 0} events`);
+        }
+      } catch (err) {
+        console.error("Error checking events function:", err);
       }
     }
   } catch (err) {

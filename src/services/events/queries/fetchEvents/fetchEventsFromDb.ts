@@ -1,4 +1,3 @@
-
 import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
 import { supabase } from "@/integrations/supabase/client";
