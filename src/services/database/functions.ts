@@ -1,22 +1,22 @@
 
 /**
  * Database function utilities
+ * Simplified to avoid TypeScript type recursion issues
  */
 import { supabase } from "@/integrations/supabase/client";
-import { DatabaseResponse, DbFunction, formatError, asFunctionName } from "./types";
+import { DatabaseResponse, formatError } from "./types";
 
 /**
- * Executes an RPC function
+ * Executes an RPC function with simplified type handling
  */
 export async function callFunction<T = any>(
-  functionName: DbFunction,
+  functionName: string,
   params?: Record<string, any>
 ): Promise<DatabaseResponse<T>> {
   try {
     console.log(`Calling function ${functionName}`, params);
     
-    // Use type assertion with 'any' to completely bypass TypeScript type checking
-    // This allows us to call any function name at runtime without TypeScript errors
+    // Use a direct 'any' type assertion to completely bypass TypeScript errors
     const { data, error, status } = await (supabase.rpc as any)(functionName, params);
     
     if (error) {
@@ -51,7 +51,7 @@ export async function callFunction<T = any>(
  */
 export async function checkFunctionExists(functionName: string): Promise<boolean> {
   try {
-    // Use type assertion with 'any' to bypass TypeScript type checking for function names
+    // Use direct any type assertion for simplicity
     const { data, error } = await (supabase.rpc as any)('function_exists', { 
       function_name: functionName 
     });

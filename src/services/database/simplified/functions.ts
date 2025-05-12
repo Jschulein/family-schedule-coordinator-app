@@ -1,20 +1,20 @@
 
 /**
  * Database function operations for simplified Supabase service
+ * With simplified type handling to avoid excessive type recursion
  */
 import { supabase } from "@/integrations/supabase/client";
-import { DbResponse, DbFunction, asFunctionName } from "./types";
+import { DbResponse } from "./types";
 
 /**
- * Call a database function
+ * Call a database function with simplified type handling
  */
 export async function callFunction<T>(
-  functionName: DbFunction,
+  functionName: string,
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
-    // Use type assertion with 'unknown' followed by the expected type
-    // This avoids deep TypeScript type instantiation issues
+    // Use direct any type assertion to completely bypass TypeScript type checking
     const { data, error } = await (supabase.rpc as any)(functionName, params);
     
     if (error) {

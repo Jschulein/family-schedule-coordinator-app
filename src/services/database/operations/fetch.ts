@@ -7,7 +7,7 @@ import { DatabaseResponse, DbTable, QueryOptions, formatError } from "../types";
 
 /**
  * Fetches data from a table with optional filters
- * Using proper type assertions to avoid excessive type recursion
+ * Using more aggressive type assertions to avoid deep type recursion
  */
 export async function fetchData<T>(
   table: DbTable, 
@@ -52,9 +52,9 @@ export async function fetchData<T>(
       };
     }
     
-    // Use a more direct type assertion to completely break the deep type recursion
+    // Use a simpler type assertion approach that completely breaks the recursion
     return {
-      data: data as unknown as T[],
+      data: data as any,
       error: null,
       status
     };
@@ -71,6 +71,7 @@ export async function fetchData<T>(
 
 /**
  * Fetches a single record by ID
+ * With simplified type handling
  */
 export async function fetchById<T>(
   table: DbTable, 
@@ -98,7 +99,7 @@ export async function fetchById<T>(
     
     // Use a direct type assertion to break the deep type recursion
     return {
-      data: data as unknown as T,
+      data: data as any,
       error: null,
       status
     };

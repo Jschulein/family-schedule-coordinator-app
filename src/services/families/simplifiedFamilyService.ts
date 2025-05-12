@@ -3,7 +3,7 @@
  * Simplified family service with cleaner data access patterns
  */
 import { Family, FamilyMember } from "@/types/familyTypes";
-import { getData, getById, insert, callFunction, DbResponse } from "../database/simpleSupabase";
+import { getData, getById, insert, callFunction, DbResponse } from "../database/simplified";
 
 /**
  * Get all families for the current user

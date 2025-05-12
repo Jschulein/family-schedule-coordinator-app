@@ -1,6 +1,7 @@
 
 /**
  * Type definitions for simplified Supabase operations
+ * Simplified to avoid excessive type recursion
  */
 import type { Database } from "@/integrations/supabase/types";
 
@@ -8,19 +9,15 @@ import type { Database } from "@/integrations/supabase/types";
 export type DbTable = keyof Database['public']['Tables'];
 
 /**
- * Type-safe wrapper for database function names
- * This creates a branded type that can accept string values at runtime
- * while maintaining compile-time type checking
+ * Simplified type for database function names
  */
-export type DbFunction = keyof Database['public']['Functions'] | 
-  (string & { __brand: 'DbFunctionName' });
+export type DbFunction = string;
 
 /**
  * Helper function to safely cast any string to DbFunction
- * This provides a clean escape hatch for the type system
  */
 export function asFunctionName(name: string): DbFunction {
-  return name as DbFunction;
+  return name;
 }
 
 /**

@@ -1,6 +1,7 @@
 
 /**
  * Common types for database operations
+ * Simplified to avoid excessive type recursion
  */
 
 import { PostgrestError } from "@supabase/supabase-js";
@@ -21,19 +22,16 @@ export interface DatabaseResponse<T> {
 export type DbTable = keyof Database['public']['Tables'];
 
 /**
- * Type-safe wrapper for database function names
- * This creates a branded type that can accept string values at runtime
- * while maintaining compile-time type checking
+ * Simplified type for database function names
+ * Uses string instead of branded type to avoid recursion
  */
-export type DbFunction = keyof Database['public']['Functions'] | 
-  (string & { __brand: 'DbFunctionName' });
+export type DbFunction = string;
 
 /**
  * Helper function to safely cast any string to DbFunction
- * This provides a clean escape hatch for the type system
  */
 export function asFunctionName(name: string): DbFunction {
-  return name as DbFunction;
+  return name;
 }
 
 /**
