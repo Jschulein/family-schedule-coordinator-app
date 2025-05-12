@@ -12,8 +12,9 @@ export { getUserFamilies as getUserFamiliesFromFamily } from './familyService';
 
 // Re-export family services with explicit names to avoid ambiguity
 export { 
-  createFamilyCore,
-  createFamilyLegacy,
-  inviteFamilyMemberLegacy,
-  fetchUserFamilies
+  createFamily as createFamilyCore,
+  fetchUserFamilies,
+  fetchFamilyMembers,
+  fetchMembersByFamilyId
 } from './families';
+

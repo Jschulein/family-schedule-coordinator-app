@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Family } from "@/types/familyTypes";
-import { getUserFamilies } from "@/services/families/simplifiedFamilyService";
+import { fetchUserFamilies } from "@/services/families/core";
 import { toast } from "@/components/ui/use-toast";
 
 /**
@@ -19,7 +19,7 @@ export function useFamilyData() {
     setError(null);
 
     try {
-      const result = await getUserFamilies();
+      const result = await fetchUserFamilies();
       
       if (result.isError) {
         setError(result.error || "Failed to load families");

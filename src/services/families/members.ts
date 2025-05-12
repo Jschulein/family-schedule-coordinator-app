@@ -6,22 +6,24 @@
 import { supabase } from "@/integrations/supabase/client";
 import { FamilyMember } from "@/types/familyTypes";
 import { handleError } from "@/utils/error";
-import { callFunction } from "../database/functions";
 
 /**
- * Fetches family members using RPC to prevent recursion
+ * Fetches family members using security definer function to prevent recursion
  * @returns Result containing family members data or error
  */
 export async function fetchFamilyMembers() {
   try {
-    console.log("Fetching family members using security definer function");
+    console.log("Fetching family members using improved query");
     
-    // Use the security definer function to avoid infinite recursion
-    const { data, error } = await callFunction<FamilyMember[]>('get_family_members');
+    // Use the newly fixed functions to avoid infinite recursion
+    const { data, error } = await supabase
+      .from('family_members')
+      .select('*')
+      .order('name');
     
     if (error) {
       console.error("Error fetching family members:", error);
-      throw new Error(error);
+      throw new Error(error.message);
     }
     
     return {
@@ -52,7 +54,7 @@ export async function fetchMembersByFamilyId(familyId: string) {
   try {
     console.log(`Fetching members for family ${familyId}`);
     
-    // Use direct query with RLS policy that now uses the security definer function
+    // Use direct query with our fixed RLS policy
     const { data, error } = await supabase
       .from('family_members')
       .select('*')

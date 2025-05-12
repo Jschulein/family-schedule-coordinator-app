@@ -487,6 +487,10 @@ export type Database = {
         Args: { invitation_id: string; user_id: string }
         Returns: boolean
       }
+      is_admin_of_family: {
+        Args: { p_family_id: string }
+        Returns: boolean
+      }
       is_event_owner: {
         Args: { event_id: string }
         Returns: boolean
@@ -497,6 +501,10 @@ export type Database = {
       }
       is_family_member: {
         Args: { family_id_param: string }
+        Returns: boolean
+      }
+      is_member_of_family: {
+        Args: { p_family_id: string }
         Returns: boolean
       }
       is_user_in_family: {

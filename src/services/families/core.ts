@@ -14,9 +14,9 @@ import { createErrorResponse, createSuccessResponse } from "./createFamily/error
  */
 export async function fetchUserFamilies() {
   try {
-    console.log("Fetching user families using security definer function");
+    console.log("Fetching user families using get_user_families function");
     
-    // Use the security definer function to avoid infinite recursion
+    // Use the improved get_user_families function
     const { data, error } = await supabase.rpc('get_user_families');
     
     if (error) {
@@ -44,7 +44,7 @@ export async function fetchUserFamilies() {
 }
 
 /**
- * Creates a new family
+ * Creates a new family using safe_create_family function
  * @param name The name of the family
  * @param userId The ID of the user creating the family
  * @returns The newly created family or an error
@@ -54,23 +54,34 @@ export async function createFamily(name: string, userId: string): Promise<Family
     console.log("Creating new family using safe_create_family function");
     
     // Call the security definer function to safely create the family
-    const { data, error } = await supabase
+    const { data: familyId, error: insertError } = await supabase
       .rpc('safe_create_family', { 
         p_name: name, 
         p_user_id: userId 
       });
       
-    if (error) {
-      return createErrorResponse(error.message);
+    if (insertError) {
+      return createErrorResponse(insertError.message);
     }
     
-    if (!data) {
+    if (!familyId) {
       return createErrorResponse("Failed to create family");
     }
     
     // Fetch the complete family data
-    const familyId = data;
-    const { data: families } = await supabase.rpc('get_user_families');
+    const { data: families, error: fetchError } = await supabase.rpc('get_user_families');
+    
+    if (fetchError) {
+      console.error("Error fetching created family:", fetchError);
+      // Return success with minimal family object if we can't fetch details
+      return createSuccessResponse({ 
+        id: familyId, 
+        name, 
+        created_by: userId 
+      } as Family);
+    }
+    
+    // Find the newly created family in the returned families
     const newFamily = families?.find(f => f.id === familyId);
     
     if (newFamily) {
