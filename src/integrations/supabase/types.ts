@@ -499,7 +499,15 @@ export type Database = {
         Args: { family_id_param: string }
         Returns: boolean
       }
+      is_family_admin_safe: {
+        Args: { family_id_param: string }
+        Returns: boolean
+      }
       is_family_member: {
+        Args: { family_id_param: string }
+        Returns: boolean
+      }
+      is_family_member_safe: {
         Args: { family_id_param: string }
         Returns: boolean
       }
