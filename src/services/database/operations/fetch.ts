@@ -52,9 +52,9 @@ export async function fetchData<T>(
       };
     }
     
-    // Use a more aggressive double-casting approach to completely break type recursion
+    // Use type assertion that completely breaks the type recursion chain
     return {
-      data: data as unknown as T[],
+      data: (data as any) as T[],
       error: null,
       status
     };
@@ -97,9 +97,9 @@ export async function fetchById<T>(
       };
     }
     
-    // Use the same double-casting approach here
+    // Use a different type casting approach to completely break recursion
     return {
-      data: data as unknown as T,
+      data: (data as any) as T,
       error: null,
       status
     };
