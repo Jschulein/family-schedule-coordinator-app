@@ -14,7 +14,7 @@ import { QueryOptions, formatError } from "../types";
  */
 export async function fetchDataNoTypeCheck(
   table, 
-  options = {}
+  options = {} as QueryOptions
 ) {
   try {
     console.log(`NoTypeCheck: Fetching from ${table} with options:`, options);
