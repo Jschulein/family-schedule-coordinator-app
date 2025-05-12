@@ -1,4 +1,3 @@
-
 /**
  * Simplified Family Service
  * Provides a clean, consistent API for all family-related operations

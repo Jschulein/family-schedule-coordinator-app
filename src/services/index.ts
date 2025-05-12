@@ -7,5 +7,5 @@
 // Event-related services
 export * from './eventService';
 
-// Family-related services
-export * from './familyService';
+// Family-related services - use renamed exports to avoid conflicts
+export { getUserFamilies as getUserFamiliesFromFamily } from './familyService';

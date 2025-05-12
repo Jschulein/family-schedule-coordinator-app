@@ -20,5 +20,7 @@ export * from './types';
 // Export createFamilyWithMembers directly
 export * from './createFamily/createFamilyWithMembers';
 
-// Use named exports to avoid ambiguity with the already exported functions
-export { createFamily as createFamilyWithMembers } from './createFamily';
+// Create named exports to resolve ambiguity
+export { createFamily as createFamilyCore } from './core';
+export { createFamily as createFamilyLegacy } from './createFamily';
+export { inviteFamilyMember as inviteFamilyMemberLegacy } from './invitations';
