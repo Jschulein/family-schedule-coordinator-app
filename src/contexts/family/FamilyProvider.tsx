@@ -18,12 +18,14 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
   // Use our custom hooks for state management
   const { families, loading, error, fetchFamilies } = useFamilyData();
   const { activeFamilyId, handleSelectFamily } = useFamilySelection(families);
-  const { creating, createFamily, error: creationError } = useFamilyCreation((newFamily) => {
-    fetchFamilies().then(() => {
-      if (newFamily) {
-        handleSelectFamily(newFamily.id);
-      }
-    });
+  const { creating, createFamily, error: creationError } = useFamilyCreation({
+    onSuccess: (newFamily) => {
+      fetchFamilies().then(() => {
+        if (newFamily) {
+          handleSelectFamily(newFamily.id);
+        }
+      });
+    }
   });
 
   // Set up realtime subscription for family changes
