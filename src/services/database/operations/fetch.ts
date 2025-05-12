@@ -4,112 +4,43 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { DatabaseResponse, DbTable, QueryOptions, formatError } from "../types";
+import { fetchDataNoTypeCheck, fetchByIdNoTypeCheck } from "./noTypeCheck";
 
 /**
  * Fetches data from a table with optional filters
- * Using more aggressive type assertions to avoid deep type recursion
+ * Uses a type-boundary approach to avoid deep type recursion
  */
 export async function fetchData<T>(
   table: DbTable, 
   options: QueryOptions = {}
 ): Promise<DatabaseResponse<T[]>> {
-  try {
-    console.log(`Fetching from ${table} with options:`, options);
-    
-    // Start building the query
-    let query = supabase.from(table).select(options.select || '*');
-    
-    // Apply filters if they exist
-    if (options.filters) {
-      Object.entries(options.filters).forEach(([key, value]) => {
-        // Only apply filter if value is defined
-        if (value !== undefined) {
-          query = query.eq(key, value);
-        }
-      });
-    }
-    
-    // Apply order if specified
-    if (options.order) {
-      query = query.order(options.order[0], { ascending: options.order[1] === 'asc' });
-    }
-    
-    // Apply limit if specified
-    if (options.limit) {
-      query = query.limit(options.limit);
-    }
-    
-    // Execute the query
-    const { data, error, status } = await query;
-    
-    if (error) {
-      console.error(`Error fetching from ${table}:`, error);
-      const formattedError = formatError(error);
-      return {
-        data: null,
-        error: formattedError.message,
-        status: formattedError.status
-      };
-    }
-    
-    // Use type assertion that completely breaks the type recursion chain
-    return {
-      data: (data as any) as T[],
-      error: null,
-      status
-    };
-  } catch (err: any) {
-    console.error(`Exception fetching from ${table}:`, err);
-    const formattedError = formatError(err);
-    return {
-      data: null,
-      error: formattedError.message,
-      status: formattedError.status
-    };
-  }
+  // Delegate to the no-type-check implementation 
+  const result = await fetchDataNoTypeCheck(table, options);
+  
+  // Return with appropriate typing at the boundary
+  return {
+    data: result.data as T[],
+    error: result.error,
+    status: result.status
+  };
 }
 
 /**
  * Fetches a single record by ID
- * With aggressive type casting to break recursion
+ * Uses a type-boundary approach to avoid deep type recursion
  */
 export async function fetchById<T>(
   table: DbTable, 
   id: string,
   select: string = '*'
 ): Promise<DatabaseResponse<T>> {
-  try {
-    console.log(`Fetching ${table} with id ${id}`);
-    
-    const { data, error, status } = await supabase
-      .from(table)
-      .select(select)
-      .eq('id', id)
-      .maybeSingle();
-    
-    if (error) {
-      console.error(`Error fetching ${table} by id:`, error);
-      const formattedError = formatError(error);
-      return {
-        data: null,
-        error: formattedError.message,
-        status: formattedError.status
-      };
-    }
-    
-    // Use a different type casting approach to completely break recursion
-    return {
-      data: (data as any) as T,
-      error: null,
-      status
-    };
-  } catch (err: any) {
-    console.error(`Exception fetching ${table} by id:`, err);
-    const formattedError = formatError(err);
-    return {
-      data: null,
-      error: formattedError.message,
-      status: formattedError.status
-    };
-  }
+  // Delegate to the no-type-check implementation
+  const result = await fetchByIdNoTypeCheck(table, id, select);
+  
+  // Return with appropriate typing at the boundary
+  return {
+    data: result.data as T,
+    error: result.error,
+    status: result.status
+  };
 }
