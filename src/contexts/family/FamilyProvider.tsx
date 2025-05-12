@@ -18,14 +18,15 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
   // Use our custom hooks for state management
   const { families, loading, error, fetchFamilies } = useFamilyData();
   const { activeFamilyId, handleSelectFamily } = useFamilySelection(families);
-  const { creating, createFamily, error: creationError } = useFamilyCreation({
+  const { creating, createFamily, error: creationError, retryCount } = useFamilyCreation({
     onSuccess: (newFamily) => {
       fetchFamilies().then(() => {
         if (newFamily) {
           handleSelectFamily(newFamily.id);
         }
       });
-    }
+    },
+    maxRetries: 3 // Allow up to 3 retries for transient issues
   });
 
   // Set up realtime subscription for family changes
@@ -45,6 +46,7 @@ export const FamilyProvider = ({ children }: FamilyProviderProps) => {
         fetchFamilies,
         createFamily,
         handleSelectFamily,
+        retryCount // Expose retry count to the UI
       }}
     >
       {children}

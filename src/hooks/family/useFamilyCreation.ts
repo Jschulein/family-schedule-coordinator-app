@@ -10,18 +10,20 @@ type OnSuccessCallback = (family?: Family) => void;
 interface FamilyCreationOptions {
   onSuccess?: OnSuccessCallback;
   performHealthCheck?: boolean;
+  maxRetries?: number;
 }
 
 /**
- * Hook for creating families with improved error handling and diagnostics
+ * Hook for creating families with improved error handling, diagnostics and retry capability
  * @param options Configuration options
  * @returns Object with creating state, error state, and createFamily function
  */
 export function useFamilyCreation(options: FamilyCreationOptions = {}) {
-  const { onSuccess, performHealthCheck = true } = options;
+  const { onSuccess, performHealthCheck = true, maxRetries = 2 } = options;
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Check system health before attempting family creation
   const checkHealth = useCallback(async (): Promise<boolean> => {
@@ -75,6 +77,34 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
       const result = await createFamily(name);
 
       if (result.isError || !result.data) {
+        // Check if this is a recoverable error that warrants retry
+        const shouldRetry = retryCount < maxRetries && 
+                           (result.error?.includes("recursion") || 
+                            result.error?.includes("temporarily unavailable") ||
+                            result.error?.includes("timeout") ||
+                            result.error?.includes("connection"));
+        
+        if (shouldRetry) {
+          // Increment retry count
+          setRetryCount(prev => prev + 1);
+          
+          // Use exponential backoff: 1s, 2s, 4s, etc.
+          const delay = Math.pow(2, retryCount) * 1000;
+          
+          toast({
+            title: `Retrying (${retryCount + 1}/${maxRetries})`,
+            description: `Encountered a temporary issue. Retrying in ${delay/1000}s...`
+          });
+          
+          // Wait for backoff period
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          // Recursive retry after delay
+          setCreating(false);
+          return createFamilyHandler(name);
+        }
+        
+        // Not retrying or out of retries
         setError(result.error || "Failed to create family");
         toast({ 
           title: "Error", 
@@ -82,6 +112,9 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
         });
         return;
       }
+
+      // Reset retry count on success
+      setRetryCount(0);
 
       toast({ 
         title: "Success", 
@@ -104,12 +137,13 @@ export function useFamilyCreation(options: FamilyCreationOptions = {}) {
     } finally {
       setCreating(false);
     }
-  }, [onSuccess, performHealthCheck, checkHealth]);
+  }, [onSuccess, performHealthCheck, checkHealth, retryCount, maxRetries]);
 
   return {
     creating,
     error,
     isHealthy,
+    retryCount,
     createFamily: createFamilyHandler,
     checkHealth
   };

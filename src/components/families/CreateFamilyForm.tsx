@@ -1,9 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Loader2, AlertCircle, AlertTriangle } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { checkFamilySystemHealth } from "@/utils/diagnostics/familyHealthCheck";
@@ -11,13 +11,39 @@ import { checkFamilySystemHealth } from "@/utils/diagnostics/familyHealthCheck";
 interface CreateFamilyFormProps {
   onSubmit: (name: string) => Promise<unknown>; 
   creating: boolean;
+  retryCount?: number;
 }
 
-export const CreateFamilyForm = ({ onSubmit, creating }: CreateFamilyFormProps) => {
+export const CreateFamilyForm = ({ onSubmit, creating, retryCount = 0 }: CreateFamilyFormProps) => {
   const [newFamilyName, setNewFamilyName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+
+  // Check system health on mount or when retry count changes
+  useEffect(() => {
+    if (retryCount > 0) {
+      const checkHealth = async () => {
+        setIsCheckingHealth(true);
+        try {
+          const healthResult = await checkFamilySystemHealth();
+          setIsHealthy(healthResult.status === 'healthy');
+          
+          if (healthResult.status !== 'healthy') {
+            console.warn("System health issues detected:", healthResult.issues);
+            setError(`System health issues: ${healthResult.issues.join(", ")}`);
+          }
+        } catch (err) {
+          console.error("Error checking health:", err);
+          setIsHealthy(false);
+        } finally {
+          setIsCheckingHealth(false);
+        }
+      };
+      
+      checkHealth();
+    }
+  }, [retryCount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,70 +56,13 @@ export const CreateFamilyForm = ({ onSubmit, creating }: CreateFamilyFormProps) 
     }
     
     try {
-      console.log(`Submitting family creation form (attempt ${retryCount + 1}):`, newFamilyName);
-      
-      // If this isn't the first attempt, do a health check
-      if (retryCount > 0) {
-        setIsCheckingHealth(true);
-        const healthResult = await checkFamilySystemHealth();
-        setIsCheckingHealth(false);
-        
-        if (healthResult.status !== 'healthy') {
-          console.warn("Family system health check results:", healthResult);
-          
-          if (!healthResult.canCreateFamily) {
-            setError(`Family creation is currently unavailable: ${healthResult.issues.join(', ')}`);
-            toast({ 
-              title: "System Issue Detected", 
-              description: "The family creation system is currently experiencing issues. Please try again later.", 
-              variant: "destructive" 
-            });
-            return;
-          }
-        }
-      }
-      
-      // Proceed with family creation
       await onSubmit(newFamilyName);
       setNewFamilyName("");
-      setRetryCount(0);
-      toast({ title: "Success", description: "Family created successfully!" });
     } catch (err: any) {
       console.error("Error in family creation form submission:", err);
       const errorMessage = err?.message || "Failed to create family. Please try again.";
       setError(errorMessage);
       toast({ title: "Error", description: errorMessage, variant: "destructive" });
-      
-      // Implement smart retry capability for transient errors
-      if ((errorMessage.includes('recursion') || 
-           errorMessage.includes('temporarily unavailable') ||
-           errorMessage.includes('policy') ||
-           errorMessage.includes('timeout')) && retryCount < 2) {
-        
-        const nextRetryCount = retryCount + 1;
-        setRetryCount(nextRetryCount);
-        
-        // Show a different message based on retry count
-        if (nextRetryCount === 1) {
-          toast({
-            title: "Retrying",
-            description: "Encountered a temporary issue, retrying automatically...",
-            variant: "default"
-          });
-        } else {
-          toast({
-            title: "Final Retry",
-            description: "Making one last attempt to create your family...",
-            variant: "default"
-          });
-        }
-        
-        // Exponential backoff for retries: 1s, then 2s
-        const delay = Math.pow(2, retryCount) * 1000;
-        setTimeout(() => {
-          handleSubmit(e);
-        }, delay);
-      }
     }
   };
 
@@ -101,6 +70,9 @@ export const CreateFamilyForm = ({ onSubmit, creating }: CreateFamilyFormProps) 
     <Card>
       <CardHeader>
         <CardTitle>Create a New Family</CardTitle>
+        <CardDescription>
+          Create a family group to manage shared events and calendars.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -125,15 +97,32 @@ export const CreateFamilyForm = ({ onSubmit, creating }: CreateFamilyFormProps) 
                 )}
               </Button>
             </div>
+            
             {error && (
               <Alert variant="destructive" className="mt-2">
+                <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            
             {retryCount > 0 && !error && (
-              <Alert className="mt-2">
+              <Alert variant={retryCount > 1 ? "destructive" : "default"} className="mt-2">
+                {retryCount > 1 && <AlertTriangle className="h-4 w-4" />}
                 <AlertDescription>
-                  {`Retry attempt ${retryCount} of 2. If problems persist, please try again later.`}
+                  {`Retry attempt ${retryCount}. ${
+                    retryCount > 1 
+                      ? "If problems persist, please try again later." 
+                      : "Retrying automatically..."
+                  }`}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {isHealthy === false && (
+              <Alert variant="warning" className="mt-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  System health check failed. The family creation service may be experiencing issues.
                 </AlertDescription>
               </Alert>
             )}

@@ -515,6 +515,14 @@ export type Database = {
         Args: { p_family_id: string }
         Returns: boolean
       }
+      is_user_family_admin: {
+        Args: { p_family_id: string }
+        Returns: boolean
+      }
+      is_user_family_member: {
+        Args: { p_family_id: string }
+        Returns: boolean
+      }
       is_user_in_family: {
         Args: { family_id_param: string }
         Returns: boolean
