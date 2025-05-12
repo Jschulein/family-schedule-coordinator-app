@@ -7,8 +7,8 @@
 // Core family services
 export * from './core';
 
-// Membership services
-export * from './invitations';
+// Membership services - use named exports to avoid conflicts
+export { fetchFamilyInvitations, resendFamilyInvitation } from './invitations';
 export * from './members';
 
 // Export simplified family service
