@@ -52,9 +52,9 @@ export async function fetchData<T>(
       };
     }
     
-    // Use 'any' to completely break the deep type recursion
+    // Use a more direct type assertion to completely break the deep type recursion
     return {
-      data: data as any as T[],
+      data: data as unknown as T[],
       error: null,
       status
     };
@@ -96,9 +96,9 @@ export async function fetchById<T>(
       };
     }
     
-    // Use 'any' to break the deep type recursion
+    // Use a direct type assertion to break the deep type recursion
     return {
-      data: data as any as T,
+      data: data as unknown as T,
       error: null,
       status
     };

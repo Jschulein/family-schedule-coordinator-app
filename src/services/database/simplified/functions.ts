@@ -13,8 +13,8 @@ export async function callFunction<T>(
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
-    // Use type assertion with 'any' to completely bypass TypeScript type checking
-    // This allows us to call any function name at runtime without TypeScript errors
+    // Use type assertion with 'unknown' followed by the expected type
+    // This avoids deep TypeScript type instantiation issues
     const { data, error } = await (supabase.rpc as any)(functionName, params);
     
     if (error) {
