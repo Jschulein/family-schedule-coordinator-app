@@ -1,9 +1,9 @@
+
 /**
  * Database function utilities
  */
 import { supabase } from "@/integrations/supabase/client";
-import { DatabaseResponse, DbFunction, formatError } from "./types";
-import type { Database } from "@/integrations/supabase/types";
+import { DatabaseResponse, DbFunction, formatError, asFunctionName } from "./types";
 
 /**
  * Executes an RPC function
@@ -15,10 +15,12 @@ export async function callFunction<T = any>(
   try {
     console.log(`Calling function ${functionName}`, params);
     
-    // Use explicit casting approach for the RPC function name
-    // TypeScript needs this to handle dynamic function names that might not be in the type
-    const functionNameStr = functionName as string;
-    const { data, error, status } = await supabase.rpc(functionNameStr, params);
+    // The key pattern: cast to unknown first to bypass TypeScript's type checking
+    // This allows us to call any function name at runtime
+    const { data, error, status } = await supabase.rpc(
+      functionName as unknown as string, 
+      params
+    );
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

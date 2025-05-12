@@ -6,7 +6,7 @@
  * This index file re-exports all functionality from the simplified modules
  */
 
-// Export types
+// Export types and helper functions
 export * from "./types";
 
 // Export authentication functions

@@ -37,6 +37,9 @@ export type {
   QueryOptions
 } from "./types";
 
+// Export helper functions for type safety
+export const { asFunctionName } = typeDefinitions;
+
 // Export type definitions without conflicts 
 export const DbTypes = typeDefinitions;
 

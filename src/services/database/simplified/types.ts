@@ -7,9 +7,21 @@ import type { Database } from "@/integrations/supabase/types";
 // Define concrete type for database tables
 export type DbTable = keyof Database['public']['Tables'];
 
-// Define concrete type for database functions that allows both known functions and string literals
-// Using string & {} pattern to allow string literals while maintaining type information
-export type DbFunction = keyof Database['public']['Functions'] | (string & {});
+/**
+ * Type-safe wrapper for database function names
+ * This creates a branded type that can accept string values at runtime
+ * while maintaining compile-time type checking
+ */
+export type DbFunction = keyof Database['public']['Functions'] | 
+  (string & { __brand: 'DbFunctionName' });
+
+/**
+ * Helper function to safely cast any string to DbFunction
+ * This provides a clean escape hatch for the type system
+ */
+export function asFunctionName(name: string): DbFunction {
+  return name as DbFunction;
+}
 
 /**
  * Standard response format for all database operations

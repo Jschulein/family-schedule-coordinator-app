@@ -3,7 +3,7 @@
  * Database function operations for simplified Supabase service
  */
 import { supabase } from "@/integrations/supabase/client";
-import { DbResponse, DbFunction } from "./types";
+import { DbResponse, DbFunction, asFunctionName } from "./types";
 
 /**
  * Call a database function
@@ -13,10 +13,12 @@ export async function callFunction<T>(
   params?: Record<string, any>
 ): Promise<DbResponse<T>> {
   try {
-    // Use explicit casting approach for the RPC function name
-    // This allows us to use any string at runtime while maintaining type safety
-    const functionNameStr = functionName as string;
-    const { data, error } = await supabase.rpc(functionNameStr, params);
+    // The key pattern: cast to unknown first to bypass TypeScript's type checking
+    // This allows us to call any function name at runtime
+    const { data, error } = await supabase.rpc(
+      functionName as unknown as string, 
+      params
+    );
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);

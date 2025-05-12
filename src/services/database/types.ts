@@ -21,11 +21,20 @@ export interface DatabaseResponse<T> {
 export type DbTable = keyof Database['public']['Tables'];
 
 /**
- * Type for database functions
- * This allows both known function names and dynamic string values
- * Required for runtime flexibility with RPC calls
+ * Type-safe wrapper for database function names
+ * This creates a branded type that can accept string values at runtime
+ * while maintaining compile-time type checking
  */
-export type DbFunction = keyof Database['public']['Functions'] | (string & {});
+export type DbFunction = keyof Database['public']['Functions'] | 
+  (string & { __brand: 'DbFunctionName' });
+
+/**
+ * Helper function to safely cast any string to DbFunction
+ * This provides a clean escape hatch for the type system
+ */
+export function asFunctionName(name: string): DbFunction {
+  return name as DbFunction;
+}
 
 /**
  * Query options for fetching data
