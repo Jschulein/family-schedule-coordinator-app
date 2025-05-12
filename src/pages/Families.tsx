@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { RefreshCw, AlertCircle, Plus } from "lucide-react";
+import { RefreshCw, AlertCircle, Plus, Gauge } from "lucide-react";
 import { FamilyList } from "@/components/families/FamilyList";
 import { InviteMemberForm } from "@/components/families/InviteMemberForm";
 import { PendingInvitations } from "@/components/families/PendingInvitations";
@@ -13,6 +13,7 @@ import { CreateFamilyWithMembersForm } from "@/components/families/CreateFamilyW
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useFamilyContext } from "@/contexts/family";
 import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
+import { runFamilySystemDiagnostics } from "@/utils/diagnostics/familyHealthCheck";
 
 // Import the useEvents hook but make it optional to avoid errors when context is not available
 import { useEvents } from "@/contexts/EventContext";
@@ -30,6 +31,7 @@ const FamiliesPage = () => {
   const [refreshingInvitations, setRefreshingInvitations] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [diagnosticsRun, setDiagnosticsRun] = useState(false);
   
   // Monitor performance of this page
   const { trackInteraction } = usePerformanceMonitor('FamiliesPage');
@@ -103,12 +105,43 @@ const FamiliesPage = () => {
     endTracking();
   };
 
+  const runDiagnostics = async () => {
+    const endTracking = trackInteraction('run-diagnostics');
+    toast({ title: "Diagnostics", description: "Running system diagnostics..." });
+    
+    try {
+      await runFamilySystemDiagnostics();
+      setDiagnosticsRun(true);
+      toast({ title: "Diagnostics", description: "Diagnostics complete. Check browser console for details." });
+    } catch (err) {
+      console.error("Error running diagnostics:", err);
+      toast({ 
+        title: "Diagnostics Error", 
+        description: "Failed to run diagnostics. See console for details.",
+        variant: "destructive"
+      });
+    }
+    
+    endTracking();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Your Families</h1>
           <div className="flex space-x-2">
+            {(error || connectionError) && (
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={runDiagnostics} 
+                title="Run diagnostics"
+              >
+                <Gauge className="h-4 w-4" />
+              </Button>
+            )}
+            
             <Button 
               variant="ghost" 
               size="icon" 
@@ -149,6 +182,16 @@ const FamiliesPage = () => {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {diagnosticsRun && (
+          <Alert>
+            <Gauge className="h-4 w-4" />
+            <AlertTitle>Diagnostics Complete</AlertTitle>
+            <AlertDescription>
+              System diagnostics have been run. Please check your browser console (F12) for detailed results.
+            </AlertDescription>
           </Alert>
         )}
         

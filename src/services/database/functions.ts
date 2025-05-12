@@ -1,26 +1,62 @@
 
 /**
- * Database function utilities
- * Simplified to avoid TypeScript type recursion issues
+ * Database function utilities with improved error handling
  */
 import { supabase } from "@/integrations/supabase/client";
 import { DatabaseResponse, formatError } from "./types";
+import { performanceTracker } from "@/utils/testing";
+
+interface CallFunctionOptions {
+  retryCount?: number;
+  maxRetries?: number;
+  retryDelay?: number;
+}
 
 /**
- * Executes an RPC function with simplified type handling
+ * Executes an RPC function with improved error handling and retry capability
+ * @param functionName Name of the function to call
+ * @param params Parameters to pass to the function
+ * @param options Options for function execution
+ * @returns Result of the function call
  */
 export async function callFunction<T = any>(
   functionName: string,
-  params?: Record<string, any>
+  params?: Record<string, any>,
+  options: CallFunctionOptions = {}
 ): Promise<DatabaseResponse<T>> {
+  const { 
+    retryCount = 0, 
+    maxRetries = 2, 
+    retryDelay = 1000 
+  } = options;
+  
+  // Track performance
+  const trackingId = performanceTracker.startMeasure(`callFunction:${functionName}`);
+  
   try {
-    console.log(`Calling function ${functionName}`, params);
+    console.log(`Calling function ${functionName} (attempt ${retryCount + 1})`, params);
     
     // Use a direct 'any' type assertion to completely bypass TypeScript errors
     const { data, error, status } = await (supabase.rpc as any)(functionName, params);
     
     if (error) {
       console.error(`Error calling function ${functionName}:`, error);
+      
+      // Check if this is a recoverable error and we should retry
+      if (retryCount < maxRetries && isRecoverableError(error)) {
+        console.log(`Retrying function ${functionName} in ${retryDelay}ms...`);
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        
+        // Retry with incrementing retry count
+        return callFunction(functionName, params, {
+          retryCount: retryCount + 1,
+          maxRetries,
+          retryDelay
+        });
+      }
+      
       const formattedError = formatError(error);
       return {
         data: null,
@@ -42,7 +78,36 @@ export async function callFunction<T = any>(
       error: formattedError.message,
       status: formattedError.status
     };
+  } finally {
+    performanceTracker.endMeasure(trackingId);
   }
+}
+
+/**
+ * Determines if an error is recoverable
+ * @param error The error to check
+ * @returns True if the error is recoverable
+ */
+function isRecoverableError(error: any): boolean {
+  if (!error) return false;
+  
+  // Check for specific error codes that indicate transient issues
+  if (error.code === "42P17" || // Infinite recursion
+      error.code === "57014" || // Query timeout
+      error.code === "57P01") { // Admin shutdown
+    return true;
+  }
+  
+  // Check error message for specific patterns
+  if (error.message && (
+    error.message.includes("infinite recursion") ||
+    error.message.includes("timeout") ||
+    error.message.includes("temporarily unavailable")
+  )) {
+    return true;
+  }
+  
+  return false;
 }
 
 /**

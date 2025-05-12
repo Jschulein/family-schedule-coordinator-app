@@ -5,53 +5,62 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { Family, FamilyServiceResponse } from "@/types/familyTypes";
-import { handleError } from "@/utils/error";
+import { handleDatabaseError, isRecoverableError } from "@/utils/error/databaseErrorMapper";
 import { createErrorResponse, createSuccessResponse } from "./createFamily/errorHandlers";
+import { performanceTracker } from "@/utils/testing";
+
+/**
+ * Maximum retries for recoverable database errors
+ */
+const MAX_RETRIES = 3;
 
 /**
  * Fetches all families that the current user is a member of
  * @returns Result containing families data or error
  */
-export async function fetchUserFamilies() {
+export async function fetchUserFamilies(): Promise<FamilyServiceResponse<Family[]>> {
+  const trackingId = performanceTracker.startMeasure('fetchUserFamilies');
+  
   try {
     console.log("Fetching user families using get_user_families function");
     
-    // Use the improved get_user_families function
+    // Use the security definer function to avoid infinite recursion
     const { data, error } = await supabase.rpc('get_user_families');
     
     if (error) {
       console.error("Error fetching user families:", error);
-      throw error;
+      const errorMessage = handleDatabaseError(error, "Fetching families", true);
+      return createErrorResponse(errorMessage);
     }
     
-    return {
-      data: data as Family[],
-      isError: false,
-      error: null
-    };
+    return createSuccessResponse(data as Family[]);
   } catch (error: any) {
-    const errorMessage = handleError(error, {
-      context: "Fetching families",
-      showToast: true
-    });
-    
-    return {
-      data: null,
-      isError: true,
-      error: errorMessage
-    };
+    const errorMessage = handleDatabaseError(error, "Fetching families", true);
+    return createErrorResponse(errorMessage);
+  } finally {
+    performanceTracker.endMeasure(trackingId);
   }
 }
 
 /**
- * Creates a new family using safe_create_family function
+ * Creates a new family using safe_create_family function with retry capability
  * @param name The name of the family
  * @param userId The ID of the user creating the family
  * @returns The newly created family or an error
  */
-export async function createFamily(name: string, userId: string): Promise<FamilyServiceResponse<Family>> {
+export async function createFamily(
+  name: string, 
+  userId: string, 
+  retryCount = 0
+): Promise<FamilyServiceResponse<Family>> {
+  const trackingId = performanceTracker.startMeasure('createFamily');
+  
   try {
-    console.log("Creating new family using safe_create_family function");
+    if (!name.trim()) {
+      return createErrorResponse("Family name cannot be empty");
+    }
+    
+    console.log(`Creating new family (attempt ${retryCount + 1}): ${name}`);
     
     // Call the security definer function to safely create the family
     const { data: familyId, error: insertError } = await supabase
@@ -61,7 +70,13 @@ export async function createFamily(name: string, userId: string): Promise<Family
       });
       
     if (insertError) {
-      return createErrorResponse(insertError.message);
+      // If the error is recoverable and we haven't exceeded retry attempts, retry
+      if (isRecoverableError(insertError) && retryCount < MAX_RETRIES) {
+        console.log(`Recoverable error detected, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
+        return createFamily(name, userId, retryCount + 1);
+      }
+      
+      return createErrorResponse(handleDatabaseError(insertError, "Creating family"));
     }
     
     if (!familyId) {
@@ -72,12 +87,13 @@ export async function createFamily(name: string, userId: string): Promise<Family
     const { data: families, error: fetchError } = await supabase.rpc('get_user_families');
     
     if (fetchError) {
-      console.error("Error fetching created family:", fetchError);
+      console.warn("Family was created but error fetching details:", fetchError);
       // Return success with minimal family object if we can't fetch details
       return createSuccessResponse({ 
         id: familyId, 
         name, 
-        created_by: userId 
+        created_by: userId,
+        color: '#8B5CF6'
       } as Family);
     }
     
@@ -92,11 +108,14 @@ export async function createFamily(name: string, userId: string): Promise<Family
     return createSuccessResponse({ 
       id: familyId, 
       name, 
-      created_by: userId 
+      created_by: userId,
+      color: '#8B5CF6'
     } as Family);
     
   } catch (error: any) {
     console.error("Exception in createFamily:", error);
-    return createErrorResponse("An unexpected error occurred creating the family");
+    return createErrorResponse(handleDatabaseError(error, "An unexpected error occurred creating the family"));
+  } finally {
+    performanceTracker.endMeasure(trackingId);
   }
 }

@@ -14,27 +14,33 @@ export interface UseFormSubmissionProps {
 }
 
 /**
- * Hook for handling form submission
+ * Hook for handling form submission with improved error handling
  */
 export function useFormSubmission({ form, onSuccess }: UseFormSubmissionProps) {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const { reset } = form;
 
   /**
-   * Handles form submission
+   * Reset error state
+   */
+  const clearError = () => setErrorMessage(null);
+
+  /**
+   * Handles form submission with retry capability
    * @param data Form data
    */
   const onSubmit = async (data: FamilyFormValues) => {
     // Reset error state
-    setErrorMessage(null);
+    clearError();
     setLoading(true);
     
     // Start performance tracking
-    const trackingId = performanceTracker.startMeasure('createFamily');
+    const trackingId = performanceTracker.startMeasure('createFamilySubmission');
     
     try {
-      console.log("Creating new family:", data.name);
+      console.log(`Creating new family (attempt ${retryCount + 1}): ${data.name}`);
       
       // Get the current user ID from Supabase auth
       const { data: { user } } = await supabase.auth.getUser();
@@ -43,20 +49,38 @@ export function useFormSubmission({ form, onSuccess }: UseFormSubmissionProps) {
         throw new Error("User not authenticated");
       }
       
-      // Create the family first
+      // Create the family
       const result = await createFamilyCore(data.name, user.id);
       
       if (result.isError) {
         // Special handling for constraint violations that might still have created the family
-        if (result.error?.includes("duplicate key value")) {
+        if (result.error?.includes("duplicate key value") || 
+            result.error?.includes("already exists")) {
           toast({ 
             title: "Warning", 
-            description: "Family may have been created with a warning. Please check your families list."
+            description: "Family may have been created with a warning. Please check your families list.",
+            variant: "default"
           });
           reset();
           if (onSuccess) {
             onSuccess();
           }
+          return;
+        }
+        
+        // Special handling for transient errors that might be resolved with a retry
+        if (result.error?.includes("infinite recursion") && retryCount < 2) {
+          setRetryCount(prev => prev + 1);
+          toast({
+            title: "Retrying",
+            description: "Encountered a temporary issue, retrying automatically...",
+            variant: "default"
+          });
+          
+          // Short delay before retrying to allow the server to recover
+          setTimeout(() => {
+            onSubmit(data);
+          }, 1000);
           return;
         }
         
@@ -69,7 +93,8 @@ export function useFormSubmission({ form, onSuccess }: UseFormSubmissionProps) {
         return;
       }
       
-      // At this point we would handle invitations separately if needed
+      // Reset retry count on success
+      setRetryCount(0);
       
       toast({ 
         title: "Success", 
@@ -98,6 +123,8 @@ export function useFormSubmission({ form, onSuccess }: UseFormSubmissionProps) {
   return {
     loading,
     errorMessage,
+    clearError,
+    retryCount,
     onSubmit
   };
 }

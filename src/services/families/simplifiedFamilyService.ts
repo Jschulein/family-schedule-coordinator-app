@@ -1,17 +1,19 @@
 /**
  * Simplified Family Service
- * Provides a clean, consistent API for all family-related operations
+ * Uses the improved error handling and security patterns
  */
 import { supabase } from "@/integrations/supabase/client";
 import { Family, FamilyMember, FamilyServiceResponse, FamilyRole } from "@/types/familyTypes";
-import { handleError } from "@/utils/error";
-import { callFunction } from "../database/functions";
+import { handleDatabaseError } from "@/utils/error/databaseErrorMapper";
+import { performanceTracker } from "@/utils/testing";
 
 /**
  * Gets all families for the current user
  * @returns All families the user is a member of
  */
 export async function getUserFamilies(): Promise<FamilyServiceResponse<Family[]>> {
+  const trackingId = performanceTracker.startMeasure('getUserFamilies');
+  
   try {
     console.log("Fetching user families using security definer function");
     
@@ -20,7 +22,11 @@ export async function getUserFamilies(): Promise<FamilyServiceResponse<Family[]>
     
     if (error) {
       console.error("Error fetching user families:", error);
-      throw error;
+      return {
+        data: null,
+        isError: true,
+        error: handleDatabaseError(error, "Fetching families")
+      };
     }
     
     return {
@@ -29,25 +35,24 @@ export async function getUserFamilies(): Promise<FamilyServiceResponse<Family[]>
       error: null
     };
   } catch (error: any) {
-    const errorMessage = handleError(error, {
-      context: "Fetching families",
-      showToast: true
-    });
-    
     return {
       data: null,
       isError: true,
-      error: errorMessage
+      error: handleDatabaseError(error, "Fetching families")
     };
+  } finally {
+    performanceTracker.endMeasure(trackingId);
   }
 }
 
 /**
- * Gets all members for a specific family
+ * Gets all members for a specific family using a security definer function
  * @param familyId The ID of the family
  * @returns All members of the family
  */
 export async function getFamilyMembers(familyId: string): Promise<FamilyServiceResponse<FamilyMember[]>> {
+  const trackingId = performanceTracker.startMeasure('getFamilyMembers');
+  
   try {
     console.log(`Fetching members for family ${familyId}`);
     
@@ -58,7 +63,11 @@ export async function getFamilyMembers(familyId: string): Promise<FamilyServiceR
     
     if (error) {
       console.error("Error fetching family members:", error);
-      throw error;
+      return {
+        data: null,
+        isError: true,
+        error: handleDatabaseError(error, "Fetching family members")
+      };
     }
     
     return {
@@ -67,25 +76,24 @@ export async function getFamilyMembers(familyId: string): Promise<FamilyServiceR
       error: null
     };
   } catch (error: any) {
-    const errorMessage = handleError(error, {
-      context: "Fetching family members",
-      showToast: true
-    });
-    
     return {
       data: null,
       isError: true,
-      error: errorMessage
+      error: handleDatabaseError(error, "Fetching family members")
     };
+  } finally {
+    performanceTracker.endMeasure(trackingId);
   }
 }
 
 /**
- * Creates a new family
+ * Creates a new family with improved error handling
  * @param name The name of the family
  * @returns The newly created family
  */
 export async function createFamily(name: string): Promise<FamilyServiceResponse<Family>> {
+  const trackingId = performanceTracker.startMeasure('createFamilySimplified');
+  
   try {
     if (!name.trim()) {
       return {
@@ -118,7 +126,7 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
       return {
         data: null,
         isError: true,
-        error: error.message
+        error: handleDatabaseError(error, "Creating family")
       };
     }
     
@@ -147,6 +155,7 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
       data: { 
         id: familyId, 
         name,
+        color: '#8B5CF6',
         created_by: user.id 
       } as Family,
       isError: false,
@@ -157,8 +166,10 @@ export async function createFamily(name: string): Promise<FamilyServiceResponse<
     return {
       data: null,
       isError: true,
-      error: "An unexpected error occurred creating the family"
+      error: handleDatabaseError(error, "Creating family")
     };
+  } finally {
+    performanceTracker.endMeasure(trackingId);
   }
 }
 
