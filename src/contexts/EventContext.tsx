@@ -1,4 +1,3 @@
-
 import { createContext, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { 
@@ -24,7 +23,6 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: "You are currently offline. Changes will be saved when you reconnect.",
           variant: "destructive"
         });
-        // We could implement a queue of pending changes here
         return;
       }
       

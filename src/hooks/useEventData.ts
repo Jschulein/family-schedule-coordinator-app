@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 
 /**
  * Custom hook for fetching and managing event data
- * Enhanced with offline support and multiple fallback mechanisms
+ * Using the optimized security definer functions to avoid recursion
  */
 export function useEventData() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -54,17 +53,7 @@ export function useEventData() {
     setOfflineMode(false);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log("No active session found");
-        setEvents([]);
-        setLoading(false);
-        setIsRefreshing(false);
-        return;
-      }
-
-      // Using our improved event fetching function that handles recursion errors
-      // with multiple fallback strategies
+      // Using our simplified approach with security definer function
       const { events: fetchedEvents, error: fetchError } = await fetchEventsFromDb();
       
       if (fetchError) {
@@ -75,7 +64,7 @@ export function useEventData() {
         if (showToast) {
           toast({ 
             title: "Error", 
-            description: "Unable to fetch events from server. Using available local data.", 
+            description: "Unable to fetch events. Using available local data.", 
             variant: "destructive" 
           });
         }

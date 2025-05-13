@@ -3,7 +3,7 @@
  * Database utility functions for event-related operations
  */
 import { supabase } from "@/integrations/supabase/client";
-import { checkFunctionExists } from "@/services/database/functions";
+import { checkFunctionExists, callFunction } from "@/services/database/functions";
 
 /**
  * Check if a function exists in the database
@@ -16,9 +16,10 @@ export const functionExists = checkFunctionExists;
  */
 export const userCanAccessEvent = async (eventId: string): Promise<boolean> => {
   try {
-    const { data, error } = await supabase.rpc('user_can_access_event', {
-      event_id_param: eventId
-    });
+    const { data, error } = await callFunction<boolean>(
+      'user_can_access_event_safe', 
+      { event_id_param: eventId }
+    );
     
     if (error) {
       console.error("Error checking event access:", error);
@@ -38,7 +39,7 @@ export const userCanAccessEvent = async (eventId: string): Promise<boolean> => {
  */
 export const getUserFamilies = async () => {
   try {
-    const { data, error } = await supabase.rpc('get_user_families');
+    const { data, error } = await callFunction('get_user_families');
     
     if (error) {
       console.error("Error fetching user families:", error);
