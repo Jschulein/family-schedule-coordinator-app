@@ -57,9 +57,11 @@ export async function checkFamilySystemHealth(): Promise<HealthCheckResult> {
       { function_name: 'get_user_families' }
     );
 
+    // Check if get_user_events_safe function exists
+    // Use any type to avoid TypeScript errors since the function might not be in the types
     const { data: getUserEventsSafeExists, error: fnError3 } = await supabase.rpc(
       'function_exists', 
-      { function_name: 'get_user_events_safe' }
+      { function_name: 'get_user_events_safe' } as any
     );
     
     if (fnError1 || fnError2 || !safeCreateFamilyExists || !getUserFamiliesExists) {
@@ -90,7 +92,8 @@ export async function checkFamilySystemHealth(): Promise<HealthCheckResult> {
       // Check if event access works
       let eventAccessWorks = false;
       if (getUserEventsSafeExists) {
-        const { data: eventCheck, error: eventError } = await supabase.rpc('get_user_events_safe');
+        // Use any type to bypass TypeScript error
+        const { data: eventCheck, error: eventError } = await (supabase.rpc as any)('get_user_events_safe');
         eventAccessWorks = !eventError && eventCheck !== null;
         
         if (eventError) {
@@ -210,11 +213,14 @@ export async function runFamilySystemDiagnostics(): Promise<void> {
       
       // Check if get_user_events_safe function works
       try {
-        const { data: events, error: eventsError } = await supabase.rpc('get_user_events_safe');
+        // Use any type to bypass TypeScript error
+        const { data: events, error: eventsError } = await (supabase.rpc as any)('get_user_events_safe');
         if (eventsError) {
           console.error("Error using get_user_events_safe:", eventsError);
         } else {
-          console.log(`User has access to ${events?.length || 0} events`);
+          // Only access length if events is an array
+          const eventCount = Array.isArray(events) ? events.length : 0;
+          console.log(`User has access to ${eventCount} events`);
         }
       } catch (err) {
         console.error("Error checking events function:", err);
