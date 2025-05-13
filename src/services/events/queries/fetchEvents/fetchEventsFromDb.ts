@@ -24,7 +24,8 @@ export async function fetchEventsFromDb() {
       return { events: [], error: "You must be logged in to view events" };
     }
 
-    // Call the security definer function directly
+    // Call the security definer function directly - this is the most reliable approach
+    // and avoids RLS recursion issues
     const { data, error } = await callFunction<any[]>("get_user_events_safe");
     
     if (error) {

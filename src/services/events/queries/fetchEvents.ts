@@ -4,6 +4,7 @@ import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
 import { processEventsWithProfiles, fetchUserPersonalEvents } from "./helpers";
 import { functionExists } from "../helpers";
+import { callFunction } from "@/services/database/functions";
 
 /**
  * Maximum retry attempts for fetching events
@@ -12,7 +13,7 @@ const MAX_RETRIES = 2;
 
 /**
  * Fetches events from the database that the current user has access to
- * Uses a more resilient approach with multiple fallback mechanisms
+ * Using the security definer function to avoid RLS recursion issues
  */
 export async function fetchEventsFromDb() {
   let retries = 0;
@@ -34,71 +35,35 @@ export async function fetchEventsFromDb() {
       const userId = sessionData.session.user.id;
       console.log(`Fetching events for user: ${userId}, attempt ${retries + 1}`);
       
+      // Primary approach: Use the security definer function
       try {
-        // Use the most direct and efficient method first
         // Check if our RPC exists before trying to use it
         const fnExists = await functionExists("get_user_events_safe");
           
         if (fnExists) {
-          // Call the function directly if it exists using a direct fetch to avoid type errors
-          try {
-            const response = await fetch(
-              `https://yuraqejlapinpglrkkux.supabase.co/rest/v1/rpc/get_user_events_safe`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1cmFxZWpsYXBpbnBnbHJra3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyNzQ5NTMsImV4cCI6MjA2MDg1MDk1M30.PyS67UKFVi5iriwjDmeJWLrHBOyN4cL-IRBdpLYdpZ4',
-                  'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1cmFxZWpsYXBpbnBnbHJra3V4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUyNzQ5NTMsImV4cCI6MjA2MDg1MDk1M30.PyS67UKFVi5iriwjDmeJWLrHBOyN4cL-IRBdpLYdpZ4`
-                }
-              }
-            );
+          // Call the function using the callFunction helper to avoid type errors
+          const { data, error } = await callFunction<any[]>("get_user_events_safe");
             
-            if (!response.ok) {
-              throw new Error(`RPC call failed: ${response.statusText}`);
-            }
-            
-            const directEvents = await response.json();
-            
-            // If this function exists and returns data successfully, use it
-            if (Array.isArray(directEvents) && directEvents.length > 0) {
-              console.log(`Successfully fetched ${directEvents.length} events using direct RPC`);
-              const mappedEvents = await processEventsWithProfiles(directEvents);
-              return { events: mappedEvents, error: null };
-            }
-          } catch (rpcError) {
-            console.error("Error calling get_user_events_safe RPC:", rpcError);
-            // Continue to fallback approaches
+          if (error) {
+            console.error("Error calling get_user_events_safe function:", error);
+            // Continue to fallback if function call fails
+          } else if (data && data.length > 0) {
+            // Successfully got events, process and return
+            console.log(`Successfully fetched ${data.length} events using security definer function`);
+            const mappedEvents = await processEventsWithProfiles(data);
+            return { events: mappedEvents, error: null };
           }
         }
         
-        // If direct method failed or doesn't exist, and we've used all retries, 
-        // fall back to personal events
+        // If direct method failed or function doesn't exist, fall back to personal events
         if (retries >= MAX_RETRIES) {
-          console.log("Falling back to personal events after direct RPC failed or doesn't exist");
+          console.log("Falling back to personal events after security definer function failed");
           return await fetchPersonalEventsOnly(userId);
         }
         
-        // Otherwise, try the fallback approach to get all user families first
-        // and then fetch events for each family
-        const { data: userFamilies, error: familiesError } = await supabase
-          .rpc('get_user_families');
-      
-        if (familiesError) {
-          console.error("Error fetching user families:", familiesError);
-          // If we hit an error with user_families, fall back to just personal events
-          return await fetchPersonalEventsOnly(userId);
-        }
-        
-        // If user has no families, just fetch personal events
-        if (!userFamilies || userFamilies.length === 0) {
-          console.log("No families found for user, returning personal events only");
-          return await fetchPersonalEventsOnly(userId);
-        }
-        
-        // User has families, attempt to fetch combined events
-        const familyIds = userFamilies.map(f => f.id);
-        return await fetchCombinedEvents(userId, familyIds);
+        // Increment retry counter and try again
+        retries++;
+        return await fetchWithRetry();
         
       } catch (error) {
         console.error("Error in event fetching process:", error);
@@ -144,77 +109,6 @@ async function fetchPersonalEventsOnly(userId: string) {
     return { events: mappedEvents, error: null };
   } catch (error) {
     handleError(error, { context: "Fetching personal events fallback" });
-    return { events: [], error: "Failed to load events" };
-  }
-}
-
-/**
- * Attempts to fetch both family-shared events and personal events
- */
-async function fetchCombinedEvents(userId: string, familyIds: string[]) {
-  try {
-    // Use a transaction to make this more reliable
-    console.log(`Fetching events for ${familyIds.length} families`);
-    
-    // First try to get event_families entries to find shared events
-    const { data: familyEventRows, error: familyEventError } = await supabase
-      .from('event_families')
-      .select('event_id')
-      .in('family_id', familyIds);
-      
-    if (familyEventError) {
-      console.error("Error fetching family events:", familyEventError);
-      // Fall back to just personal events if family events fail
-      return await fetchPersonalEventsOnly(userId);
-    }
-    
-    let eventIds: string[] = [];
-    if (familyEventRows && familyEventRows.length > 0) {
-      eventIds = familyEventRows.map(row => row.event_id);
-      console.log(`Found ${eventIds.length} shared event IDs`);
-    } else {
-      console.log("No shared events found");
-    }
-    
-    // Try to get all events (both personal and from families)
-    let events: any[] = [];
-    
-    // First try to get personal events
-    const { data: personalEvents, error: personalError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('creator_id', userId);
-      
-    if (personalError) {
-      console.error("Error fetching personal events:", personalError);
-    } else {
-      events = personalEvents || [];
-      console.log(`Found ${events.length} personal events`);
-    }
-    
-    // If we have family-shared event IDs, fetch those too
-    if (eventIds.length > 0) {
-      const { data: sharedEvents, error: sharedError } = await supabase
-        .from('events')
-        .select('*')
-        .in('id', eventIds)
-        .not('creator_id', 'eq', userId); // Don't double-count user's own events
-        
-      if (sharedError) {
-        console.error("Error fetching shared events:", sharedError);
-      } else if (sharedEvents) {
-        // Combine shared events with personal events
-        events = [...events, ...sharedEvents];
-        console.log(`Added ${sharedEvents.length} shared events, total: ${events.length}`);
-      }
-    }
-    
-    // Process all events with profiles
-    const mappedEvents = await processEventsWithProfiles(events);
-    console.log(`Returning ${mappedEvents.length} combined events`);
-    return { events: mappedEvents, error: null };
-  } catch (error) {
-    handleError(error, { context: "Fetching combined events" });
     return { events: [], error: "Failed to load events" };
   }
 }
