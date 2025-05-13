@@ -464,6 +464,20 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_events_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          all_day: boolean | null
+          created_at: string
+          creator_id: string
+          date: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          time: string
+        }[]
+      }
       get_user_families: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -544,6 +558,10 @@ export type Database = {
         Returns: undefined
       }
       user_can_access_event: {
+        Args: { event_id_param: string }
+        Returns: boolean
+      }
+      user_can_access_event_safe: {
         Args: { event_id_param: string }
         Returns: boolean
       }
