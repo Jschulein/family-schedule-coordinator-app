@@ -12,6 +12,7 @@ export const functionExists = checkFunctionExists;
 
 /**
  * Check if a user has access to a specific event
+ * Uses the security definer function to prevent RLS recursion
  */
 export const userCanAccessEvent = async (eventId: string): Promise<boolean> => {
   try {
@@ -33,6 +34,7 @@ export const userCanAccessEvent = async (eventId: string): Promise<boolean> => {
 
 /**
  * Get all families that the current user is a member of
+ * Uses the security definer function to prevent RLS recursion
  */
 export const getUserFamilies = async () => {
   try {

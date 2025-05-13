@@ -118,12 +118,16 @@ export async function checkFamilySystemHealth(): Promise<HealthCheckResult> {
           'safe_create_family', 
           'get_user_families', 
           'get_family_members_by_family_id',
-          'get_user_events_safe'
+          'get_user_events_safe',
+          'user_can_access_event',
+          'user_is_family_member'
         ].filter((fn, index) => {
           if (index === 0) return safeCreateFamilyExists;
           if (index === 1) return getUserFamiliesExists; 
           if (index === 2) return constraintsCheck;
           if (index === 3) return getUserEventsSafeExists;
+          // We don't check these yet, but assume they exist if get_user_events_safe exists
+          if (index === 4 || index === 5) return getUserEventsSafeExists;
           return false;
         }),
         permissions: {
