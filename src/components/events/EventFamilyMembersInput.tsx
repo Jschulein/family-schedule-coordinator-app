@@ -6,7 +6,7 @@ import { useFamilyMembers } from "@/hooks/family/useFamilyMembers";
 import { useEffect, useState } from "react";
 import { useFamilyContext } from "@/contexts/family";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle, User } from "lucide-react";
 
 interface EventFamilyMembersInputProps {
   value: string[];
@@ -27,10 +27,13 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
   }, [activeFamilyId, refreshMembers]);
 
   const handleRefresh = async () => {
+    if (!activeFamilyId) return;
+    
     setIsRefreshing(true);
     setRetryCount(prev => prev + 1);
     
     try {
+      console.log("Refreshing family members for family:", activeFamilyId);
       await refreshMembers();
     } catch (err) {
       console.error("Error refreshing family members:", err);
@@ -60,9 +63,12 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
     return (
       <div className="space-y-2">
         <Label>Family Members</Label>
-        <p className="text-sm text-muted-foreground">
-          Please select a family first to view members
-        </p>
+        <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg text-sm text-amber-700">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <p>Please select a family first to view and add members to this event.</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -77,6 +83,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
           size="sm" 
           onClick={handleRefresh}
           disabled={isRefreshing || loading}
+          className="h-8 px-2 text-xs"
         >
           {isRefreshing || loading ? (
             <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -104,9 +111,14 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
                   ? "bg-primary/10 border-primary" 
                   : "hover:bg-muted"}`}
             >
-              <div className="flex flex-col">
-                <span className="font-medium">{getMemberDisplayName(member)}</span>
-                <span className="text-xs text-muted-foreground">{member.role}</span>
+              <div className="flex items-center">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mr-3">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium">{getMemberDisplayName(member)}</span>
+                  <span className="text-xs text-muted-foreground">{member.role}</span>
+                </div>
               </div>
               {value.includes(member.id) && (
                 <Check className="h-4 w-4 text-primary" />
@@ -121,7 +133,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
                 <span>No family members could be loaded. Please try refreshing.</span>
               </div>
             ) : (
-              <p>No family members found</p>
+              <p>No family members found in this family</p>
             )}
           </div>
         )}

@@ -116,7 +116,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const deleteEvent = async (eventId: string) => {
+  const deleteEvent = async (eventId: string): Promise<void> => {
     try {
       // Check if we're in offline mode
       if (offlineMode) {
@@ -149,8 +149,6 @@ export function EventProvider({ children }: { children: ReactNode }) {
           title: "Success",
           description: message || "Event deleted successfully!"
         });
-        
-        return { success };
       }
     } catch (error: any) {
       console.error("Error in deleteEvent:", error);

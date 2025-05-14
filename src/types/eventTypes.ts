@@ -20,11 +20,11 @@ export interface UserProfile {
 
 export interface EventContextType {
   events: Event[];
-  addEvent: (event: Event) => Promise<void>;
-  updateEvent: (event: Event) => Promise<void>;
+  addEvent: (event: Event) => Promise<Event | void>;
+  updateEvent: (event: Event) => Promise<Event | void>;
   deleteEvent: (eventId: string) => Promise<void>;
   loading: boolean;
   error: string | null;
   offlineMode: boolean;
-  refetchEvents: () => Promise<void>;
+  refetchEvents: (showToast?: boolean) => Promise<void>;
 }

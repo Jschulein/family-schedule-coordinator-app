@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { useState, useEffect } from "react";
@@ -98,10 +98,16 @@ const NewEvent = () => {
       };
       
       // Add the event and capture any errors
-      await addEvent(event);
+      const createdEvent = await addEvent(event);
       
-      toast.success("Event created successfully!");
-      navigate("/calendar");
+      if (createdEvent) {
+        toast.success("Event created successfully!");
+        navigate("/calendar");
+      } else {
+        // The event might have been created but there was an issue with family associations
+        toast.success("Event created, but there may have been issues with family sharing.");
+        navigate("/calendar");
+      }
     } catch (error: any) {
       console.error("Error in handleSubmit:", error);
       setError(error?.message || "Failed to create event");
@@ -117,10 +123,14 @@ const NewEvent = () => {
   
   const handleRetry = async () => {
     setIsRefreshing(true);
+    setError(null);
+    
     try {
-      await refetchEvents();
+      await refetchEvents(true);
       toast.success("Data refreshed successfully");
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error refreshing data:", error);
+      setError(error?.message || "Failed to refresh data");
       toast.error("Failed to refresh data");
     } finally {
       setIsRefreshing(false);
@@ -162,6 +172,7 @@ const NewEvent = () => {
         {(contextError || error) && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 rounded">
             <div className="flex">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
               <div className="ml-3">
                 <p className="text-sm text-red-700">
                   Error: {contextError || error}. Please try refreshing the data or contact support.
