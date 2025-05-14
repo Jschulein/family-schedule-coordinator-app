@@ -25,3 +25,14 @@ export interface TestConfig {
 }
 
 export type TestResults = Record<string, TestResult | null>;
+
+// Add interface for application performance metrics
+export interface AppPerformanceMetrics {
+  renderTime: number;
+  loadTime: number;
+  interactionDelay: number;
+  memoryUsage: {
+    used: number;
+    total: number;
+  };
+}
