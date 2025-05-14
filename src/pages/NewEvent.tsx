@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -22,12 +23,13 @@ interface EventFormData {
 
 const NewEvent = () => {
   const navigate = useNavigate();
-  const { addEvent, loading: contextLoading } = useEvents();
+  const { addEvent, loading: contextLoading, refetchEvents } = useEvents();
   const { activeFamilyId, families } = useFamilyContext();
   
-  // State for tracking submission
+  // State for tracking submission and error
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
   
   // Cleanup on unmount
@@ -169,6 +171,13 @@ const NewEvent = () => {
             <p className="text-sm text-amber-700">
               Please select a family from the sidebar to share this event with family members.
             </p>
+          </div>
+        )}
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+            <p className="font-medium text-red-800">Error</p>
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
         
