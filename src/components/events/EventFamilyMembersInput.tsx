@@ -40,6 +40,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
   };
 
   const toggleMember = (memberId: string) => {
+    console.log("Toggling member:", memberId);
     if (value.includes(memberId)) {
       onChange(value.filter(id => id !== memberId));
     } else {
@@ -49,7 +50,10 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
 
   // Helper to display member name or email if name is empty
   const getMemberDisplayName = (member: FamilyMember) => {
-    return member.name && member.name.trim() !== '' ? member.name : member.email;
+    if (member.name && member.name.trim() !== '') {
+      return member.name;
+    }
+    return member.email;
   };
 
   if (!activeFamilyId) {
@@ -100,7 +104,10 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
                   ? "bg-primary/10 border-primary" 
                   : "hover:bg-muted"}`}
             >
-              <span>{getMemberDisplayName(member)}</span>
+              <div className="flex flex-col">
+                <span className="font-medium">{getMemberDisplayName(member)}</span>
+                <span className="text-xs text-muted-foreground">{member.role}</span>
+              </div>
               {value.includes(member.id) && (
                 <Check className="h-4 w-4 text-primary" />
               )}

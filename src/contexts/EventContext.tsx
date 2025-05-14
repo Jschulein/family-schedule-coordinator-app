@@ -1,3 +1,4 @@
+
 import { createContext, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { 
@@ -26,9 +27,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
         return;
       }
       
+      console.log("Adding event:", newEvent);
       const { event: createdEvent, error: addError } = await addEventFn(newEvent);
       
       if (addError) {
+        console.error("Error adding event:", addError);
         toast({
           title: "Error",
           description: addError,
@@ -38,14 +41,18 @@ export function EventProvider({ children }: { children: ReactNode }) {
       }
       
       if (createdEvent) {
+        // Update the local state optimistically
         setEvents(prevEvents => [...prevEvents, createdEvent]);
+        
         toast({
           title: "Success",
           description: "Event created successfully!"
         });
         
-        // Refresh events to ensure we have all the latest data
-        refetchEvents(false);
+        // Refresh events to ensure we have all the latest data including family associations
+        console.log("Refreshing events after creation to get latest data");
+        await refetchEvents(false);
+        return createdEvent; // Return the created event for chaining
       }
     } catch (error: any) {
       console.error("Error in addEvent:", error);
@@ -54,6 +61,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
+      throw error; // Re-throw to allow the UI to handle it
     }
   };
 
@@ -66,13 +74,14 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: "You are currently offline. Changes will be saved when you reconnect.",
           variant: "destructive"
         });
-        // We could implement a queue of pending changes here
         return;
       }
       
+      console.log("Updating event:", updatedEvent);
       const { event: eventResult, error: updateError } = await updateEventFn(updatedEvent);
       
       if (updateError) {
+        console.error("Error updating event:", updateError);
         toast({
           title: "Error",
           description: updateError,
@@ -82,13 +91,19 @@ export function EventProvider({ children }: { children: ReactNode }) {
       }
       
       if (eventResult) {
+        // Update local state optimistically
         setEvents(prevEvents => prevEvents.map(event => 
           event.id === updatedEvent.id ? eventResult : event
         ));
+        
         toast({
           title: "Success", 
           description: "Event updated successfully!"
         });
+        
+        // Refresh events to ensure we have all the latest data
+        await refetchEvents(false);
+        return eventResult;
       }
     } catch (error: any) {
       console.error("Error in updateEvent:", error);
@@ -97,6 +112,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
+      throw error;
     }
   };
 
@@ -109,13 +125,14 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: "You are currently offline. Changes will be saved when you reconnect.",
           variant: "destructive"
         });
-        // We could implement a queue of pending changes here
         return;
       }
       
+      console.log("Deleting event:", eventId);
       const { success, message, error: deleteError } = await deleteEventFn(eventId);
       
       if (deleteError) {
+        console.error("Error deleting event:", deleteError);
         toast({
           title: "Error",
           description: deleteError,
@@ -125,11 +142,15 @@ export function EventProvider({ children }: { children: ReactNode }) {
       }
       
       if (success) {
+        // Update local state by removing the deleted event
         setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+        
         toast({
           title: "Success",
           description: message || "Event deleted successfully!"
         });
+        
+        return { success };
       }
     } catch (error: any) {
       console.error("Error in deleteEvent:", error);
@@ -138,6 +159,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
+      throw error;
     }
   };
 

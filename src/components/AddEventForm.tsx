@@ -42,9 +42,11 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
   const [description, setDescription] = useState('');
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
   const [allDay, setAllDay] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     
     if (name && date) {
       try {
@@ -52,6 +54,7 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
         const userId = session?.user.id;
         
         if (!userId) {
+          setFormError("No authenticated user found. Please log in and try again.");
           console.error("No authenticated user found");
           return;
         }
@@ -68,7 +71,10 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
         });
       } catch (error) {
         console.error("Error in form submission:", error);
+        setFormError("Error submitting form. Please try again.");
       }
+    } else {
+      setFormError("Please provide an event name and date.");
     }
   };
 
@@ -113,6 +119,11 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
             value={familyMembers} 
             onChange={setFamilyMembers} 
           />
+          
+          {formError && (
+            <div className="text-sm font-medium text-destructive">{formError}</div>
+          )}
+          
           <Button 
             type="submit" 
             className="w-full"

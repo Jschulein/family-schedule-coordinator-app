@@ -1,63 +1,85 @@
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { FamilyMember } from "@/types/familyTypes";
-import { fetchMembersByFamilyId } from "@/services";
 import { toast } from "@/components/ui/use-toast";
-import { MemberManagementResult } from "./types";
 
 /**
- * Hook for managing family member data
- * @param familyId The ID of the family
- * @returns Family members data and management functions
+ * Hook for fetching and managing family members for a specific family
+ * @param familyId The ID of the family to fetch members for
+ * @returns Family members data and loading/error states
  */
-export function useFamilyMembers(familyId: string | null): MemberManagementResult {
+export const useFamilyMembers = (familyId: string | null) => {
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch family members
+  // Memoized function to fetch family members to prevent rerenders
   const fetchMembers = useCallback(async () => {
     if (!familyId) {
+      console.log("No family ID provided to useFamilyMembers");
       setMembers([]);
+      setError(null);
       return;
     }
 
-    console.log(`Fetching members for family ${familyId}`);
     setLoading(true);
     setError(null);
-
+    
     try {
-      const result = await fetchMembersByFamilyId(familyId);
+      console.log(`Fetching family members for family: ${familyId}`);
       
-      if (result.isError) {
-        setError(result.error || "Failed to load family members");
-        toast({ 
-          title: "Error", 
-          description: "Failed to load family members",
-          variant: "destructive"
+      // Use the security definer function to bypass RLS recursion issues
+      const { data, error } = await supabase
+        .rpc('get_family_members_safe', {
+          p_family_id: familyId
         });
-      } else if (result.data) {
-        setMembers(result.data);
-      } else {
-        // Default to empty array if no data
-        setMembers([]);
+      
+      if (error) {
+        console.error("Error fetching family members:", error);
+        setError(`Failed to load family members: ${error.message}`);
+        return;
       }
-    } catch (e: any) {
-      console.error("Unexpected error in useFamilyMembers:", e);
-      setError(e.message || "An unexpected error occurred");
-      toast({ 
-        title: "Error", 
-        description: "An error occurred while loading family members"
-      });
+
+      console.log(`Loaded ${data?.length || 0} family members`);
+      setMembers(data || []);
+    } catch (err: any) {
+      console.error("Unexpected error in useFamilyMembers:", err);
+      setError(err?.message || "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
   }, [familyId]);
 
-  // Initial load and when familyId changes
+  // Fetch members when the family changes
   useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
+    if (familyId) {
+      fetchMembers();
+    } else {
+      setMembers([]);
+    }
+  }, [familyId, fetchMembers]);
+
+  // Set up a subscription for real-time updates to family members
+  useEffect(() => {
+    if (!familyId) return;
+    
+    const channel = supabase
+      .channel(`family-members-${familyId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'family_members', filter: `family_id=eq.${familyId}` },
+        (payload) => {
+          console.log("Family members changed, refreshing data");
+          fetchMembers();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [familyId, fetchMembers]);
 
   return {
     members,
@@ -65,4 +87,6 @@ export function useFamilyMembers(familyId: string | null): MemberManagementResul
     error,
     refreshMembers: fetchMembers
   };
-}
+};
+
+export default useFamilyMembers;

@@ -8,6 +8,7 @@ import { useEvents } from "@/contexts/EventContext";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
+import { useFamilyContext } from "@/contexts/family";
 
 interface EventFormData {
   name: string;
@@ -23,9 +24,11 @@ interface EventFormData {
 const NewEvent = () => {
   const navigate = useNavigate();
   const { addEvent, loading: contextLoading, error: contextError, refetchEvents } = useEvents();
+  const { activeFamilyId, families } = useFamilyContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check authentication status
@@ -54,10 +57,19 @@ const NewEvent = () => {
     
     checkAuth();
   }, [navigate]);
+  
+  useEffect(() => {
+    // If no active family is selected but families are available, show notification
+    if (families.length > 0 && !activeFamilyId) {
+      toast.info("Please select a family to share this event with");
+    }
+  }, [families, activeFamilyId]);
 
   const handleSubmit = async (eventData: EventFormData) => {
+    setIsSubmitting(true);
+    setError(null);
+    
     try {
-      setIsSubmitting(true);
       console.log("Form submission data:", eventData);
       
       const { data, error } = await supabase.auth.getSession();
@@ -85,12 +97,15 @@ const NewEvent = () => {
         all_day: eventData.all_day
       };
       
+      // Add the event and capture any errors
       await addEvent(event);
+      
       toast.success("Event created successfully!");
       navigate("/calendar");
     } catch (error: any) {
       console.error("Error in handleSubmit:", error);
-      toast.error(`Failed to create event: ${error.message || "Unknown error"}`);
+      setError(error?.message || "Failed to create event");
+      toast.error(`Failed to create event: ${error?.message || "Unknown error"}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -144,12 +159,12 @@ const NewEvent = () => {
           </Button>
         </div>
         
-        {contextError && (
+        {(contextError || error) && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 rounded">
             <div className="flex">
               <div className="ml-3">
                 <p className="text-sm text-red-700">
-                  Error: {contextError}. Please try refreshing the data or contact support.
+                  Error: {contextError || error}. Please try refreshing the data or contact support.
                 </p>
               </div>
             </div>
