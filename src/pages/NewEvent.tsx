@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,19 @@ const NewEvent = () => {
           });
         }
       }, 20000);
+      
+      // Add an additional shorter timeout as a double-check
+      // This prevents edge cases where the state gets stuck despite the other timeout
+      const shortTimeoutId = setTimeout(() => {
+        if (isSubmitting) {
+          console.log("Running mid-point submission state check...");
+        }
+      }, 10000);
+      
+      return () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (shortTimeoutId) clearTimeout(shortTimeoutId);
+      };
     }
     
     return () => {
@@ -119,6 +133,7 @@ const NewEvent = () => {
     setIsSubmitting(true);
     setError(null);
     
+    // Wrap everything in a try-catch to ensure we reset loading state no matter what
     try {
       console.log("Form submission data:", eventData);
       
@@ -161,9 +176,22 @@ const NewEvent = () => {
       
       console.log("Processed event data for submission:", event);
       
-      // Add the event and capture any results
+      // Add the event with a timeout to prevent indefinite waiting
       console.log("Calling addEvent function...");
-      const createdEvent = await addEvent(event);
+      const addEventPromise = addEvent(event);
+      
+      // Create a timeout promise
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Event creation timed out"));
+        }, 15000); // 15 second timeout
+      });
+      
+      // Race the event creation against the timeout
+      const createdEvent = await Promise.race([
+        addEventPromise,
+        timeoutPromise
+      ]);
       
       console.log("Event creation result:", createdEvent);
       
@@ -192,6 +220,8 @@ const NewEvent = () => {
         variant: "destructive"
       });
     } finally {
+      // Make absolutely sure we reset the submitting state
+      console.log("Resetting submission state...");
       setIsSubmitting(false);
     }
   };

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,10 +44,39 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
   const [allDay, setAllDay] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [internalSubmitting, setInternalSubmitting] = useState(false);
+  
+  // Reset internal submitting state when parent submitting state changes to false
+  useEffect(() => {
+    if (!isSubmitting && internalSubmitting) {
+      setInternalSubmitting(false);
+    }
+  }, [isSubmitting, internalSubmitting]);
+  
+  // Double-check submitting state with a timeout
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    if (isSubmitting) {
+      // After 8 seconds, log a warning
+      timeoutId = setTimeout(() => {
+        console.log("AddEventForm is still in submitting state after 8 seconds");
+      }, 8000);
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isSubmitting]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    
+    if (internalSubmitting || isSubmitting) {
+      console.log("Form submission already in progress - ignoring duplicate submission");
+      return;
+    }
     
     if (!name) {
       setFormError("Please provide an event name.");
@@ -65,11 +94,15 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
     }
     
     try {
+      setInternalSubmitting(true);
+      console.log("Form validation passed, checking authentication...");
+      
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
         setFormError("Authentication error. Please try logging in again.");
         console.error("Session error:", sessionError);
+        setInternalSubmitting(false);
         return;
       }
       
@@ -78,6 +111,7 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
       if (!userId) {
         setFormError("No authenticated user found. Please log in and try again.");
         console.error("No authenticated user found");
+        setInternalSubmitting(false);
         return;
       }
       
@@ -95,9 +129,13 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
         familyMembers,
         all_day: allDay
       });
+      
+      // Note: we don't reset internal submitting here because the parent component
+      // will set isSubmitting to false when the submission completes
     } catch (error) {
       console.error("Error in form submission:", error);
       setFormError("Error submitting form. Please try again.");
+      setInternalSubmitting(false);
     }
   };
 
@@ -153,9 +191,9 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
           <Button 
             type="submit" 
             className="w-full"
-            disabled={!isFormValid || isSubmitting}
+            disabled={!isFormValid || isSubmitting || internalSubmitting}
           >
-            {isSubmitting ? (
+            {(isSubmitting || internalSubmitting) ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating Event...

@@ -28,7 +28,26 @@ export function EventProvider({ children }: { children: ReactNode }) {
       }
       
       console.log("Adding event:", newEvent);
+      
+      // Set a timeout to ensure we don't wait forever
+      let addEventPromiseCompleted = false;
+      const timeoutId = setTimeout(() => {
+        if (!addEventPromiseCompleted) {
+          console.warn("Event creation timed out in EventContext");
+          toast({
+            title: "Operation timeout",
+            description: "Event creation took too long. Please check if the event was created.",
+            variant: "destructive"
+          });
+        }
+      }, 10000);
+      
+      // Call the database function with proper error handling
       const { event: createdEvent, error: addError } = await addEventFn(newEvent);
+      
+      // Mark promise as completed to prevent timeout message
+      addEventPromiseCompleted = true;
+      clearTimeout(timeoutId);
       
       if (addError) {
         console.error("Error adding event:", addError);

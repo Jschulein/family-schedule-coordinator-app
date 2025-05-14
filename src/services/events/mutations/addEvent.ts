@@ -5,6 +5,7 @@ import { handleError } from "@/utils/error";
 import { prepareEventData } from "../helpers/eventData";
 import { fetchCreatorProfile, getCreatorDisplayName } from "../helpers/creatorProfile";
 import { associateFamilyMembers } from "../helpers/familyAssociations";
+import { formatEventForDisplay, fromDbEvent } from "@/utils/events";
 
 /**
  * Adds a new event to the database
@@ -79,19 +80,10 @@ export async function addEventToDb(newEvent: Event) {
       console.log(`No family members to associate with event "${eventName}"`);
     }
 
-    // Construct the final event object - Map database fields to frontend fields
-    const createdEvent: Event = {
-      id: eventResult.id,
-      name: eventResult.name,
-      date: new Date(eventResult.date),
-      end_date: eventResult.end_date ? new Date(eventResult.end_date) : undefined,
-      time: eventResult.time,
-      description: eventResult.description || "",
-      creatorId: eventResult.creator_id, // Map creator_id to creatorId
-      all_day: eventResult.all_day || false,
-      familyMembers: newEvent.familyMembers || [],
-      familyMember: creatorProfile ? getCreatorDisplayName(creatorProfile, session.user.id) : session.user.id
-    };
+    // Use the fromDbEvent function for consistent formatting
+    const createdEvent: Event = fromDbEvent(eventResult, {
+      [session.user.id]: creatorProfile
+    });
     
     console.log(`Returning created event "${eventName}" with ID ${createdEvent.id}`);
     
