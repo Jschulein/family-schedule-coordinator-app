@@ -1,11 +1,11 @@
 
 import { useNavigate } from "react-router-dom";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, RefreshCw, AlertTriangle, Info } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { useFamilyContext } from "@/contexts/family";
@@ -35,6 +35,30 @@ const NewEvent = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submissionAttempted, setSubmissionAttempted] = useState(false);
+  
+  // Reset form state after a timeout if submission gets stuck
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    if (isSubmitting) {
+      // Auto-reset submission state after 20 seconds to prevent UI from being stuck
+      timeoutId = setTimeout(() => {
+        if (isSubmitting) {
+          console.warn("Event submission is taking too long - resetting submission state");
+          setIsSubmitting(false);
+          toast({
+            title: "Submission timeout",
+            description: "The request is taking longer than expected. Please check the calendar to see if your event was created.",
+            variant: "default"
+          });
+        }
+      }, 20000);
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isSubmitting]);
 
   // Check authentication on load
   useEffect(() => {
@@ -45,7 +69,11 @@ const NewEvent = () => {
         
         if (error) {
           console.error("Auth error:", error);
-          toast.error("Authentication error. Please try logging in again.");
+          toast({
+            title: "Authentication error",
+            description: "Please try logging in again",
+            variant: "destructive"
+          });
           navigate("/auth");
           return;
         }
@@ -53,12 +81,20 @@ const NewEvent = () => {
         setIsAuthenticated(!!data.session);
         
         if (!data.session) {
-          toast.error("You need to be logged in to create events");
+          toast({
+            title: "Authentication required",
+            description: "You need to be logged in to create events",
+            variant: "destructive"
+          });
           navigate("/auth");
         }
       } catch (err) {
         console.error("Error checking auth:", err);
-        toast.error("Failed to verify authentication status");
+        toast({
+          title: "Error",
+          description: "Failed to verify authentication status",
+          variant: "destructive"
+        });
       } finally {
         setIsChecking(false);
       }
@@ -70,7 +106,11 @@ const NewEvent = () => {
   // Show family selection reminder if needed
   useEffect(() => {
     if (!isChecking && families.length > 0 && !activeFamilyId && !submissionAttempted) {
-      toast.info("Please select a family to share this event with");
+      toast({
+        title: "Family selection needed",
+        description: "Please select a family to share this event with",
+        variant: "default"
+      });
     }
   }, [families, activeFamilyId, isChecking, submissionAttempted]);
 
@@ -88,14 +128,22 @@ const NewEvent = () => {
       
       if (authError) {
         console.error("Auth error during submission:", authError);
-        toast.error("Authentication error. Please try logging in again.");
+        toast({
+          title: "Authentication error",
+          description: "Please try logging in again",
+          variant: "destructive"
+        });
         navigate("/auth");
         return;
       }
       
       if (!data.session) {
         console.error("No session found during submission");
-        toast.error("You need to be logged in to create events");
+        toast({
+          title: "Authentication required",
+          description: "You need to be logged in to create events",
+          variant: "destructive"
+        });
         navigate("/auth");
         return;
       }
@@ -115,22 +163,35 @@ const NewEvent = () => {
       console.log("Processed event data for submission:", event);
       
       // Add the event and capture any results
+      console.log("Calling addEvent function...");
       const createdEvent = await addEvent(event);
       
       console.log("Event creation result:", createdEvent);
       
       if (createdEvent) {
-        toast.success("Event created successfully!");
+        toast({
+          title: "Success",
+          description: "Event created successfully!",
+          variant: "default"
+        });
         navigate("/calendar");
       } else {
-        // The addEvent function already handles error toasts, so we don't need to add another one here
-        console.log("No event returned from addEvent - there may have been an issue");
-        setError("Event creation may not have completed successfully. Please check the calendar.");
+        console.warn("No event returned from addEvent - there may have been an issue");
+        setError("Event creation may not have completed successfully. Please check the calendar or try again.");
+        toast({
+          title: "Warning",
+          description: "The event may not have been created properly. Please check the calendar.",
+          variant: "default"
+        });
       }
     } catch (error: any) {
       console.error("Error in handleSubmit:", error);
       setError(error?.message || "Failed to create event");
-      toast.error(`Failed to create event: ${error?.message || "Unknown error"}`);
+      toast({
+        title: "Error",
+        description: `Failed to create event: ${error?.message || "Unknown error"}`,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -146,11 +207,19 @@ const NewEvent = () => {
     
     try {
       await refetchEvents(true);
-      toast.success("Data refreshed successfully");
+      toast({
+        title: "Success",
+        description: "Data refreshed successfully",
+        variant: "default"
+      });
     } catch (error: any) {
       console.error("Error refreshing data:", error);
       setError(error?.message || "Failed to refresh data");
-      toast.error("Failed to refresh data");
+      toast({
+        title: "Error",
+        description: "Failed to refresh data",
+        variant: "destructive"
+      });
     } finally {
       setIsRefreshing(false);
     }

@@ -37,7 +37,7 @@ export async function addEventToDb(newEvent: Event) {
     const { data: eventResult, error: eventError } = await supabase
       .from('events')
       .insert([eventData])
-      .select()
+      .select('*')
       .single();
     
     if (eventError) {
@@ -81,9 +81,8 @@ export async function addEventToDb(newEvent: Event) {
 
     // Construct the final event object
     const createdEvent: Event = {
-      ...newEvent,
-      id: eventResult?.id,
-      creatorId: session.user.id,
+      ...eventResult,
+      familyMembers: newEvent.familyMembers || [],
       familyMember: creatorProfile ? getCreatorDisplayName(creatorProfile, session.user.id) : session.user.id
     };
     

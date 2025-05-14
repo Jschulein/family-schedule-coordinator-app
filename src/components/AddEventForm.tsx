@@ -37,8 +37,8 @@ interface AddEventFormProps {
 
 const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => {
   const [name, setName] = useState('');
-  const [date, setDate] = useState<Date>();
-  const [endDate, setEndDate] = useState<Date>();
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState('12:00');
   const [description, setDescription] = useState('');
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);

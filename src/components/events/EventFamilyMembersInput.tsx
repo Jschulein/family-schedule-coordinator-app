@@ -18,6 +18,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
   const { members, loading, error, refreshMembers } = useFamilyMembers(activeFamilyId);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [selectableMemberIds, setSelectableMemberIds] = useState<string[]>([]);
 
   // Refresh family members when the component mounts or active family changes
   useEffect(() => {
@@ -25,6 +26,26 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
       refreshMembers();
     }
   }, [activeFamilyId, refreshMembers]);
+  
+  // Update available member IDs whenever members change
+  useEffect(() => {
+    if (members && members.length > 0) {
+      // Extract just the IDs for easier selection
+      const ids = members.map(member => member.id);
+      setSelectableMemberIds(ids);
+      
+      // Filter out any selected IDs that are no longer available
+      const validSelectedIds = value.filter(id => ids.includes(id));
+      if (validSelectedIds.length !== value.length) {
+        onChange(validSelectedIds);
+      }
+    } else {
+      setSelectableMemberIds([]);
+    }
+  }, [members, onChange]);
+  
+  console.log("Available members:", members);
+  console.log("Currently selected member IDs:", value);
 
   const handleRefresh = async () => {
     if (!activeFamilyId) return;
@@ -44,11 +65,17 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
 
   const toggleMember = (memberId: string) => {
     console.log("Toggling member:", memberId);
+    console.log("Current selection:", value);
+    
     if (value.includes(memberId)) {
       onChange(value.filter(id => id !== memberId));
     } else {
       onChange([...value, memberId]);
     }
+    
+    console.log("New selection:", value.includes(memberId) ? 
+      value.filter(id => id !== memberId) : 
+      [...value, memberId]);
   };
 
   // Helper to display member name or email if name is empty

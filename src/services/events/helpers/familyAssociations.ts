@@ -22,7 +22,7 @@ export async function associateFamilyMembers(eventId: string, familyMemberIds: s
     // First, get family members data to extract the correct family IDs
     const { data: familyMembers, error: familyMembersError } = await supabase
       .from('family_members')
-      .select('id, family_id, user_id')
+      .select('id, family_id, user_id, email')
       .in('id', familyMemberIds);
     
     if (familyMembersError) {
@@ -32,19 +32,30 @@ export async function associateFamilyMembers(eventId: string, familyMemberIds: s
     
     if (!familyMembers || familyMembers.length === 0) {
       console.warn("No family members found with the provided IDs:", familyMemberIds);
-      return Promise.resolve(); // No valid members found
+      return Promise.reject(new Error("No valid family members found. Please select family members again."));
     }
     
     console.log("Retrieved family members data:", familyMembers);
     
-    // Create associations using the family IDs (not member IDs) to properly link events with families
-    const familyAssociations = familyMembers.map(member => ({
+    // Group by family_id to avoid duplicate family associations
+    const familyMap = new Map();
+    familyMembers.forEach(member => {
+      familyMap.set(member.family_id, true);
+    });
+    
+    // Create associations using the family IDs (not member IDs)
+    const familyAssociations = Array.from(familyMap.keys()).map(familyId => ({
       event_id: eventId,
-      family_id: member.family_id, // Use family_id, not member.id
+      family_id: familyId,
       shared_by: userId
     }));
     
     console.log("Creating family event associations:", familyAssociations);
+    
+    if (familyAssociations.length === 0) {
+      console.warn("No family associations to create");
+      return Promise.resolve();
+    }
     
     const { error: associationError } = await supabase
       .from('event_families')
@@ -55,7 +66,7 @@ export async function associateFamilyMembers(eventId: string, familyMemberIds: s
       return Promise.reject(new Error(`Failed to associate event with families: ${associationError.message}`));
     }
     
-    console.log(`Successfully associated event ${eventId} with ${familyMembers.length} families`);
+    console.log(`Successfully associated event ${eventId} with ${familyAssociations.length} families`);
     return Promise.resolve();
   } catch (error) {
     console.error("Unexpected error in associateFamilyMembers:", error);

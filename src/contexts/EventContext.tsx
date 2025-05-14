@@ -51,10 +51,15 @@ export function EventProvider({ children }: { children: ReactNode }) {
         
         // Refresh events to ensure we have all the latest data including family associations
         console.log("Refreshing events after creation to get latest data");
-        await refetchEvents(false);
+        try {
+          await refetchEvents(false);
+        } catch (refreshError) {
+          console.warn("Non-critical error refreshing events after creation:", refreshError);
+        }
         return createdEvent; // Return the created event for chaining
       }
       
+      console.warn("No event was created and no error was returned");
       return undefined;
     } catch (error: any) {
       console.error("Error in addEvent:", error);
@@ -104,10 +109,15 @@ export function EventProvider({ children }: { children: ReactNode }) {
         });
         
         // Refresh events to ensure we have all the latest data
-        await refetchEvents(false);
+        try {
+          await refetchEvents(false);
+        } catch (refreshError) {
+          console.warn("Non-critical error refreshing events after update:", refreshError);
+        }
         return eventResult;
       }
       
+      console.warn("No event was updated and no error was returned");
       return undefined;
     } catch (error: any) {
       console.error("Error in updateEvent:", error);
@@ -157,6 +167,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         return true;
       }
       
+      console.warn("Event deletion not successful and no error was returned");
       return false;
     } catch (error: any) {
       console.error("Error in deleteEvent:", error);
