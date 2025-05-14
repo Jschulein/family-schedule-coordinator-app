@@ -5,7 +5,7 @@
  */
 
 // Re-export from core
-export { createFamily } from '../core';
+export { createFamilyCore as createFamily } from '../core';
 
 // Re-export for backward compatibility
 export * from './validators';

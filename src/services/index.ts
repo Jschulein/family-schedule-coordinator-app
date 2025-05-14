@@ -9,7 +9,7 @@ export * from './eventService';
 
 // Family-related services exports with explicit naming to avoid ambiguity
 export { 
-  createFamily,
+  createFamilyCore as createFamily,
   fetchUserFamilies 
 } from './families/core';
 
