@@ -1,3 +1,6 @@
 
-// Re-export all from the family folder for backward compatibility
+/**
+ * Main export for FamilyContext
+ * Re-exports from the family folder for backward compatibility
+ */
 export * from './family';
