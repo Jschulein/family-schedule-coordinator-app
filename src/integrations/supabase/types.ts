@@ -381,6 +381,10 @@ export type Database = {
         }
         Returns: string
       }
+      debug_family_creation: {
+        Args: { p_name: string; p_user_id: string }
+        Returns: Json
+      }
       delete_user_profile: {
         Args: { user_id: number }
         Returns: undefined
@@ -479,6 +483,16 @@ export type Database = {
         }[]
       }
       get_user_families: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          color: string
+          created_by: string
+          created_at: string
+        }[]
+      }
+      get_user_families_safe: {
         Args: Record<PropertyKey, never>
         Returns: {
           id: string
