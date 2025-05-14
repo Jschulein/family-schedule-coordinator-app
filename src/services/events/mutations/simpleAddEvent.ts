@@ -7,26 +7,34 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
+import { logEventFlow } from "@/utils/events";
 
 /**
  * Add an event to the database with minimal processing
  * Designed for testing and debugging the core database functionality
  */
 export async function simpleAddEvent(eventData: Event) {
-  console.log("Starting simplified event creation:", eventData);
+  logEventFlow('simpleAddEvent', 'Starting simplified event creation', { 
+    name: eventData.name,
+    date: eventData.date
+  });
   
   try {
     // Verify authentication
+    logEventFlow('simpleAddEvent', 'Verifying authentication');
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
     if (sessionError) {
+      logEventFlow('simpleAddEvent', 'Authentication error', sessionError);
       throw new Error(`Authentication error: ${sessionError.message}`);
     }
     
     if (!session) {
+      logEventFlow('simpleAddEvent', 'No active session found');
       throw new Error("No active session. User must be logged in");
     }
     
-    console.log("Auth verified, user ID:", session.user.id);
+    logEventFlow('simpleAddEvent', 'Auth verified, preparing database format', { userId: session.user.id });
     
     // Prepare database format
     const dbEvent = {
@@ -39,7 +47,7 @@ export async function simpleAddEvent(eventData: Event) {
       all_day: eventData.all_day || false
     };
     
-    console.log("Prepared event data for DB:", dbEvent);
+    logEventFlow('simpleAddEvent', 'Inserting event into database');
     
     // Insert the event directly
     const { data: createdEvent, error: insertError } = await supabase
@@ -49,19 +57,20 @@ export async function simpleAddEvent(eventData: Event) {
       .single();
     
     if (insertError) {
-      console.error("Database error creating event:", insertError);
+      logEventFlow('simpleAddEvent', 'Database error creating event', insertError);
       throw new Error(`Failed to create event: ${insertError.message}`);
     }
     
     if (!createdEvent) {
+      logEventFlow('simpleAddEvent', 'No event data returned after successful creation');
       throw new Error("No event data returned after successful creation");
     }
     
-    console.log("Created event:", createdEvent);
+    logEventFlow('simpleAddEvent', 'Event created successfully', { id: createdEvent.id });
     
     // If family members specified, associate them
     if (eventData.familyMembers && eventData.familyMembers.length > 0) {
-      console.log(`Associating event with ${eventData.familyMembers.length} family members`);
+      logEventFlow('simpleAddEvent', `Associating event with ${eventData.familyMembers.length} family members`);
       
       try {
         // First, get family members data to extract the correct family IDs
@@ -71,7 +80,7 @@ export async function simpleAddEvent(eventData: Event) {
           .in('id', eventData.familyMembers);
         
         if (familyMembersError) {
-          console.error("Error fetching family members:", familyMembersError);
+          logEventFlow('simpleAddEvent', 'Error fetching family members', familyMembersError);
           return { 
             event: createdEvent, 
             error: `Event created but family association failed: ${familyMembersError.message}`
@@ -86,6 +95,8 @@ export async function simpleAddEvent(eventData: Event) {
           }
         });
         
+        logEventFlow('simpleAddEvent', `Found ${familyMap.size} unique families to associate`);
+        
         // Create associations for each unique family
         const familyAssociations = Array.from(familyMap.keys()).map(familyId => ({
           event_id: createdEvent.id,
@@ -94,22 +105,24 @@ export async function simpleAddEvent(eventData: Event) {
         }));
         
         if (familyAssociations.length > 0) {
+          logEventFlow('simpleAddEvent', 'Creating family associations', familyAssociations);
+          
           const { error: associationError } = await supabase
             .from('event_families')
             .insert(familyAssociations);
             
           if (associationError) {
-            console.error("Error associating event with families:", associationError);
+            logEventFlow('simpleAddEvent', 'Error associating event with families', associationError);
             return { 
               event: createdEvent, 
               error: `Event created but family association failed: ${associationError.message}`
             };
           }
           
-          console.log("Successfully associated event with families");
+          logEventFlow('simpleAddEvent', 'Successfully associated event with families');
         }
       } catch (associationError: any) {
-        console.error("Unexpected error in family associations:", associationError);
+        logEventFlow('simpleAddEvent', 'Unexpected error in family associations', associationError);
         return { 
           event: createdEvent, 
           error: `Event created but had association error: ${associationError.message}`
@@ -118,10 +131,11 @@ export async function simpleAddEvent(eventData: Event) {
     }
     
     // Return the created event
+    logEventFlow('simpleAddEvent', 'Event creation completed successfully');
     return { event: createdEvent, error: null };
     
   } catch (error: any) {
-    console.error("Error in simpleAddEvent:", error);
+    logEventFlow('simpleAddEvent', 'Error in simpleAddEvent', error);
     const errorMessage = handleError(error, { 
       context: "Simple event creation", 
       showToast: false

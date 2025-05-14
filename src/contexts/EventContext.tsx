@@ -8,6 +8,7 @@ import {
   simpleAddEvent
 } from '@/services/events';
 import { fromDbEvent } from '@/utils/events/eventFormatter';
+import { logEventFlow } from '@/utils/events';
 import type { Event, EventContextType } from '@/types/eventTypes';
 import { handleError } from '@/utils/error';
 import { useEventData } from '@/hooks/useEventData';
@@ -18,9 +19,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
   const { events, setEvents, loading, error, offlineMode, refetchEvents } = useEventData();
 
   const addEvent = async (newEvent: Event): Promise<Event | undefined> => {
+    logEventFlow('EventContext', 'addEvent function called', newEvent);
     try {
       // Check if we're in offline mode
       if (offlineMode) {
+        logEventFlow('EventContext', 'Offline mode detected, showing toast');
         toast({
           title: "Offline Mode",
           description: "You are currently offline. Changes will be saved when you reconnect.",
@@ -29,13 +32,13 @@ export function EventProvider({ children }: { children: ReactNode }) {
         return undefined;
       }
       
-      console.log("Adding event:", newEvent);
+      logEventFlow('EventContext', 'Starting event creation process', { name: newEvent.name });
       
       // Set a timeout to ensure we don't wait forever
       let addEventPromiseCompleted = false;
       const timeoutId = setTimeout(() => {
         if (!addEventPromiseCompleted) {
-          console.warn("Event creation timed out in EventContext");
+          logEventFlow('EventContext', 'Event creation TIMED OUT', { name: newEvent.name });
           toast({
             title: "Operation timeout",
             description: "Event creation took too long. Please check if the event was created.",
@@ -45,7 +48,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
       }, 10000);
 
       // First attempt using the simplified direct function for more reliable operation
-      console.log("Trying simplified event creation first for improved reliability");
+      logEventFlow('EventContext', 'Trying simplified event creation first');
       const { event: simpleEvent, error: simpleError } = await simpleAddEvent(newEvent);
       
       // Mark promise as completed to prevent timeout message
@@ -53,12 +56,13 @@ export function EventProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeoutId);
       
       if (simpleEvent) {
-        console.log("Event created successfully with simplified function:", simpleEvent);
+        logEventFlow('EventContext', 'Event created successfully with simplified function', simpleEvent);
         
         // Transform the database event to frontend format before adding to state
         const formattedEvent = fromDbEvent(simpleEvent);
         
         // Update the local state optimistically
+        logEventFlow('EventContext', 'Updating local state with new event');
         setEvents(prevEvents => [...prevEvents, formattedEvent]);
         
         toast({
@@ -68,22 +72,23 @@ export function EventProvider({ children }: { children: ReactNode }) {
         
         // Refresh events to ensure we have all the latest data
         try {
+          logEventFlow('EventContext', 'Refreshing events after successful creation');
           await refetchEvents(false);
         } catch (refreshError) {
-          console.warn("Non-critical error refreshing events after creation:", refreshError);
+          logEventFlow('EventContext', 'Non-critical error refreshing events', refreshError);
         }
         
         return formattedEvent;
       }
       
       if (simpleError) {
-        console.error("Error with simplified event creation. Falling back to standard method:", simpleError);
+        logEventFlow('EventContext', 'Error with simplified event creation, falling back', simpleError);
         
         // Fall back to the original method as a backup
         const { event: createdEvent, error: addError } = await addEventFn(newEvent);
         
         if (addError) {
-          console.error("Error adding event with standard method:", addError);
+          logEventFlow('EventContext', 'Error adding event with standard method', addError);
           toast({
             title: "Error",
             description: addError,
@@ -93,6 +98,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         }
         
         if (createdEvent) {
+          logEventFlow('EventContext', 'Event created successfully with fallback method', createdEvent);
           // Transform the database event to frontend format before adding to state
           const formattedEvent = fromDbEvent(createdEvent);
           
@@ -108,13 +114,13 @@ export function EventProvider({ children }: { children: ReactNode }) {
           try {
             await refetchEvents(false);
           } catch (refreshError) {
-            console.warn("Non-critical error refreshing events after creation:", refreshError);
+            logEventFlow('EventContext', 'Non-critical error refreshing events after fallback creation', refreshError);
           }
           
           return formattedEvent;
         }
       } else {
-        console.error("Both event creation methods failed without providing error details");
+        logEventFlow('EventContext', 'Both event creation methods failed without providing error details');
         toast({
           title: "Error",
           description: "Failed to create event. Please try again later.",
@@ -124,7 +130,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
       
       return undefined;
     } catch (error: any) {
-      console.error("Error in addEvent:", error);
+      logEventFlow('EventContext', 'Critical error in addEvent function', error);
       handleError(error, {
         context: "Adding event", 
         title: "Error",

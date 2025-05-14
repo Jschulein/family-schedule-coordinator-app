@@ -1,8 +1,10 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
 import { fetchEventsFromDb } from '@/services/events';
 import { toast } from "@/components/ui/use-toast";
+import { logEventFlow } from '@/utils/events';
 
 /**
  * Custom hook for fetching and managing event data
@@ -18,6 +20,8 @@ export function useEventData() {
   
   // Check for cached events in localStorage on initial load
   useEffect(() => {
+    logEventFlow('useEventData', 'Hook initialized');
+    
     const cachedEventsJson = localStorage.getItem('cachedEvents');
     const cachedTimestamp = localStorage.getItem('cachedEventsTimestamp');
     
@@ -25,21 +29,21 @@ export function useEventData() {
       try {
         const parsedEvents = JSON.parse(cachedEventsJson);
         setEvents(parsedEvents);
-        console.log(`Loaded ${parsedEvents.length} events from cache`);
+        logEventFlow('useEventData', `Loaded ${parsedEvents.length} events from cache`);
         
         // Only set loading to false if cache is relatively fresh (< 1 hour)
         if (cachedTimestamp && (Date.now() - Number(cachedTimestamp) < 3600000)) {
           setLoading(false);
         }
       } catch (e) {
-        console.error("Failed to parse cached events:", e);
+        logEventFlow('useEventData', 'Failed to parse cached events', e);
       }
     }
   }, []);
   
   // Memoized fetch function to prevent unnecessary rerenders
   const fetchEvents = useCallback(async (showToast = true) => {
-    console.log("Fetching events...");
+    logEventFlow('useEventData', 'Fetching events...');
     
     // Set refreshing state if we already have data to show a refresh state
     // rather than a full loading state
@@ -57,7 +61,7 @@ export function useEventData() {
       const { events: fetchedEvents, error: fetchError } = await fetchEventsFromDb();
       
       if (fetchError) {
-        console.error("Failed to fetch events:", fetchError);
+        logEventFlow('useEventData', 'Failed to fetch events', fetchError);
         setError(fetchError);
         setOfflineMode(true);
         
@@ -70,7 +74,7 @@ export function useEventData() {
         }
         // Keep existing events if we have them
       } else if (fetchedEvents) {
-        console.log(`Successfully loaded ${fetchedEvents.length} events`);
+        logEventFlow('useEventData', `Successfully loaded ${fetchedEvents.length} events`);
         setEvents(fetchedEvents);
         setError(null);
         
@@ -79,13 +83,13 @@ export function useEventData() {
           localStorage.setItem('cachedEvents', JSON.stringify(fetchedEvents));
           localStorage.setItem('cachedEventsTimestamp', Date.now().toString());
         } catch (e) {
-          console.error("Failed to cache events:", e);
+          logEventFlow('useEventData', 'Failed to cache events', e);
         }
         
         setLastFetchTime(Date.now());
       }
     } catch (e: any) {
-      console.error("Error in fetchEvents:", e);
+      logEventFlow('useEventData', 'Error in fetchEvents', e);
       setError("An unexpected error occurred");
       setOfflineMode(true);
       
@@ -110,10 +114,10 @@ export function useEventData() {
     // Set up a subscription for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        console.log("Auth state changed: SIGNED_IN, fetching events");
+        logEventFlow('useEventData', "Auth state changed: SIGNED_IN, fetching events");
         fetchEvents();
       } else if (event === 'SIGNED_OUT') {
-        console.log("Auth state changed: SIGNED_OUT, clearing events");
+        logEventFlow('useEventData', "Auth state changed: SIGNED_OUT, clearing events");
         setEvents([]);
         localStorage.removeItem('cachedEvents');
         localStorage.removeItem('cachedEventsTimestamp');
@@ -128,7 +132,7 @@ export function useEventData() {
         // Only refresh if user is active and last fetch was > 5 minutes ago
         if (document.visibilityState === 'visible' && 
             (!lastFetchTime || (Date.now() - lastFetchTime > 300000))) {
-          console.log("Auto-refreshing events data");
+          logEventFlow('useEventData', "Auto-refreshing events data");
           fetchEvents(false); // Don't show toast for auto-refresh
         }
       }, 300000); // 5 minutes
@@ -141,7 +145,7 @@ export function useEventData() {
       if (document.visibilityState === 'visible') {
         // When tab becomes active, check if we need a refresh
         if (lastFetchTime && (Date.now() - lastFetchTime > 300000)) {
-          console.log("Tab active, refreshing stale data");
+          logEventFlow('useEventData', "Tab active, refreshing stale data");
           fetchEvents(false); // Don't show toast for visibility-based refresh
         }
       }
@@ -155,6 +159,7 @@ export function useEventData() {
       }
       if (refreshInterval) clearInterval(refreshInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      logEventFlow('useEventData', "Hook cleanup");
     };
   }, [fetchEvents, lastFetchTime]);
 

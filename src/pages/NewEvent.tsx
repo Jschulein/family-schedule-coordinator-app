@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, RefreshCw, AlertTriangle, Info, Bug } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { useFamilyContext } from "@/contexts/family";
 import { testEventCreation } from "@/tests/eventFlow";
+import { logEventFlow } from "@/utils/events";
 
 interface EventFormData {
   name: string;
@@ -27,6 +28,10 @@ const NewEvent = () => {
   const { addEvent, loading: contextLoading, error: contextError, refetchEvents } = useEvents();
   const { activeFamilyId, families } = useFamilyContext();
   
+  // Refs to track component lifecycle
+  const mountedRef = useRef(true);
+  const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Separate state for different loading scenarios
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -39,15 +44,39 @@ const NewEvent = () => {
   const [error, setError] = useState<string | null>(null);
   const [submissionAttempted, setSubmissionAttempted] = useState(false);
   
+  // Log component mount and initial state
+  useEffect(() => {
+    logEventFlow('NewEvent', 'Component mounted', { 
+      contextLoading,
+      activeFamilyId
+    });
+    
+    // Clear any stale submission state on mount
+    setIsSubmitting(false);
+    
+    // Track component lifecycle
+    return () => {
+      mountedRef.current = false;
+      if (submitTimeoutRef.current) {
+        clearTimeout(submitTimeoutRef.current);
+      }
+      logEventFlow('NewEvent', 'Component unmounting');
+    };
+  }, []);
+  
   // Reset form state after a timeout if submission gets stuck
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    if (submitTimeoutRef.current) {
+      clearTimeout(submitTimeoutRef.current);
+      submitTimeoutRef.current = null;
+    }
     
     if (isSubmitting) {
+      logEventFlow('NewEvent', 'Setting up submission watchdog timer');
       // Auto-reset submission state after 20 seconds to prevent UI from being stuck
-      timeoutId = setTimeout(() => {
-        if (isSubmitting) {
-          console.warn("Event submission is taking too long - resetting submission state");
+      submitTimeoutRef.current = setTimeout(() => {
+        if (isSubmitting && mountedRef.current) {
+          logEventFlow('NewEvent', 'WATCHDOG: Event submission is taking too long - resetting submission state');
           setIsSubmitting(false);
           toast({
             title: "Submission timeout",
@@ -55,36 +84,31 @@ const NewEvent = () => {
             variant: "default"
           });
         }
-      }, 20000);
+      }, 15000);
       
       // Add an additional shorter timeout as a double-check
-      // This prevents edge cases where the state gets stuck despite the other timeout
       const shortTimeoutId = setTimeout(() => {
-        if (isSubmitting) {
-          console.log("Running mid-point submission state check...");
+        if (isSubmitting && mountedRef.current) {
+          logEventFlow('NewEvent', 'Mid-point submission state check - still submitting');
         }
-      }, 10000);
+      }, 7500);
       
       return () => {
-        if (timeoutId) clearTimeout(timeoutId);
-        if (shortTimeoutId) clearTimeout(shortTimeoutId);
+        clearTimeout(shortTimeoutId);
       };
     }
-    
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
   }, [isSubmitting]);
 
   // Check authentication on load
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        logEventFlow('NewEvent', 'Checking authentication');
         setIsChecking(true);
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error("Auth error:", error);
+          logEventFlow('NewEvent', 'Auth error', error);
           toast({
             title: "Authentication error",
             description: "Please try logging in again",
@@ -94,9 +118,11 @@ const NewEvent = () => {
           return;
         }
         
-        setIsAuthenticated(!!data.session);
+        const hasSession = !!data.session;
+        logEventFlow('NewEvent', 'Authentication check complete', { hasSession });
+        setIsAuthenticated(hasSession);
         
-        if (!data.session) {
+        if (!hasSession) {
           toast({
             title: "Authentication required",
             description: "You need to be logged in to create events",
@@ -105,14 +131,16 @@ const NewEvent = () => {
           navigate("/auth");
         }
       } catch (err) {
-        console.error("Error checking auth:", err);
+        logEventFlow('NewEvent', 'Error checking auth', err);
         toast({
           title: "Error",
           description: "Failed to verify authentication status",
           variant: "destructive"
         });
       } finally {
-        setIsChecking(false);
+        if (mountedRef.current) {
+          setIsChecking(false);
+        }
       }
     };
     
@@ -122,6 +150,11 @@ const NewEvent = () => {
   // Show family selection reminder if needed
   useEffect(() => {
     if (!isChecking && families.length > 0 && !activeFamilyId && !submissionAttempted) {
+      logEventFlow('NewEvent', 'Family selection reminder displayed', {
+        familiesCount: families.length,
+        activeFamilyId
+      });
+      
       toast({
         title: "Family selection needed",
         description: "Please select a family to share this event with",
@@ -131,7 +164,16 @@ const NewEvent = () => {
   }, [families, activeFamilyId, isChecking, submissionAttempted]);
 
   const handleSubmit = async (eventData: EventFormData) => {
-    console.log("Starting event submission process");
+    logEventFlow('NewEvent', 'Starting event submission process', { 
+      name: eventData.name,
+      formSubmitting: isSubmitting
+    });
+    
+    if (isSubmitting) {
+      logEventFlow('NewEvent', 'Preventing duplicate submission - already in progress');
+      return;
+    }
+    
     setSubmissionAttempted(true);
     setIsSubmitting(true);
     setError(null);
@@ -139,13 +181,13 @@ const NewEvent = () => {
     
     // Wrap everything in a try-catch to ensure we reset loading state no matter what
     try {
-      console.log("Form submission data:", eventData);
+      logEventFlow('NewEvent', 'Form submission data received', eventData);
       
       // Verify authentication again before submitting
       const { data, error: authError } = await supabase.auth.getSession();
       
       if (authError) {
-        console.error("Auth error during submission:", authError);
+        logEventFlow('NewEvent', 'Auth error during submission', authError);
         toast({
           title: "Authentication error",
           description: "Please try logging in again",
@@ -156,7 +198,7 @@ const NewEvent = () => {
       }
       
       if (!data.session) {
-        console.error("No session found during submission");
+        logEventFlow('NewEvent', 'No session found during submission');
         toast({
           title: "Authentication required",
           description: "You need to be logged in to create events",
@@ -178,45 +220,45 @@ const NewEvent = () => {
         all_day: eventData.all_day
       };
       
-      console.log("Processed event data for submission:", event);
+      logEventFlow('NewEvent', 'Processed event data for submission', event);
       
-      // Add the event with a timeout to prevent indefinite waiting
-      console.log("Calling addEvent function...");
-      const addEventPromise = addEvent(event);
-      
-      // Create a timeout promise
-      const timeoutPromise = new Promise<null>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error("Event creation timed out"));
-        }, 15000); // 15 second timeout
-      });
-      
-      // Race the event creation against the timeout
-      const createdEvent = await Promise.race([
-        addEventPromise,
-        timeoutPromise
-      ]);
-      
-      console.log("Event creation result:", createdEvent);
-      
-      if (createdEvent) {
-        toast({
-          title: "Success",
-          description: "Event created successfully!",
-          variant: "default"
+      try {
+        // Add the event
+        logEventFlow('NewEvent', 'Calling addEvent function from context');
+        const createdEvent = await addEvent(event);
+        
+        logEventFlow('NewEvent', 'Event creation result received', { 
+          success: !!createdEvent,
+          eventId: createdEvent?.id
         });
-        navigate("/calendar");
-      } else {
-        console.warn("No event returned from addEvent - there may have been an issue");
-        setError("Event creation may not have completed successfully. Please check the calendar or try the diagnostic tool.");
+        
+        if (createdEvent) {
+          toast({
+            title: "Success",
+            description: "Event created successfully!",
+            variant: "default"
+          });
+          navigate("/calendar");
+        } else {
+          logEventFlow('NewEvent', 'No event returned from addEvent - possible issue');
+          setError("Event creation may not have completed successfully. Please check the calendar or try the diagnostic tool.");
+          toast({
+            title: "Warning",
+            description: "The event may not have been created properly. Try the diagnostic tool below.",
+            variant: "default"
+          });
+        }
+      } catch (error: any) {
+        logEventFlow('NewEvent', 'Error during addEvent execution', error);
+        setError(error?.message || "Failed to create event");
         toast({
-          title: "Warning",
-          description: "The event may not have been created properly. Try the diagnostic tool below.",
-          variant: "default"
+          title: "Error",
+          description: `Failed to create event: ${error?.message || "Unknown error"}`,
+          variant: "destructive"
         });
       }
     } catch (error: any) {
-      console.error("Error in handleSubmit:", error);
+      logEventFlow('NewEvent', 'Critical error in handleSubmit', error);
       setError(error?.message || "Failed to create event");
       toast({
         title: "Error",
@@ -224,9 +266,11 @@ const NewEvent = () => {
         variant: "destructive"
       });
     } finally {
-      // Make absolutely sure we reset the submitting state
-      console.log("Resetting submission state...");
-      setIsSubmitting(false);
+      // Make absolutely sure we reset the submitting state if component is still mounted
+      if (mountedRef.current) {
+        logEventFlow('NewEvent', 'Resetting submission state');
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -237,6 +281,7 @@ const NewEvent = () => {
   const handleRetry = async () => {
     setIsRefreshing(true);
     setError(null);
+    logEventFlow('NewEvent', 'Manual data refresh requested');
     
     try {
       await refetchEvents(true);
@@ -246,7 +291,7 @@ const NewEvent = () => {
         variant: "default"
       });
     } catch (error: any) {
-      console.error("Error refreshing data:", error);
+      logEventFlow('NewEvent', 'Error refreshing data', error);
       setError(error?.message || "Failed to refresh data");
       toast({
         title: "Error",
@@ -254,23 +299,30 @@ const NewEvent = () => {
         variant: "destructive"
       });
     } finally {
-      setIsRefreshing(false);
+      if (mountedRef.current) {
+        setIsRefreshing(false);
+      }
     }
   };
   
   const runDiagnosticTest = async () => {
     setIsDiagnosing(true);
     setError(null);
+    logEventFlow('NewEvent', 'Running diagnostic test');
     
     try {
       const result = await testEventCreation();
-      setDiagnosticResult({
-        success: result,
-        message: result 
-          ? "Event creation test was successful!" 
-          : "Event creation test failed. Check console for details.",
-        event: null // We don't have the event object in testEventCreation's return
-      });
+      logEventFlow('NewEvent', 'Diagnostic test result', { result });
+      
+      if (mountedRef.current) {
+        setDiagnosticResult({
+          success: result,
+          message: result 
+            ? "Event creation test was successful!" 
+            : "Event creation test failed. Check console for details.",
+          event: null
+        });
+      }
       
       if (result) {
         toast({
@@ -286,14 +338,16 @@ const NewEvent = () => {
         });
       }
     } catch (error: any) {
-      console.error("Error running diagnostics:", error);
+      logEventFlow('NewEvent', 'Error running diagnostics', error);
       toast({
         title: "Diagnostic Error",
         description: error?.message || "Failed to run diagnostic",
         variant: "destructive"
       });
     } finally {
-      setIsDiagnosing(false);
+      if (mountedRef.current) {
+        setIsDiagnosing(false);
+      }
     }
   };
 
@@ -304,6 +358,12 @@ const NewEvent = () => {
   if (!isAuthenticated) {
     return <div className="p-8 text-center">Please log in to create events.</div>;
   }
+
+  logEventFlow('NewEvent', 'Rendering component', {
+    isSubmitting,
+    contextLoading,
+    hasError: !!error || !!contextError
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
