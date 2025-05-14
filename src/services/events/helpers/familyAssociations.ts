@@ -30,9 +30,16 @@ export async function associateFamilyMembers(eventId: string, familyMemberIds: s
       return Promise.reject(new Error(`Failed to retrieve family information: ${familyMembersError.message}`));
     }
     
+    // Check if we found any valid family members
     if (!familyMembers || familyMembers.length === 0) {
       console.warn("No family members found with the provided IDs:", familyMemberIds);
-      return Promise.reject(new Error("No valid family members found. Please select family members again."));
+      if (familyMemberIds.length > 0) {
+        // Only consider it an error if IDs were actually provided
+        return Promise.reject(new Error("No valid family members found. Please select family members again."));
+      } else {
+        // If the array was empty, just resolve with no action
+        return Promise.resolve();
+      }
     }
     
     console.log("Retrieved family members data:", familyMembers);
@@ -40,7 +47,11 @@ export async function associateFamilyMembers(eventId: string, familyMemberIds: s
     // Group by family_id to avoid duplicate family associations
     const familyMap = new Map();
     familyMembers.forEach(member => {
-      familyMap.set(member.family_id, true);
+      if (member && member.family_id) {
+        familyMap.set(member.family_id, true);
+      } else {
+        console.warn("Invalid family member data encountered:", member);
+      }
     });
     
     // Create associations using the family IDs (not member IDs)
