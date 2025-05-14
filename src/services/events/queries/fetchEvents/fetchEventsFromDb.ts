@@ -2,7 +2,6 @@
 import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
 import { supabase } from "@/integrations/supabase/client";
-import { callFunction } from "@/services/database/functions";
 import { processEventsWithProfiles } from "../helpers";
 
 /**
@@ -24,9 +23,8 @@ export async function fetchEventsFromDb() {
       return { events: [], error: "You must be logged in to view events" };
     }
 
-    // Call the security definer function directly - this is the most reliable approach
-    // and avoids RLS recursion issues
-    const { data, error } = await callFunction<any[]>("get_user_events_safe");
+    // Use our new get_user_accessible_events function to avoid RLS recursion
+    const { data, error } = await supabase.rpc('get_user_accessible_events');
     
     if (error) {
       console.error("Error fetching events with security definer function:", error);

@@ -54,30 +54,31 @@ export async function associateFamilyMembers(eventId: string, familyMemberIds: s
       }
     });
     
-    // Create associations using the family IDs (not member IDs)
-    const familyAssociations = Array.from(familyMap.keys()).map(familyId => ({
-      event_id: eventId,
-      family_id: familyId,
-      shared_by: userId
-    }));
+    // Use our new share_event_with_family function for each family
+    const sharePromises = Array.from(familyMap.keys()).map(familyId => 
+      supabase.rpc('share_event_with_family', {
+        p_event_id: eventId,
+        p_family_id: familyId
+      })
+    );
     
-    console.log("Creating family event associations:", familyAssociations);
+    const results = await Promise.allSettled(sharePromises);
     
-    if (familyAssociations.length === 0) {
-      console.warn("No family associations to create");
-      return Promise.resolve();
+    // Check for errors
+    const errors = results
+      .filter(result => result.status === 'rejected' || (result.status === 'fulfilled' && result.value.error))
+      .map(result => 
+        result.status === 'rejected' 
+          ? (result as PromiseRejectedResult).reason 
+          : (result as PromiseFulfilledResult<any>).value.error
+      );
+    
+    if (errors.length > 0) {
+      console.error("Errors associating event with families:", errors);
+      return Promise.reject(new Error(`Failed to associate event with some families: ${errors[0].message}`));
     }
     
-    const { error: associationError } = await supabase
-      .from('event_families')
-      .insert(familyAssociations);
-      
-    if (associationError) {
-      console.error("Error associating event with families:", associationError);
-      return Promise.reject(new Error(`Failed to associate event with families: ${associationError.message}`));
-    }
-    
-    console.log(`Successfully associated event ${eventId} with ${familyAssociations.length} families`);
+    console.log(`Successfully associated event ${eventId} with ${sharePromises.length} families`);
     return Promise.resolve();
   } catch (error) {
     console.error("Unexpected error in associateFamilyMembers:", error);

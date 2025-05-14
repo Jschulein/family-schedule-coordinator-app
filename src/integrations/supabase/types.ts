@@ -468,6 +468,20 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_accessible_events: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          all_day: boolean | null
+          created_at: string
+          creator_id: string
+          date: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          time: string
+        }[]
+      }
       get_user_events_safe: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -565,6 +579,10 @@ export type Database = {
       }
       safe_is_family_member: {
         Args: { p_family_id: string }
+        Returns: boolean
+      }
+      share_event_with_family: {
+        Args: { p_event_id: string; p_family_id: string }
         Returns: boolean
       }
       update_user_profile: {
