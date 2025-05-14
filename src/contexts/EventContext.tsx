@@ -1,10 +1,10 @@
-
 import { createContext, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { 
   addEventToDb as addEventFn, 
   updateEventInDb as updateEventFn, 
-  deleteEventFromDb as deleteEventFn 
+  deleteEventFromDb as deleteEventFn,
+  simpleAddEvent
 } from '@/services/events';
 import type { Event, EventContextType } from '@/types/eventTypes';
 import { handleError } from '@/utils/error';
@@ -41,44 +41,79 @@ export function EventProvider({ children }: { children: ReactNode }) {
           });
         }
       }, 10000);
-      
-      // Call the database function with proper error handling
-      const { event: createdEvent, error: addError } = await addEventFn(newEvent);
+
+      // First attempt using the simplified direct function for more reliable operation
+      console.log("Trying simplified event creation first for improved reliability");
+      const { event: simpleEvent, error: simpleError } = await simpleAddEvent(newEvent);
       
       // Mark promise as completed to prevent timeout message
       addEventPromiseCompleted = true;
       clearTimeout(timeoutId);
       
-      if (addError) {
-        console.error("Error adding event:", addError);
-        toast({
-          title: "Error",
-          description: addError,
-          variant: "destructive"
-        });
-        return undefined;
-      }
-      
-      if (createdEvent) {
+      if (simpleEvent) {
+        console.log("Event created successfully with simplified function:", simpleEvent);
+        
         // Update the local state optimistically
-        setEvents(prevEvents => [...prevEvents, createdEvent]);
+        setEvents(prevEvents => [...prevEvents, simpleEvent]);
         
         toast({
           title: "Success",
           description: "Event created successfully!"
         });
         
-        // Refresh events to ensure we have all the latest data including family associations
-        console.log("Refreshing events after creation to get latest data");
+        // Refresh events to ensure we have all the latest data
         try {
           await refetchEvents(false);
         } catch (refreshError) {
           console.warn("Non-critical error refreshing events after creation:", refreshError);
         }
-        return createdEvent; // Return the created event for chaining
+        
+        return simpleEvent;
       }
       
-      console.warn("No event was created and no error was returned");
+      if (simpleError) {
+        console.error("Error with simplified event creation. Falling back to standard method:", simpleError);
+        
+        // Fall back to the original method as a backup
+        const { event: createdEvent, error: addError } = await addEventFn(newEvent);
+        
+        if (addError) {
+          console.error("Error adding event with standard method:", addError);
+          toast({
+            title: "Error",
+            description: addError,
+            variant: "destructive"
+          });
+          return undefined;
+        }
+        
+        if (createdEvent) {
+          // Update the local state optimistically
+          setEvents(prevEvents => [...prevEvents, createdEvent]);
+          
+          toast({
+            title: "Success",
+            description: "Event created successfully (using fallback method)!"
+          });
+          
+          // Refresh events to ensure we have all the latest data
+          try {
+            await refetchEvents(false);
+          } catch (refreshError) {
+            console.warn("Non-critical error refreshing events after creation:", refreshError);
+          }
+          
+          return createdEvent;
+        }
+      } else {
+        console.error("Both event creation methods failed without providing error details");
+        toast({
+          title: "Error",
+          description: "Failed to create event. Please try again later.",
+          variant: "destructive"
+        });
+      }
+      
       return undefined;
     } catch (error: any) {
       console.error("Error in addEvent:", error);
@@ -87,7 +122,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
-      return undefined; // Return undefined on error
+      return undefined;
     }
   };
 

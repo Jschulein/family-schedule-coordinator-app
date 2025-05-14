@@ -2,13 +2,14 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, RefreshCw, AlertTriangle, Info } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle, Info, Bug } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { useFamilyContext } from "@/contexts/family";
+import { testBasicEventCreation } from "@/tests/eventFlow";
 
 interface EventFormData {
   name: string;
@@ -30,6 +31,8 @@ const NewEvent = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
   
   // Auth and error states
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -48,7 +51,7 @@ const NewEvent = () => {
           setIsSubmitting(false);
           toast({
             title: "Submission timeout",
-            description: "The request is taking longer than expected. Please check the calendar to see if your event was created.",
+            description: "The request is taking longer than expected. You can try the diagnostics tool to check for issues.",
             variant: "default"
           });
         }
@@ -132,6 +135,7 @@ const NewEvent = () => {
     setSubmissionAttempted(true);
     setIsSubmitting(true);
     setError(null);
+    setDiagnosticResult(null);
     
     // Wrap everything in a try-catch to ensure we reset loading state no matter what
     try {
@@ -204,10 +208,10 @@ const NewEvent = () => {
         navigate("/calendar");
       } else {
         console.warn("No event returned from addEvent - there may have been an issue");
-        setError("Event creation may not have completed successfully. Please check the calendar or try again.");
+        setError("Event creation may not have completed successfully. Please check the calendar or try the diagnostic tool.");
         toast({
           title: "Warning",
-          description: "The event may not have been created properly. Please check the calendar.",
+          description: "The event may not have been created properly. Try the diagnostic tool below.",
           variant: "default"
         });
       }
@@ -253,6 +257,39 @@ const NewEvent = () => {
       setIsRefreshing(false);
     }
   };
+  
+  const runDiagnosticTest = async () => {
+    setIsDiagnosing(true);
+    setError(null);
+    
+    try {
+      const result = await testBasicEventCreation();
+      setDiagnosticResult(result);
+      
+      if (result.success) {
+        toast({
+          title: "Diagnostic Success",
+          description: "Event creation test was successful!",
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Diagnostic Failed",
+          description: result.message || "Event creation test failed. See details below.",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error running diagnostics:", error);
+      toast({
+        title: "Diagnostic Error",
+        description: error?.message || "Failed to run diagnostic",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
 
   if (isChecking) {
     return <div className="p-8 text-center">Checking authentication...</div>;
@@ -279,15 +316,24 @@ const NewEvent = () => {
               Add New Event
             </h1>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={handleRetry}
-            disabled={isRefreshing}
-            className="flex items-center"
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh Data
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={runDiagnosticTest}
+              disabled={isDiagnosing}
+            >
+              <Bug className={`mr-2 h-4 w-4 ${isDiagnosing ? "animate-pulse" : ""}`} />
+              {isDiagnosing ? "Diagnosing..." : "Run Diagnostic"}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleRetry}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh Data
+            </Button>
+          </div>
         </div>
         
         {!activeFamilyId && families.length > 0 && (
@@ -308,10 +354,24 @@ const NewEvent = () => {
               <AlertTriangle className="h-5 w-5 text-red-400" />
               <div className="ml-3">
                 <p className="text-sm text-red-700">
-                  Error: {contextError || error}. Please try refreshing the data or contact support.
+                  Error: {contextError || error}. Please try refreshing the data or run the diagnostic tool.
                 </p>
               </div>
             </div>
+          </div>
+        )}
+        
+        {diagnosticResult && (
+          <div className={`mb-6 p-4 border rounded-md ${
+            diagnosticResult.success ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+          }`}>
+            <h3 className="font-medium mb-2">Diagnostic Result</h3>
+            <p className="mb-2">{diagnosticResult.message}</p>
+            {diagnosticResult.success && diagnosticResult.event && (
+              <div className="text-sm bg-white rounded p-3 mt-2 overflow-auto max-h-40">
+                <pre>{JSON.stringify(diagnosticResult.event, null, 2)}</pre>
+              </div>
+            )}
           </div>
         )}
         

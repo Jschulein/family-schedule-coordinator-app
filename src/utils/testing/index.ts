@@ -14,6 +14,9 @@ export * from './performanceTracker';
 // Export test data generation utilities
 export * from './testDataGenerator';
 
+// Export random string generator
+export * from './getRandomString';
+
 // Export memory usage tracking for identifying resource issues
 export const getMemoryUsage = (): { used: number, total: number } => {
   // In a browser environment, we can use performance.memory if available

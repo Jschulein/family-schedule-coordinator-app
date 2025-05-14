@@ -1,17 +1,22 @@
 
+import { runEventTests } from './eventFlow';
+import { testFamilyCreation } from './familyFlow';
+
 /**
- * Test module entry point
- * Re-exports all test functions for simplified imports
+ * Central test runner component
+ * Exports all test functionality from a single location
  */
+export { TestRunner } from '@/components/testing/TestRunner';
 
-// Family creation flow tests
-export { testFamilyCreationFlow } from './familyFlow';
+/**
+ * Run all tests
+ */
+export async function runAllTests() {
+  return {
+    familyTests: await testFamilyCreation(),
+    eventTests: await runEventTests()
+  };
+}
 
-// Family members tests
-export { 
-  testFamilyMembersHook,
-  testFamilyMembersPerformance
-} from './useFamilyMembers.test';
-
-// Export the TestRunner component from the new location
-export { default as TestRunner } from '@/__tests__/components/TestRunner';
+export { testFamilyCreation } from './familyFlow';
+export { runEventTests } from './eventFlow';
