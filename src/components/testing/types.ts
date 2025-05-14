@@ -1,9 +1,6 @@
 
 /**
  * Types for the test runner components
- * 
- * These types define the structure of test results and configuration,
- * ensuring consistency across all testing functionality.
  */
 
 export interface TestResult {
@@ -28,14 +25,3 @@ export interface TestConfig {
 }
 
 export type TestResults = Record<string, TestResult | null>;
-
-// Add interface for application performance metrics
-export interface AppPerformanceMetrics {
-  renderTime: number;
-  loadTime: number;
-  interactionDelay: number;
-  memoryUsage: {
-    used: number;
-    total: number;
-  };
-}

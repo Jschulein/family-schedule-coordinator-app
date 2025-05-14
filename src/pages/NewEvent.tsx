@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { useFamilyContext } from "@/contexts/family";
-import { testBasicEventCreation } from "@/tests/eventFlow";
+import { testEventCreation } from "@/tests/eventFlow";
 
 interface EventFormData {
   name: string;
@@ -263,10 +263,16 @@ const NewEvent = () => {
     setError(null);
     
     try {
-      const result = await testBasicEventCreation();
-      setDiagnosticResult(result);
+      const result = await testEventCreation();
+      setDiagnosticResult({
+        success: result,
+        message: result 
+          ? "Event creation test was successful!" 
+          : "Event creation test failed. Check console for details.",
+        event: null // We don't have the event object in testEventCreation's return
+      });
       
-      if (result.success) {
+      if (result) {
         toast({
           title: "Diagnostic Success",
           description: "Event creation test was successful!",
@@ -275,7 +281,7 @@ const NewEvent = () => {
       } else {
         toast({
           title: "Diagnostic Failed",
-          description: result.message || "Event creation test failed. See details below.",
+          description: "Event creation test failed. See details below.",
           variant: "destructive"
         });
       }

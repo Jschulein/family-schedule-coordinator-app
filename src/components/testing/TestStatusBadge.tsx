@@ -7,7 +7,7 @@ interface TestStatusBadgeProps {
   result: TestResult | null;
 }
 
-const TestStatusBadge = ({ result }: TestStatusBadgeProps) => {
+export const TestStatusBadge = ({ result }: TestStatusBadgeProps) => {
   if (!result) {
     return (
       <div className="flex items-center space-x-1">
@@ -42,5 +42,3 @@ const TestStatusBadge = ({ result }: TestStatusBadgeProps) => {
     </div>
   );
 };
-
-export default TestStatusBadge;

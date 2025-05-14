@@ -7,7 +7,8 @@ import { Loader2 } from 'lucide-react';
 import { TestResultDisplay } from './TestResultDisplay';
 import { TestTabContent } from './TestTabContent';
 import { useTestRunner } from './useTestRunner';
-import { testFamilyCreationFlow, runEventTests } from '@/tests';
+import { testFamilyCreationFlow } from '@/tests/familyFlow';
+import { runEventTests } from '@/tests/eventFlow';
 
 export function TestRunner() {
   const [activeTab, setActiveTab] = useState<string>('family');
@@ -79,7 +80,6 @@ export function TestRunner() {
               <div>
                 {familyTestRunner.results['family-creation'] ? (
                   <TestResultDisplay 
-                    title="Family Creation Tests"
                     testTitle="Family Creation Tests"
                     testDescription="Tests for creating and managing families"
                     result={familyTestRunner.results['family-creation']}
@@ -97,7 +97,6 @@ export function TestRunner() {
               <div>
                 {eventTestRunner.results['events'] ? (
                   <TestResultDisplay 
-                    title="Event Creation Tests"
                     testTitle="Event Creation Tests"
                     testDescription="Tests for creating and managing events"
                     result={eventTestRunner.results['events']}
