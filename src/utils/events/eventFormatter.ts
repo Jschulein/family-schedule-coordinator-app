@@ -36,3 +36,41 @@ export function formatEventForDatabase(event: Event): any {
     // family_members are handled separately through associations
   };
 }
+
+/**
+ * Transforms a database event object to frontend Event format
+ * Also includes creator profile information if available
+ * 
+ * @param dbEvent Raw event object from the database
+ * @param userMap Optional map of user profiles by ID
+ * @returns Formatted Event object for frontend use
+ */
+export function fromDbEvent(dbEvent: any, userMap: Record<string, any> = {}): Event {
+  if (!dbEvent) {
+    throw new Error("Cannot format null or undefined event");
+  }
+  
+  // Extract creator profile if available in the userMap
+  const creatorId = dbEvent.creator_id;
+  const creatorProfile = creatorId ? userMap[creatorId] : undefined;
+  
+  // Create the familyMember field from creator profile if available
+  let familyMember = "Unknown";
+  if (creatorProfile) {
+    familyMember = creatorProfile.full_name || creatorProfile.Email || "Unknown";
+  }
+  
+  return {
+    id: dbEvent.id,
+    name: dbEvent.name || "Untitled Event",
+    date: dbEvent.date ? new Date(dbEvent.date) : new Date(),
+    end_date: dbEvent.end_date ? new Date(dbEvent.end_date) : undefined,
+    time: dbEvent.time || "00:00",
+    description: dbEvent.description || "",
+    creatorId: creatorId || "",
+    all_day: dbEvent.all_day || false,
+    familyMember, // Include the creator name
+    familyMembers: dbEvent.familyMembers || dbEvent.family_members || []
+  };
+}
+
