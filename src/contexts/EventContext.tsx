@@ -1,3 +1,4 @@
+
 import { createContext, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { 
@@ -6,6 +7,7 @@ import {
   deleteEventFromDb as deleteEventFn,
   simpleAddEvent
 } from '@/services/events';
+import { fromDbEvent } from '@/utils/events/eventFormatter';
 import type { Event, EventContextType } from '@/types/eventTypes';
 import { handleError } from '@/utils/error';
 import { useEventData } from '@/hooks/useEventData';
@@ -53,8 +55,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
       if (simpleEvent) {
         console.log("Event created successfully with simplified function:", simpleEvent);
         
+        // Transform the database event to frontend format before adding to state
+        const formattedEvent = fromDbEvent(simpleEvent);
+        
         // Update the local state optimistically
-        setEvents(prevEvents => [...prevEvents, simpleEvent]);
+        setEvents(prevEvents => [...prevEvents, formattedEvent]);
         
         toast({
           title: "Success",
@@ -68,7 +73,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           console.warn("Non-critical error refreshing events after creation:", refreshError);
         }
         
-        return simpleEvent;
+        return formattedEvent;
       }
       
       if (simpleError) {
@@ -88,8 +93,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
         }
         
         if (createdEvent) {
+          // Transform the database event to frontend format before adding to state
+          const formattedEvent = fromDbEvent(createdEvent);
+          
           // Update the local state optimistically
-          setEvents(prevEvents => [...prevEvents, createdEvent]);
+          setEvents(prevEvents => [...prevEvents, formattedEvent]);
           
           toast({
             title: "Success",
@@ -103,7 +111,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
             console.warn("Non-critical error refreshing events after creation:", refreshError);
           }
           
-          return createdEvent;
+          return formattedEvent;
         }
       } else {
         console.error("Both event creation methods failed without providing error details");

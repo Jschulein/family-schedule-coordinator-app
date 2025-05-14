@@ -1,6 +1,6 @@
 
 import { runEventTests } from './eventFlow';
-import { testFamilyCreation } from './familyFlow';
+import { testFamilyCreationFlow } from './familyFlow';
 
 /**
  * Central test runner component
@@ -13,10 +13,10 @@ export { TestRunner } from '@/components/testing/TestRunner';
  */
 export async function runAllTests() {
   return {
-    familyTests: await testFamilyCreation(),
+    familyTests: await testFamilyCreationFlow(),
     eventTests: await runEventTests()
   };
 }
 
-export { testFamilyCreation } from './familyFlow';
+export { testFamilyCreationFlow } from './familyFlow';
 export { runEventTests } from './eventFlow';

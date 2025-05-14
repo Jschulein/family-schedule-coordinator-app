@@ -7,24 +7,24 @@ import { Loader2 } from 'lucide-react';
 import { TestResultDisplay } from './TestResultDisplay';
 import { TestTabContent } from './TestTabContent';
 import { useTestRunner } from './useTestRunner';
-import { testFamilyCreation, runEventTests } from '@/tests';
+import { testFamilyCreationFlow, runEventTests } from '@/tests';
 
 export function TestRunner() {
   const [activeTab, setActiveTab] = useState<string>('family');
   
   // Family tests
-  const {
-    runTest: runFamilyTest,
-    results: familyResults,
-    isLoading: isFamilyLoading
-  } = useTestRunner(testFamilyCreation);
+  const familyTestRunner = useTestRunner();
+  const eventTestRunner = useTestRunner();
 
-  // Event tests
-  const {
-    runTest: runEventTest,
-    results: eventResults,
-    isLoading: isEventLoading
-  } = useTestRunner(runEventTests);
+  // Handle running the family tests
+  const handleRunFamilyTest = () => {
+    familyTestRunner.runTest('family-creation');
+  };
+
+  // Handle running the event tests
+  const handleRunEventTest = () => {
+    eventTestRunner.runTest('events');
+  };
 
   return (
     <div className="container mx-auto py-10">
@@ -42,11 +42,11 @@ export function TestRunner() {
               <div>
                 {activeTab === 'family' && (
                   <Button 
-                    onClick={runFamilyTest} 
-                    disabled={isFamilyLoading}
+                    onClick={handleRunFamilyTest} 
+                    disabled={familyTestRunner.isRunning}
                     className="ml-2"
                   >
-                    {isFamilyLoading ? (
+                    {familyTestRunner.isRunning ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Running Family Tests...
@@ -58,11 +58,11 @@ export function TestRunner() {
                 )}
                 {activeTab === 'events' && (
                   <Button 
-                    onClick={runEventTest} 
-                    disabled={isEventLoading}
+                    onClick={handleRunEventTest} 
+                    disabled={eventTestRunner.isRunning}
                     className="ml-2"
                   >
-                    {isEventLoading ? (
+                    {eventTestRunner.isRunning ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Running Event Tests...
@@ -76,35 +76,39 @@ export function TestRunner() {
             </div>
             
             <TabsContent value="family">
-              <TestTabContent>
-                {familyResults ? (
+              <div>
+                {familyTestRunner.results['family-creation'] ? (
                   <TestResultDisplay 
                     title="Family Creation Tests"
-                    report={familyResults.report}
-                    data={familyResults}
+                    testTitle="Family Creation Tests"
+                    testDescription="Tests for creating and managing families"
+                    result={familyTestRunner.results['family-creation']}
+                    isRunning={familyTestRunner.isRunning}
                   />
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     Run the tests to see results
                   </div>
                 )}
-              </TestTabContent>
+              </div>
             </TabsContent>
             
             <TabsContent value="events">
-              <TestTabContent>
-                {eventResults ? (
+              <div>
+                {eventTestRunner.results['events'] ? (
                   <TestResultDisplay 
                     title="Event Creation Tests"
-                    report={eventResults.report}
-                    data={eventResults}
+                    testTitle="Event Creation Tests"
+                    testDescription="Tests for creating and managing events"
+                    result={eventTestRunner.results['events']}
+                    isRunning={eventTestRunner.isRunning}
                   />
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     Run the tests to see results
                   </div>
                 )}
-              </TestTabContent>
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>

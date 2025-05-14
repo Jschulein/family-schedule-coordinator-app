@@ -14,7 +14,7 @@ interface TestResultDisplayProps {
   testDescription: string;
 }
 
-const TestResultDisplay = ({ result, isRunning, testDescription, testTitle }: TestResultDisplayProps) => {
+export const TestResultDisplay = ({ result, isRunning, testDescription, testTitle }: TestResultDisplayProps) => {
   // Format execution time
   const formattedExecutionTime = useMemo(() => {
     if (!result?.executionTimeMs) return null;
@@ -105,5 +105,3 @@ const TestResultDisplay = ({ result, isRunning, testDescription, testTitle }: Te
     </div>
   );
 };
-
-export default TestResultDisplay;

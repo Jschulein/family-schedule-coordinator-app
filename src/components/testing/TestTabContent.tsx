@@ -3,8 +3,8 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { TestResult } from './types';
-import TestStatusBadge from './TestStatusBadge';
-import TestResultDisplay from './TestResultDisplay';
+import { TestStatusBadge } from './TestStatusBadge';
+import { TestResultDisplay } from './TestResultDisplay';
 
 interface TestTabContentProps {
   testId: string;
@@ -15,7 +15,7 @@ interface TestTabContentProps {
   onRunTest: (testId: string) => void;
 }
 
-const TestTabContent = ({ 
+export const TestTabContent = ({ 
   testId, 
   title, 
   description, 
@@ -56,5 +56,3 @@ const TestTabContent = ({
     </Card>
   );
 };
-
-export default TestTabContent;
