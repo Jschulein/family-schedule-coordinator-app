@@ -37,6 +37,7 @@ interface AddEventFormProps {
 }
 
 const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => {
+  // Form state
   const [name, setName] = useState('');
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
@@ -44,138 +45,84 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
   const [description, setDescription] = useState('');
   const [familyMembers, setFamilyMembers] = useState<string[]>([]);
   const [allDay, setAllDay] = useState(false);
+  
+  // Form status
   const [formError, setFormError] = useState<string | null>(null);
-  const [internalSubmitting, setInternalSubmitting] = useState(false);
-  const [hasTriedToSubmit, setHasTriedToSubmit] = useState(false);
+  const [localSubmitting, setLocalSubmitting] = useState(false);
   
-  // Log initial state and props
+  // Reset local submitting state when parent submitting state changes
   useEffect(() => {
-    logEventFlow('AddEventForm', 'Component mounted', { isSubmitting });
-    
-    // Reset form state if this is a fresh mount
-    return () => {
-      logEventFlow('AddEventForm', 'Component unmounting');
-    };
-  }, []);
-  
-  // Reset internal submitting state when parent submitting state changes to false
-  useEffect(() => {
-    logEventFlow('AddEventForm', 'isSubmitting prop changed', { isSubmitting, internalSubmitting });
-    
-    if (!isSubmitting && internalSubmitting) {
-      logEventFlow('AddEventForm', 'Resetting internal submitting state because parent is no longer submitting');
-      setInternalSubmitting(false);
+    if (!isSubmitting && localSubmitting) {
+      setLocalSubmitting(false);
     }
-  }, [isSubmitting, internalSubmitting]);
-  
-  // Double-check submitting state with a timeout
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
-    
-    if (isSubmitting || internalSubmitting) {
-      logEventFlow('AddEventForm', 'Starting submission state safety timeout');
-      // After 8 seconds, log a warning and reset if still submitting
-      timeoutId = setTimeout(() => {
-        if (isSubmitting || internalSubmitting) {
-          logEventFlow('AddEventForm', 'SAFETY TIMEOUT: Form still submitting after 8 seconds', 
-                      { isSubmitting, internalSubmitting });
-          setInternalSubmitting(false);
-        }
-      }, 8000);
-    }
-    
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [isSubmitting, internalSubmitting]);
+  }, [isSubmitting]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     logEventFlow('AddEventForm', 'Form submission initiated', { name, date });
     setFormError(null);
-    setHasTriedToSubmit(true);
     
-    if (internalSubmitting || isSubmitting) {
-      logEventFlow('AddEventForm', 'Ignoring duplicate submission attempt - already submitting');
+    // Prevent duplicate submissions
+    if (isSubmitting || localSubmitting) {
       return;
     }
     
-    // Validation
+    // Basic validation
     if (!name) {
-      logEventFlow('AddEventForm', 'Validation failed: No event name');
       setFormError("Please provide an event name.");
       return;
     }
     
     if (!date) {
-      logEventFlow('AddEventForm', 'Validation failed: No date selected');
       setFormError("Please select a date for the event.");
       return;
     }
     
     if (name.length < 3) {
-      logEventFlow('AddEventForm', 'Validation failed: Event name too short');
       setFormError("Event name must be at least 3 characters long.");
       return;
     }
     
     try {
-      setInternalSubmitting(true);
-      logEventFlow('AddEventForm', 'Starting authentication check');
+      setLocalSubmitting(true);
       
+      // Check authentication
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        logEventFlow('AddEventForm', 'Authentication error', sessionError);
         setFormError("Authentication error. Please try logging in again.");
-        setInternalSubmitting(false);
+        setLocalSubmitting(false);
         return;
       }
       
-      const userId = session?.user.id;
-      
-      if (!userId) {
-        logEventFlow('AddEventForm', 'No authenticated user found');
+      if (!session?.user?.id) {
         setFormError("No authenticated user found. Please log in and try again.");
-        setInternalSubmitting(false);
+        setLocalSubmitting(false);
         return;
       }
       
-      logEventFlow('AddEventForm', 'Authentication successful, calling onSubmit', {
-        name, date, endDate, time, description, familyMembers, allDay
-      });
-      
+      // Submit the form data to parent
       onSubmit({ 
         name, 
         date, 
         end_date: endDate || date,
         time,
         description, 
-        creatorId: userId,
+        creatorId: session.user.id,
         familyMembers,
         all_day: allDay
       });
       
-      // Note: we don't reset internal submitting here because the parent component
-      // will set isSubmitting to false when the submission completes
-      // This will be caught by the useEffect above
-    } catch (error) {
-      logEventFlow('AddEventForm', 'Error in form submission', error);
-      setFormError("Error submitting form. Please try again.");
-      setInternalSubmitting(false);
+      // The parent component will handle the rest of the submission
+      // and will update isSubmitting which will in turn update our local state
+    } catch (error: any) {
+      setFormError(error?.message || "An unexpected error occurred");
+      setLocalSubmitting(false);
     }
   };
 
   const isFormValid = name && name.length >= 3 && date;
-  const isActuallySubmitting = isSubmitting || internalSubmitting;
-  
-  logEventFlow('AddEventForm', 'Render state', { 
-    isFormValid, 
-    isActuallySubmitting,
-    isSubmitting, 
-    internalSubmitting,
-    hasTriedToSubmit
-  });
+  const effectiveSubmitting = isSubmitting || localSubmitting;
 
   return (
     <Card className="w-full max-w-md">
@@ -227,9 +174,9 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
           <Button 
             type="submit" 
             className="w-full"
-            disabled={!isFormValid || isActuallySubmitting}
+            disabled={!isFormValid || effectiveSubmitting}
           >
-            {isActuallySubmitting ? (
+            {effectiveSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating Event...

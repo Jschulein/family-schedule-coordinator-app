@@ -1,11 +1,9 @@
-
 import { createContext, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { 
-  addEventToDb as addEventFn, 
   updateEventInDb as updateEventFn, 
   deleteEventFromDb as deleteEventFn,
-  simpleAddEvent
+  createEvent
 } from '@/services/events';
 import { fromDbEvent } from '@/utils/events/eventFormatter';
 import { logEventFlow } from '@/utils/events';
@@ -34,98 +32,57 @@ export function EventProvider({ children }: { children: ReactNode }) {
       
       logEventFlow('EventContext', 'Starting event creation process', { name: newEvent.name });
       
-      // Set a timeout to ensure we don't wait forever
-      let addEventPromiseCompleted = false;
-      const timeoutId = setTimeout(() => {
-        if (!addEventPromiseCompleted) {
-          logEventFlow('EventContext', 'Event creation TIMED OUT', { name: newEvent.name });
-          toast({
-            title: "Operation timeout",
-            description: "Event creation took too long. Please check if the event was created.",
-            variant: "destructive"
-          });
-        }
-      }, 10000);
-
-      // First attempt using the simplified direct function for more reliable operation
-      logEventFlow('EventContext', 'Trying simplified event creation first');
-      const { event: simpleEvent, error: simpleError } = await simpleAddEvent(newEvent);
+      // Direct event creation - simplified approach
+      const result = await createEvent(newEvent);
       
-      // Mark promise as completed to prevent timeout message
-      addEventPromiseCompleted = true;
-      clearTimeout(timeoutId);
+      if (!result.success) {
+        logEventFlow('EventContext', 'Error creating event', result.error);
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create event",
+          variant: "destructive"
+        });
+        return undefined;
+      }
       
-      if (simpleEvent) {
-        logEventFlow('EventContext', 'Event created successfully with simplified function', simpleEvent);
-        
-        // Transform the database event to frontend format before adding to state
-        const formattedEvent = fromDbEvent(simpleEvent);
-        
-        // Update the local state optimistically
-        logEventFlow('EventContext', 'Updating local state with new event');
-        setEvents(prevEvents => [...prevEvents, formattedEvent]);
+      logEventFlow('EventContext', 'Event created successfully', { id: result.eventId });
+      
+      // Get the latest events from database
+      try {
+        await refetchEvents(false);
         
         toast({
           title: "Success",
           description: "Event created successfully!"
         });
         
-        // Refresh events to ensure we have all the latest data
-        try {
-          logEventFlow('EventContext', 'Refreshing events after successful creation');
-          await refetchEvents(false);
-        } catch (refreshError) {
-          logEventFlow('EventContext', 'Non-critical error refreshing events', refreshError);
-        }
-        
-        return formattedEvent;
-      }
-      
-      if (simpleError) {
-        logEventFlow('EventContext', 'Error with simplified event creation, falling back', simpleError);
-        
-        // Fall back to the original method as a backup
-        const { event: createdEvent, error: addError } = await addEventFn(newEvent);
-        
-        if (addError) {
-          logEventFlow('EventContext', 'Error adding event with standard method', addError);
-          toast({
-            title: "Error",
-            description: addError,
-            variant: "destructive"
-          });
-          return undefined;
-        }
-        
-        if (createdEvent) {
-          logEventFlow('EventContext', 'Event created successfully with fallback method', createdEvent);
-          // Transform the database event to frontend format before adding to state
-          const formattedEvent = fromDbEvent(createdEvent);
-          
-          // Update the local state optimistically
-          setEvents(prevEvents => [...prevEvents, formattedEvent]);
-          
-          toast({
-            title: "Success",
-            description: "Event created successfully (using fallback method)!"
-          });
-          
-          // Refresh events to ensure we have all the latest data
-          try {
-            await refetchEvents(false);
-          } catch (refreshError) {
-            logEventFlow('EventContext', 'Non-critical error refreshing events after fallback creation', refreshError);
+        // Find the newly created event in the refreshed list
+        if (result.eventId) {
+          const createdEvent = events.find(event => event.id === result.eventId);
+          if (createdEvent) {
+            return createdEvent;
           }
-          
-          return formattedEvent;
         }
-      } else {
-        logEventFlow('EventContext', 'Both event creation methods failed without providing error details');
-        toast({
-          title: "Error",
-          description: "Failed to create event. Please try again later.",
-          variant: "destructive"
-        });
+      } catch (refreshError) {
+        logEventFlow('EventContext', 'Non-critical error refreshing events', refreshError);
+        
+        // Create an optimistic event object to return
+        const optimisticEvent: Event = {
+          id: result.eventId,
+          name: newEvent.name,
+          date: newEvent.date,
+          end_date: newEvent.end_date,
+          time: newEvent.time,
+          description: newEvent.description,
+          creatorId: newEvent.creatorId,
+          all_day: newEvent.all_day,
+          familyMembers: newEvent.familyMembers
+        };
+        
+        // Add to our local state
+        setEvents(prevEvents => [...prevEvents, optimisticEvent]);
+        
+        return optimisticEvent;
       }
       
       return undefined;
