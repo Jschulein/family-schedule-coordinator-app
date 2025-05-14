@@ -15,7 +15,7 @@ const EventContext = createContext<EventContextType | undefined>(undefined);
 export function EventProvider({ children }: { children: ReactNode }) {
   const { events, setEvents, loading, error, offlineMode, refetchEvents } = useEventData();
 
-  const addEvent = async (newEvent: Event) => {
+  const addEvent = async (newEvent: Event): Promise<Event | undefined> => {
     try {
       // Check if we're in offline mode
       if (offlineMode) {
@@ -24,7 +24,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: "You are currently offline. Changes will be saved when you reconnect.",
           variant: "destructive"
         });
-        return;
+        return undefined;
       }
       
       console.log("Adding event:", newEvent);
@@ -37,7 +37,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: addError,
           variant: "destructive"
         });
-        return;
+        return undefined;
       }
       
       if (createdEvent) {
@@ -54,6 +54,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
         await refetchEvents(false);
         return createdEvent; // Return the created event for chaining
       }
+      
+      return undefined;
     } catch (error: any) {
       console.error("Error in addEvent:", error);
       handleError(error, {
@@ -61,11 +63,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
-      throw error; // Re-throw to allow the UI to handle it
+      return undefined; // Return undefined on error
     }
   };
 
-  const updateEvent = async (updatedEvent: Event) => {
+  const updateEvent = async (updatedEvent: Event): Promise<Event | undefined> => {
     try {
       // Check if we're in offline mode
       if (offlineMode) {
@@ -74,7 +76,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: "You are currently offline. Changes will be saved when you reconnect.",
           variant: "destructive"
         });
-        return;
+        return undefined;
       }
       
       console.log("Updating event:", updatedEvent);
@@ -87,7 +89,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: updateError,
           variant: "destructive"
         });
-        return;
+        return undefined;
       }
       
       if (eventResult) {
@@ -105,6 +107,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
         await refetchEvents(false);
         return eventResult;
       }
+      
+      return undefined;
     } catch (error: any) {
       console.error("Error in updateEvent:", error);
       handleError(error, {
@@ -112,11 +116,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
-      throw error;
+      return undefined;
     }
   };
 
-  const deleteEvent = async (eventId: string): Promise<void> => {
+  const deleteEvent = async (eventId: string): Promise<boolean> => {
     try {
       // Check if we're in offline mode
       if (offlineMode) {
@@ -125,7 +129,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: "You are currently offline. Changes will be saved when you reconnect.",
           variant: "destructive"
         });
-        return;
+        return false;
       }
       
       console.log("Deleting event:", eventId);
@@ -138,7 +142,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: deleteError,
           variant: "destructive"
         });
-        return;
+        return false;
       }
       
       if (success) {
@@ -149,7 +153,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
           title: "Success",
           description: message || "Event deleted successfully!"
         });
+        
+        return true;
       }
+      
+      return false;
     } catch (error: any) {
       console.error("Error in deleteEvent:", error);
       handleError(error, {
@@ -157,7 +165,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
-      throw error;
+      return false;
     }
   };
 

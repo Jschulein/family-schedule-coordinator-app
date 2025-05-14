@@ -16,7 +16,8 @@ import { EventFamilyMembersInput } from './events/EventFamilyMembersInput';
 import { EventEndDateInput } from './events/EventEndDateInput';
 import { EventAllDayToggle } from './events/EventAllDayToggle';
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Event {
   name: string;
@@ -48,33 +49,55 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
     e.preventDefault();
     setFormError(null);
     
-    if (name && date) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const userId = session?.user.id;
-        
-        if (!userId) {
-          setFormError("No authenticated user found. Please log in and try again.");
-          console.error("No authenticated user found");
-          return;
-        }
-        
-        onSubmit({ 
-          name, 
-          date, 
-          end_date: endDate || date,
-          time,
-          description, 
-          creatorId: userId,
-          familyMembers,
-          all_day: allDay
-        });
-      } catch (error) {
-        console.error("Error in form submission:", error);
-        setFormError("Error submitting form. Please try again.");
+    if (!name) {
+      setFormError("Please provide an event name.");
+      return;
+    }
+    
+    if (!date) {
+      setFormError("Please select a date for the event.");
+      return;
+    }
+    
+    if (name.length < 3) {
+      setFormError("Event name must be at least 3 characters long.");
+      return;
+    }
+    
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        setFormError("Authentication error. Please try logging in again.");
+        console.error("Session error:", sessionError);
+        return;
       }
-    } else {
-      setFormError("Please provide an event name and date.");
+      
+      const userId = session?.user.id;
+      
+      if (!userId) {
+        setFormError("No authenticated user found. Please log in and try again.");
+        console.error("No authenticated user found");
+        return;
+      }
+      
+      console.log("Submitting form with data:", {
+        name, date, endDate, time, description, familyMembers, allDay
+      });
+      
+      onSubmit({ 
+        name, 
+        date, 
+        end_date: endDate || date,
+        time,
+        description, 
+        creatorId: userId,
+        familyMembers,
+        all_day: allDay
+      });
+    } catch (error) {
+      console.error("Error in form submission:", error);
+      setFormError("Error submitting form. Please try again.");
     }
   };
 
@@ -121,7 +144,10 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
           />
           
           {formError && (
-            <div className="text-sm font-medium text-destructive">{formError}</div>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
           )}
           
           <Button 

@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, RefreshCw, AlertTriangle } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle, Info } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { useState, useEffect } from "react";
@@ -25,15 +25,22 @@ const NewEvent = () => {
   const navigate = useNavigate();
   const { addEvent, loading: contextLoading, error: contextError, refetchEvents } = useEvents();
   const { activeFamilyId, families } = useFamilyContext();
+  
+  // Separate state for different loading scenarios
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+  
+  // Auth and error states
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submissionAttempted, setSubmissionAttempted] = useState(false);
 
+  // Check authentication on load
   useEffect(() => {
-    // Check authentication status
     const checkAuth = async () => {
       try {
+        setIsChecking(true);
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -52,40 +59,48 @@ const NewEvent = () => {
       } catch (err) {
         console.error("Error checking auth:", err);
         toast.error("Failed to verify authentication status");
+      } finally {
+        setIsChecking(false);
       }
     };
     
     checkAuth();
   }, [navigate]);
   
+  // Show family selection reminder if needed
   useEffect(() => {
-    // If no active family is selected but families are available, show notification
-    if (families.length > 0 && !activeFamilyId) {
+    if (!isChecking && families.length > 0 && !activeFamilyId && !submissionAttempted) {
       toast.info("Please select a family to share this event with");
     }
-  }, [families, activeFamilyId]);
+  }, [families, activeFamilyId, isChecking, submissionAttempted]);
 
   const handleSubmit = async (eventData: EventFormData) => {
+    console.log("Starting event submission process");
+    setSubmissionAttempted(true);
     setIsSubmitting(true);
     setError(null);
     
     try {
       console.log("Form submission data:", eventData);
       
-      const { data, error } = await supabase.auth.getSession();
+      // Verify authentication again before submitting
+      const { data, error: authError } = await supabase.auth.getSession();
       
-      if (error) {
+      if (authError) {
+        console.error("Auth error during submission:", authError);
         toast.error("Authentication error. Please try logging in again.");
         navigate("/auth");
         return;
       }
       
       if (!data.session) {
+        console.error("No session found during submission");
         toast.error("You need to be logged in to create events");
         navigate("/auth");
         return;
       }
       
+      // Prepare the event data
       const event: Event = {
         name: eventData.name,
         date: eventData.date,
@@ -97,16 +112,20 @@ const NewEvent = () => {
         all_day: eventData.all_day
       };
       
-      // Add the event and capture any errors
+      console.log("Processed event data for submission:", event);
+      
+      // Add the event and capture any results
       const createdEvent = await addEvent(event);
+      
+      console.log("Event creation result:", createdEvent);
       
       if (createdEvent) {
         toast.success("Event created successfully!");
         navigate("/calendar");
       } else {
-        // The event might have been created but there was an issue with family associations
-        toast.success("Event created, but there may have been issues with family sharing.");
-        navigate("/calendar");
+        // The addEvent function already handles error toasts, so we don't need to add another one here
+        console.log("No event returned from addEvent - there may have been an issue");
+        setError("Event creation may not have completed successfully. Please check the calendar.");
       }
     } catch (error: any) {
       console.error("Error in handleSubmit:", error);
@@ -137,8 +156,12 @@ const NewEvent = () => {
     }
   };
 
-  if (!isAuthenticated) {
+  if (isChecking) {
     return <div className="p-8 text-center">Checking authentication...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <div className="p-8 text-center">Please log in to create events.</div>;
   }
 
   return (
@@ -168,6 +191,18 @@ const NewEvent = () => {
             Refresh Data
           </Button>
         </div>
+        
+        {!activeFamilyId && families.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6 flex items-start">
+            <Info className="h-5 w-5 text-amber-500 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-amber-800">Select a family</p>
+              <p className="text-sm text-amber-700">
+                Please select a family from the sidebar to share this event with family members.
+              </p>
+            </div>
+          </div>
+        )}
         
         {(contextError || error) && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 rounded">

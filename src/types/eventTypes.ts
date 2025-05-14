@@ -20,9 +20,9 @@ export interface UserProfile {
 
 export interface EventContextType {
   events: Event[];
-  addEvent: (event: Event) => Promise<Event | void>;
-  updateEvent: (event: Event) => Promise<Event | void>;
-  deleteEvent: (eventId: string) => Promise<void>;
+  addEvent: (event: Event) => Promise<Event | undefined>;
+  updateEvent: (event: Event) => Promise<Event | undefined>;
+  deleteEvent: (eventId: string) => Promise<boolean>;
   loading: boolean;
   error: string | null;
   offlineMode: boolean;

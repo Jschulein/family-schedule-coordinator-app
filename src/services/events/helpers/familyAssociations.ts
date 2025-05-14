@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
 
 /**
  * Associates family members with an event
@@ -20,45 +19,46 @@ export async function associateFamilyMembers(eventId: string, familyMemberIds: s
   try {
     console.log("Starting family member association for event:", eventId, "with members:", familyMemberIds);
     
-    // First, get unique family IDs from the family members
+    // First, get family members data to extract the correct family IDs
     const { data: familyMembers, error: familyMembersError } = await supabase
       .from('family_members')
-      .select('id, family_id')
+      .select('id, family_id, user_id')
       .in('id', familyMemberIds);
     
     if (familyMembersError) {
       console.error("Error fetching family members data:", familyMembersError);
-      throw new Error(`Failed to retrieve family information: ${familyMembersError.message}`);
+      return Promise.reject(new Error(`Failed to retrieve family information: ${familyMembersError.message}`));
     }
     
     if (!familyMembers || familyMembers.length === 0) {
-      console.warn("No family members found with the provided IDs");
+      console.warn("No family members found with the provided IDs:", familyMemberIds);
       return Promise.resolve(); // No valid members found
     }
     
-    // Create associations using the correct family IDs
+    console.log("Retrieved family members data:", familyMembers);
+    
+    // Create associations using the family IDs (not member IDs) to properly link events with families
     const familyAssociations = familyMembers.map(member => ({
       event_id: eventId,
-      family_id: member.id, // Use the member ID directly as this is what we're receiving from the UI
+      family_id: member.family_id, // Use family_id, not member.id
       shared_by: userId
     }));
     
-    console.log("Creating associations:", familyAssociations);
+    console.log("Creating family event associations:", familyAssociations);
     
     const { error: associationError } = await supabase
       .from('event_families')
       .insert(familyAssociations);
       
     if (associationError) {
-      console.error("Error associating family members:", associationError);
-      throw new Error(`Failed to associate event with family members: ${associationError.message}`);
+      console.error("Error associating event with families:", associationError);
+      return Promise.reject(new Error(`Failed to associate event with families: ${associationError.message}`));
     }
     
-    console.log(`Successfully associated event ${eventId} with ${familyMemberIds.length} family members`);
+    console.log(`Successfully associated event ${eventId} with ${familyMembers.length} families`);
     return Promise.resolve();
   } catch (error) {
     console.error("Unexpected error in associateFamilyMembers:", error);
-    // Always reject with the error to ensure consistent promise behavior
     return Promise.reject(error);
   }
 }
