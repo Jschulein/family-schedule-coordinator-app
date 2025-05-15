@@ -1,6 +1,6 @@
 
 import { toast } from "@/components/ui/use-toast";
-import { ToastAction } from "@/components/ui/toast";
+import { ToastAction, ToastActionElement } from "@/components/ui/toast";
 import { logEventFlow } from "./eventFlow";
 import { handleError } from "@/utils/error";
 import React from "react";
@@ -39,7 +39,10 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
       description: errorMessage,
       variant: "destructive",
       action: retryFn 
-        ? React.createElement(ToastAction, { onClick: retryFn }, "Retry")
+        ? React.createElement(ToastAction, { 
+            onClick: retryFn, 
+            altText: "Retry action" 
+          }, "Retry") as ToastActionElement
         : undefined,
     });
   }
