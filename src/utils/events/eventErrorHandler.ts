@@ -36,14 +36,11 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
   if (showToast) {
     // Create action element separately before passing to toast
     const actionElement: ToastActionElement | undefined = retryFn 
-      ? (
-        <ToastAction 
-          onClick={retryFn} 
-          altText="Retry action"
-        >
-          Retry
-        </ToastAction>
-      )
+      ? React.createElement(
+          ToastAction, 
+          { onClick: retryFn, altText: "Retry action" },
+          "Retry"
+        )
       : undefined;
     
     toast({
