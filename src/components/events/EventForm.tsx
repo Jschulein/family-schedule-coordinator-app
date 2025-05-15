@@ -18,6 +18,7 @@ import { EventAllDayToggle } from './EventAllDayToggle';
 import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEventFormState } from '../useEventFormState';
+import { ReactNode } from 'react';
 
 interface EventFormData {
   name: string;
@@ -37,6 +38,7 @@ interface EventFormProps {
   title?: string;
   description?: string;
   initialValues?: Partial<EventFormData>;
+  extraButtons?: ReactNode; // Added to support custom buttons in edit mode
 }
 
 /**
@@ -48,7 +50,8 @@ export const EventForm = ({
   buttonText = 'Add Event',
   title = 'Add Family Event',
   description = 'Schedule a new event for your family calendar',
-  initialValues
+  initialValues,
+  extraButtons
 }: EventFormProps) => {
   // Use our custom form state hook
   const {
@@ -94,11 +97,13 @@ export const EventForm = ({
   const effectiveSubmitting = isSubmitting || localSubmitting;
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
+    <>
+      {title && (
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+      )}
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <EventNameInput 
@@ -140,22 +145,26 @@ export const EventForm = ({
             </Alert>
           )}
           
-          <Button 
-            type="submit" 
-            className="w-full"
-            disabled={!isFormValid || effectiveSubmitting}
-          >
-            {effectiveSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Event...
-              </>
-            ) : (
-              buttonText
-            )}
-          </Button>
+          <div className="flex justify-between gap-4 pt-2">
+            {extraButtons}
+            
+            <Button 
+              type="submit" 
+              className={extraButtons ? "flex-1" : "w-full"}
+              disabled={!isFormValid || effectiveSubmitting}
+            >
+              {effectiveSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {buttonText === 'Add Event' ? 'Creating Event...' : 'Updating Event...'}
+                </>
+              ) : (
+                buttonText
+              )}
+            </Button>
+          </div>
         </form>
       </CardContent>
-    </Card>
+    </>
   );
 };

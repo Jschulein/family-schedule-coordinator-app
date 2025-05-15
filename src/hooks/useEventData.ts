@@ -1,10 +1,14 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
-import { fetchEventsFromDb } from '@/services/events';
-import { toast } from "@/components/ui/use-toast";
 import { logEventFlow } from '@/utils/events';
+import { 
+  fetchEventData, 
+  cacheEvents, 
+  loadCachedEvents, 
+  isCacheFresh,
+  clearCachedEvents
+} from '@/utils/events/eventDataFetching';
 
 /**
  * Custom hook for fetching and managing event data
@@ -27,27 +31,28 @@ export function useEventData() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);    // Refresh of existing data
   const [operationLoading, setOperationLoading] = useState<boolean>(false); // General operations
   
+  // Use a ref to track component mounted state for cleanup
+  const isMounted = useRef<boolean>(true);
+  
   // Check for cached events in localStorage on initial load
   useEffect(() => {
     logEventFlow('useEventData', 'Hook initialized');
     
-    const cachedEventsJson = localStorage.getItem('cachedEvents');
-    const cachedTimestamp = localStorage.getItem('cachedEventsTimestamp');
+    const { events: cachedEvents, timestamp } = loadCachedEvents();
     
-    if (cachedEventsJson) {
-      try {
-        const parsedEvents = JSON.parse(cachedEventsJson);
-        setEvents(parsedEvents);
-        logEventFlow('useEventData', `Loaded ${parsedEvents.length} events from cache`);
-        
-        // Only set loading to false if cache is relatively fresh (< 1 hour)
-        if (cachedTimestamp && (Date.now() - Number(cachedTimestamp) < 3600000)) {
-          setInitialLoading(false);
-        }
-      } catch (e) {
-        logEventFlow('useEventData', 'Failed to parse cached events', e);
+    if (cachedEvents) {
+      setEvents(cachedEvents);
+      
+      // Only set loading to false if cache is relatively fresh (< 1 hour)
+      if (isCacheFresh(timestamp)) {
+        setInitialLoading(false);
       }
     }
+    
+    // Cleanup function to set mounted flag to false
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
   
   // Memoized fetch function to prevent unnecessary rerenders
@@ -75,54 +80,31 @@ export function useEventData() {
     setOfflineMode(false);
 
     try {
-      // Using our simplified approach with security definer function
-      const { events: fetchedEvents, error: fetchError } = await fetchEventsFromDb();
+      const { fetchedEvents, error: fetchError, offlineMode: isOffline } = await fetchEventData(showToast);
+      
+      // Only update state if component is still mounted
+      if (!isMounted.current) return;
       
       if (fetchError) {
-        logEventFlow('useEventData', 'Failed to fetch events', fetchError);
         setError(fetchError);
-        setOfflineMode(true);
-        
-        if (showToast) {
-          toast({ 
-            title: "Error", 
-            description: "Unable to fetch events. Using available local data.", 
-            variant: "destructive" 
-          });
-        }
+        setOfflineMode(isOffline);
         // Keep existing events if we have them
       } else if (fetchedEvents) {
-        logEventFlow('useEventData', `Successfully loaded ${fetchedEvents.length} events`);
         setEvents(fetchedEvents);
         setError(null);
         
         // Cache the events for offline use
-        try {
-          localStorage.setItem('cachedEvents', JSON.stringify(fetchedEvents));
-          localStorage.setItem('cachedEventsTimestamp', Date.now().toString());
-        } catch (e) {
-          logEventFlow('useEventData', 'Failed to cache events', e);
-        }
-        
+        cacheEvents(fetchedEvents);
         setLastFetchTime(Date.now());
       }
-    } catch (e: any) {
-      logEventFlow('useEventData', 'Error in fetchEvents', e);
-      setError("An unexpected error occurred");
-      setOfflineMode(true);
-      
-      if (showToast) {
-        toast({ 
-          title: "Error", 
-          description: "Failed to load events. Using local data.", 
-          variant: "destructive" 
-        });
-      }
     } finally {
-      // Reset all loading states
-      setInitialLoading(false);
-      setOperationLoading(false);
-      setIsRefreshing(false);
+      // Only update state if component is still mounted
+      if (isMounted.current) {
+        // Reset all loading states
+        setInitialLoading(false);
+        setOperationLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, [events.length, initialLoading]);
 
@@ -139,8 +121,7 @@ export function useEventData() {
       } else if (event === 'SIGNED_OUT') {
         logEventFlow('useEventData', "Auth state changed: SIGNED_OUT, clearing events");
         setEvents([]);
-        localStorage.removeItem('cachedEvents');
-        localStorage.removeItem('cachedEventsTimestamp');
+        clearCachedEvents();
       }
     });
     
@@ -174,6 +155,7 @@ export function useEventData() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      isMounted.current = false;
       if (authListener && authListener.subscription) {
         authListener.subscription.unsubscribe();
       }
