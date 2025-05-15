@@ -24,7 +24,11 @@ interface EventFormData {
 
 const NewEvent = () => {
   const navigate = useNavigate();
-  const { addEvent, loading: contextLoading, refetchEvents } = useEvents();
+  const { 
+    addEvent, 
+    operationLoading,  // Use operationLoading instead of loading
+    refetchEvents 
+  } = useEvents();
   const { activeFamilyId, families } = useFamilyContext();
   
   // State for tracking submission and error
@@ -273,7 +277,7 @@ const NewEvent = () => {
         <div className="flex justify-center">
           <AddEventForm 
             onSubmit={handleSubmit} 
-            isSubmitting={isSubmitting || contextLoading}
+            isSubmitting={isSubmitting || operationLoading} // Only pass operationLoading, not initialLoading
           />
         </div>
       </div>

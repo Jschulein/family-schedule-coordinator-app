@@ -6,16 +6,9 @@ export interface Event {
   end_date?: Date;
   time: string;
   description: string;
-  familyMembers?: string[];
   creatorId: string;
-  familyMember?: string;
-  all_day?: boolean;
-}
-
-export interface UserProfile {
-  id: string;
-  full_name?: string | null;
-  Email?: string | null;
+  familyMembers: string[];
+  all_day: boolean;
 }
 
 export interface EventContextType {
@@ -24,7 +17,16 @@ export interface EventContextType {
   updateEvent: (event: Event) => Promise<Event | undefined>;
   deleteEvent: (eventId: string) => Promise<boolean>;
   loading: boolean;
+  initialLoading: boolean; // Add the new loading states
+  operationLoading: boolean;
   error: string | null;
   offlineMode: boolean;
   refetchEvents: (showToast?: boolean) => Promise<void>;
+}
+
+export interface UserProfile {
+  id: string;
+  full_name?: string;
+  avatar_url?: string;
+  email?: string;
 }

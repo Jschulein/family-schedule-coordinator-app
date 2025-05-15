@@ -12,7 +12,8 @@ import { logEventFlow } from '@/utils/events';
  */
 export function useEventData() {
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+  const [operationLoading, setOperationLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
@@ -33,7 +34,7 @@ export function useEventData() {
         
         // Only set loading to false if cache is relatively fresh (< 1 hour)
         if (cachedTimestamp && (Date.now() - Number(cachedTimestamp) < 3600000)) {
-          setLoading(false);
+          setInitialLoading(false);
         }
       } catch (e) {
         logEventFlow('useEventData', 'Failed to parse cached events', e);
@@ -50,7 +51,7 @@ export function useEventData() {
     if (events.length > 0) {
       setIsRefreshing(true);
     } else {
-      setLoading(true);
+      setOperationLoading(true); // Use operationLoading instead of initialLoading
     }
     
     setError(null);
@@ -101,7 +102,8 @@ export function useEventData() {
         });
       }
     } finally {
-      setLoading(false);
+      setInitialLoading(false); // Always set initialLoading to false once we've tried to fetch
+      setOperationLoading(false);
       setIsRefreshing(false);
     }
   }, [events.length]);
@@ -166,7 +168,9 @@ export function useEventData() {
   return {
     events,
     setEvents,
-    loading,
+    loading: operationLoading, // Keep the original loading for backwards compatibility
+    initialLoading,
+    operationLoading,
     isRefreshing,
     error,
     offlineMode,

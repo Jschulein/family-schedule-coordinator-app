@@ -14,7 +14,16 @@ import { useEventData } from '@/hooks/useEventData';
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
 export function EventProvider({ children }: { children: ReactNode }) {
-  const { events, setEvents, loading, error, offlineMode, refetchEvents } = useEventData();
+  const { 
+    events, 
+    setEvents, 
+    loading, 
+    initialLoading, 
+    operationLoading, 
+    error, 
+    offlineMode, 
+    refetchEvents 
+  } = useEventData();
 
   const addEvent = async (newEvent: Event): Promise<Event | undefined> => {
     logEventFlow('EventContext', 'addEvent function called', newEvent);
@@ -212,7 +221,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
         addEvent, 
         updateEvent, 
         deleteEvent, 
-        loading, 
+        loading,         // Keep for backward compatibility
+        initialLoading,  // Expose the new loading states
+        operationLoading,
         error, 
         offlineMode,
         refetchEvents 
