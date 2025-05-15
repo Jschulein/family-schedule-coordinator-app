@@ -25,3 +25,9 @@ export interface EventContextType {
   offlineMode: boolean;
   refetchEvents: (showToast?: boolean) => Promise<void>;
 }
+
+export interface UserProfile {
+  id: string;
+  full_name?: string;
+  Email?: string;
+}
