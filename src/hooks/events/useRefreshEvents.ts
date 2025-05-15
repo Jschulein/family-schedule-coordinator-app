@@ -1,60 +1,151 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { logEventFlow } from "@/utils/events";
 import { performanceTracker } from "@/utils/testing/performanceTracker";
 
 /**
- * Custom hook for handling event data refresh operations
+ * Custom hook for handling events data refresh with retry capability
  * @param refetchEvents Function to refresh event data
- * @returns States and handler for refreshing events
+ * @returns State and handlers for data refresh operations
  */
 export function useRefreshEvents(refetchEvents: (showToast?: boolean) => Promise<void>) {
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+  const mountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+  
   /**
-   * Handle manual data refresh
-   * Shows user feedback and manages refresh state
+   * Handles retry with exponential backoff
    */
-  const handleRetry = async () => {
-    // Skip if already refreshing
-    if (isRefreshing) return;
+  const retryWithBackoff = useCallback(async () => {
+    if (retryCount >= maxRetries) {
+      setError("Maximum retry attempts reached. Please try again later.");
+      return;
+    }
     
-    // Handle data refresh with performance tracking
-    const refreshTrackingId = performanceTracker.startMeasure('NewEventPage:dataRefresh');
+    const nextRetry = retryCount + 1;
+    setRetryCount(nextRetry);
+    
+    // Exponential backoff: 1s, 2s, 4s
+    const backoffTime = Math.pow(2, nextRetry - 1) * 1000;
+    
+    logEventFlow('RefreshEvents', `Retrying in ${backoffTime}ms (attempt ${nextRetry})`);
+    
+    await new Promise(resolve => setTimeout(resolve, backoffTime));
+    
+    if (mountedRef.current) {
+      handleRetry();
+    }
+  }, [retryCount]);
+  
+  /**
+   * Handle retry attempt
+   */
+  const handleRetry = useCallback(async () => {
+    if (isRefreshing) return;
     
     setIsRefreshing(true);
     setError(null);
-    logEventFlow('NewEvent', 'Manual data refresh requested');
+    
+    // Create new AbortController for this operation
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+    
+    const trackingId = performanceTracker.startMeasure('RefreshEvents:retry');
     
     try {
-      await refetchEvents(true);
+      logEventFlow('RefreshEvents', 'Starting refresh attempt');
       
-      toast({
-        title: "Success",
-        description: "Data refreshed successfully",
-        variant: "default"
-      });
+      // Check if aborted
+      if (signal.aborted) {
+        throw new Error("Refresh operation was cancelled");
+      }
+      
+      await refetchEvents(false);
+      
+      // Check if aborted after the operation
+      if (signal.aborted) {
+        throw new Error("Refresh operation was cancelled during execution");
+      }
+      
+      if (mountedRef.current) {
+        toast({
+          title: "Success",
+          description: "Event data refreshed successfully"
+        });
+        setRetryCount(0);
+        setError(null);
+      }
     } catch (error: any) {
-      logEventFlow('NewEvent', 'Error refreshing data', error);
-      setError(error?.message || "Failed to refresh data");
+      // Skip error handling if aborted intentionally
+      if (error.name === 'AbortError') {
+        logEventFlow('RefreshEvents', 'Refresh aborted intentionally');
+        return;
+      }
       
-      toast({
-        title: "Error",
-        description: "Failed to refresh data",
-        variant: "destructive"
-      });
+      logEventFlow('RefreshEvents', 'Error during refresh', error);
+      
+      if (mountedRef.current) {
+        const errorMessage = error?.message || "Failed to refresh event data";
+        setError(errorMessage);
+        
+        // Only show toast for final failure
+        if (retryCount >= maxRetries - 1) {
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        } else {
+          // Auto-retry with backoff
+          retryWithBackoff();
+        }
+      }
     } finally {
-      performanceTracker.endMeasure(refreshTrackingId);
+      performanceTracker.endMeasure(trackingId);
+      
+      if (mountedRef.current && !signal.aborted) {
+        setIsRefreshing(false);
+      }
+      
+      // Clear the abort controller reference
+      abortControllerRef.current = null;
+    }
+  }, [isRefreshing, refetchEvents, retryCount, retryWithBackoff]);
+  
+  /**
+   * Cancels the current refresh operation if one is in progress
+   */
+  const cancelRefresh = () => {
+    if (abortControllerRef.current && isRefreshing) {
+      abortControllerRef.current.abort();
       setIsRefreshing(false);
+      setError("Refresh operation cancelled");
+      logEventFlow('RefreshEvents', 'Refresh cancelled by user');
     }
   };
-
+  
   return {
     isRefreshing,
     error,
-    setError,
-    handleRetry
+    retryCount,
+    handleRetry,
+    cancelRefresh
   };
 }
