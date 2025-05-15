@@ -9,6 +9,7 @@ export interface Event {
   creatorId: string;
   familyMembers: string[];
   all_day: boolean;
+  familyMember?: string; // Re-added for backward compatibility
 }
 
 export interface EventContextType {

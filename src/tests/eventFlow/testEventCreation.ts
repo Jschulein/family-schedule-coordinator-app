@@ -38,7 +38,8 @@ export async function testEventCreation() {
       time: '12:00',
       description: 'Test event description',
       creatorId: user.id,
-      all_day: false
+      all_day: false,
+      familyMembers: [] // Add required field
     };
     
     testLogger.info('EVENT_CREATE', 'Creating test event', testEvent);

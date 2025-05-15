@@ -69,8 +69,7 @@ export function fromDbEvent(dbEvent: any, userMap: Record<string, any> = {}): Ev
     description: dbEvent.description || "",
     creatorId: creatorId || "",
     all_day: dbEvent.all_day || false,
-    familyMember, // Include the creator name
+    familyMember, // Include the creator name for backward compatibility
     familyMembers: dbEvent.familyMembers || dbEvent.family_members || []
   };
 }
-

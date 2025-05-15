@@ -31,6 +31,7 @@ export function formatEventForDisplay(dbEvent: any): Event {
     time: dbEvent.time,
     description: dbEvent.description || "",
     creatorId: dbEvent.creator_id,
-    all_day: dbEvent.all_day || false
+    all_day: dbEvent.all_day || false,
+    familyMembers: [] // Add the required field with default empty array
   };
 }

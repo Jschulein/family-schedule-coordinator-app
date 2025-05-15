@@ -105,7 +105,9 @@ export async function processEventsWithProfiles(eventRows: any[]): Promise<Event
         time: "00:00",
         description: "This event could not be properly loaded.",
         creatorId: row.creator_id || "unknown",
-        familyMember: "Unknown"
+        familyMember: "Unknown",
+        familyMembers: [], // Required field
+        all_day: false // Required field
       };
     }
   });
