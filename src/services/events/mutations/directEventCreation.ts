@@ -7,8 +7,14 @@ import { logEventFlow } from "@/utils/events";
 /**
  * A direct, simplified event creation function with minimal complexity
  * Focuses only on creating the event and associating it with family members
+ * Returns a structured response object with consistent error handling
  */
-export async function createEvent(eventData: Event): Promise<{ success: boolean; eventId?: string; error?: string }> {
+export async function createEvent(eventData: Event): Promise<{ 
+  success: boolean; 
+  eventId?: string; 
+  error?: string;
+  details?: any;
+}> {
   try {
     logEventFlow("directEventCreation", "Starting direct event creation", { name: eventData.name });
     
@@ -16,10 +22,16 @@ export async function createEvent(eventData: Event): Promise<{ success: boolean;
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
-      return { success: false, error: `Authentication error: ${sessionError.message}` };
+      logEventFlow("directEventCreation", "Authentication error", sessionError);
+      return { 
+        success: false, 
+        error: `Authentication error: ${sessionError.message}`,
+        details: sessionError
+      };
     }
     
     if (!session) {
+      logEventFlow("directEventCreation", "No active session found");
       return { success: false, error: "You must be logged in to create events" };
     }
     
@@ -45,10 +57,15 @@ export async function createEvent(eventData: Event): Promise<{ success: boolean;
     
     if (insertError) {
       logEventFlow("directEventCreation", "Error creating event", insertError);
-      return { success: false, error: `Failed to create event: ${insertError.message}` };
+      return { 
+        success: false, 
+        error: `Failed to create event: ${insertError.message}`,
+        details: insertError
+      };
     }
     
     if (!createdEvent) {
+      logEventFlow("directEventCreation", "No event data returned after creation");
       return { success: false, error: "No event data returned after creation" };
     }
     
@@ -56,6 +73,10 @@ export async function createEvent(eventData: Event): Promise<{ success: boolean;
     
     // 4. Associate with family members if needed
     if (eventData.familyMembers && eventData.familyMembers.length > 0) {
+      logEventFlow("directEventCreation", "Associating with family members", { 
+        count: eventData.familyMembers.length 
+      });
+
       // First, get family information for these members
       const { data: familyMembers, error: membersError } = await supabase
         .from("family_members")
@@ -70,6 +91,13 @@ export async function createEvent(eventData: Event): Promise<{ success: boolean;
           description: "Event created, but there was an issue associating family members",
           variant: "default"
         });
+        
+        // Return partial success
+        return { 
+          success: true, 
+          eventId: createdEvent.id,
+          error: "Event created, but family member association failed"
+        };
       } 
       else if (familyMembers && familyMembers.length > 0) {
         // Create a unique set of family IDs
@@ -96,6 +124,13 @@ export async function createEvent(eventData: Event): Promise<{ success: boolean;
               description: "Event created, but there was an issue with family associations",
               variant: "default"
             });
+            
+            // Return partial success
+            return { 
+              success: true, 
+              eventId: createdEvent.id,
+              error: "Event created, but family association failed"
+            };
           }
         }
       }
@@ -107,7 +142,8 @@ export async function createEvent(eventData: Event): Promise<{ success: boolean;
     logEventFlow("directEventCreation", "Unexpected error", error);
     return { 
       success: false, 
-      error: error?.message || "An unexpected error occurred while creating the event"
+      error: error?.message || "An unexpected error occurred while creating the event",
+      details: error
     };
   }
 }

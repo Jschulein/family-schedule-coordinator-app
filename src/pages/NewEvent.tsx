@@ -12,27 +12,15 @@ import { logEventFlow } from "@/utils/events";
 import { performanceTracker } from "@/utils/testing/performanceTracker";
 import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 
-interface EventFormData {
-  name: string;
-  date: Date;
-  end_date?: Date;
-  time: string;
-  description: string;
-  creatorId: string;
-  familyMembers: string[];
-  all_day: boolean;
-}
-
 /**
  * NewEvent page component
  * Handles the creation of new events and manages form submission state
+ * Now with clear separation between data loading and form submission states
  */
 const NewEvent = () => {
   const navigate = useNavigate();
   const { 
     addEvent,
-    initialLoading: eventsInitialLoading,
-    operationLoading: eventsOperationLoading,
     refetchEvents 
   } = useEvents();
   
@@ -110,7 +98,7 @@ const NewEvent = () => {
    * Handle form submission
    * This is completely separate from data loading
    */
-  const handleSubmit = async (eventData: EventFormData) => {
+  const handleSubmit = async (eventData: any) => {
     // Start performance tracking
     submissionStartTime.current = performance.now();
     const perfTrackingId = performanceTracker.startMeasure('NewEventPage:eventSubmission', { 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
@@ -57,6 +58,11 @@ export function useEventData() {
     if (events.length > 0) {
       // We already have data, so we're just refreshing
       setIsRefreshing(true);
+      
+      // Make sure initialLoading is false in this case
+      if (initialLoading) {
+        setInitialLoading(false);
+      }
     } else if (initialLoading) {
       // Keep initialLoading true if we're in initial load
       // No need to set it again
