@@ -273,10 +273,12 @@ const NewEvent = () => {
         )}
         
         <div className="flex justify-center">
-          <AddEventForm 
-            onSubmit={handleSubmit} 
-            isSubmitting={isSubmitting} // ONLY pass our local submission state, not any data loading state
-          />
+          <div className="w-full max-w-md">
+            <AddEventForm 
+              onSubmit={handleSubmit} 
+              isSubmitting={isSubmitting}
+            />
+          </div>
         </div>
       </div>
     </div>

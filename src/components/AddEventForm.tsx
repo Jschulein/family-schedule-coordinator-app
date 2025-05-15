@@ -1,4 +1,5 @@
 
+import { Card, CardContent } from "@/components/ui/card";
 import { Event } from '@/types/eventTypes';
 import { EventForm } from './events/EventForm';
 
@@ -9,17 +10,21 @@ interface AddEventFormProps {
 
 /**
  * Form component for adding new events
- * Now just a wrapper around the more generic EventForm component
+ * Wrapper around the more generic EventForm component
  */
 const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => {
   return (
-    <EventForm
-      onSubmit={onSubmit}
-      isSubmitting={isSubmitting}
-      buttonText="Add Event"
-      title="Add Family Event"
-      description="Schedule a new event for your family calendar"
-    />
+    <Card className="w-full">
+      <CardContent className="pt-6">
+        <EventForm
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+          buttonText="Add Event"
+          title="Add Family Event"
+          description="Schedule a new event for your family calendar"
+        />
+      </CardContent>
+    </Card>
   );
 };
 

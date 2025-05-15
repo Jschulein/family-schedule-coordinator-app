@@ -2,8 +2,6 @@
 import { useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -104,67 +102,65 @@ export const EventForm = ({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
       )}
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <EventNameInput 
-            value={name} 
-            onChange={setName} 
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <EventNameInput 
+          value={name} 
+          onChange={setName} 
+        />
+        <EventDateInput 
+          value={date} 
+          onSelect={setDate} 
+        />
+        <EventEndDateInput 
+          value={endDate} 
+          onSelect={setEndDate}
+          startDate={date}
+        />
+        <EventAllDayToggle
+          value={allDay}
+          onChange={setAllDay}
+        />
+        {!allDay && (
+          <EventTimeInput
+            value={time}
+            onChange={setTime}
           />
-          <EventDateInput 
-            value={date} 
-            onSelect={setDate} 
-          />
-          <EventEndDateInput 
-            value={endDate} 
-            onSelect={setEndDate}
-            startDate={date}
-          />
-          <EventAllDayToggle
-            value={allDay}
-            onChange={setAllDay}
-          />
-          {!allDay && (
-            <EventTimeInput
-              value={time}
-              onChange={setTime}
-            />
-          )}
-          <EventDescriptionInput 
-            value={eventDescription} 
-            onChange={setDescription} 
-          />
-          <EventFamilyMembersInput 
-            value={familyMembers} 
-            onChange={setFamilyMembers} 
-          />
+        )}
+        <EventDescriptionInput 
+          value={eventDescription} 
+          onChange={setDescription} 
+        />
+        <EventFamilyMembersInput 
+          value={familyMembers} 
+          onChange={setFamilyMembers} 
+        />
+        
+        {formError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="flex justify-between gap-4 pt-2">
+          {extraButtons}
           
-          {formError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="flex justify-between gap-4 pt-2">
-            {extraButtons}
-            
-            <Button 
-              type="submit" 
-              className={extraButtons ? "flex-1" : "w-full"}
-              disabled={!isFormValid || effectiveSubmitting}
-            >
-              {effectiveSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {buttonText === 'Add Event' ? 'Creating Event...' : 'Updating Event...'}
-                </>
-              ) : (
-                buttonText
-              )}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
+          <Button 
+            type="submit" 
+            className={extraButtons ? "flex-1" : "w-full"}
+            disabled={!isFormValid || effectiveSubmitting}
+          >
+            {effectiveSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {buttonText === 'Add Event' ? 'Creating Event...' : 'Updating Event...'}
+              </>
+            ) : (
+              buttonText
+            )}
+          </Button>
+        </div>
+      </form>
     </>
   );
 };
