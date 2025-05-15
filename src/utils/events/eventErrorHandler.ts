@@ -1,9 +1,9 @@
 
 import { toast } from "@/components/ui/use-toast";
-import { ToastAction, ToastActionElement } from "@/components/ui/toast";
+import { ToastActionElement } from "@/components/ui/toast";
 import { logEventFlow } from "./eventFlow";
 import { handleError } from "@/utils/error";
-import React from "react";
+import { createRetryAction } from "@/components/ui/toast-helpers";
 
 type EventErrorOptions = {
   context: string;
@@ -34,13 +34,9 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
   
   // Show toast if enabled with retry functionality
   if (showToast) {
-    // Create action element separately before passing to toast
+    // Create action element using our helper function
     const actionElement: ToastActionElement | undefined = retryFn 
-      ? React.createElement(
-          ToastAction, 
-          { onClick: retryFn, altText: "Retry action" },
-          "Retry"
-        )
+      ? createRetryAction(retryFn)
       : undefined;
     
     toast({
