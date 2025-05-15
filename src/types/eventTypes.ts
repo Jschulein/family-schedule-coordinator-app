@@ -20,6 +20,7 @@ export interface EventContextType {
   loading: boolean;
   initialLoading: boolean; // Add the new loading states
   operationLoading: boolean;
+  isRefreshing: boolean; // Added the missing isRefreshing property
   error: string | null;
   offlineMode: boolean;
   refetchEvents: (showToast?: boolean) => Promise<void>;
