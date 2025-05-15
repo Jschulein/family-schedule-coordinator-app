@@ -34,16 +34,23 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
   
   // Show toast if enabled with retry functionality
   if (showToast) {
+    // Create action element separately before passing to toast
+    const actionElement: ToastActionElement | undefined = retryFn 
+      ? (
+        <ToastAction 
+          onClick={retryFn} 
+          altText="Retry action"
+        >
+          Retry
+        </ToastAction>
+      )
+      : undefined;
+    
     toast({
       title: "Event Error",
       description: errorMessage,
       variant: "destructive",
-      action: retryFn 
-        ? React.createElement(ToastAction, { 
-            onClick: retryFn, 
-            altText: "Retry action" 
-          }, "Retry") as ToastActionElement
-        : undefined,
+      action: actionElement,
     });
   }
   
