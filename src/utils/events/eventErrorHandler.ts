@@ -1,7 +1,9 @@
 
 import { toast } from "@/components/ui/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { logEventFlow } from "./eventFlow";
 import { handleError } from "@/utils/error";
+import React from "react";
 
 type EventErrorOptions = {
   context: string;
@@ -36,10 +38,11 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
       title: "Event Error",
       description: errorMessage,
       variant: "destructive",
-      action: retryFn ? {
-        label: "Retry",
-        onClick: retryFn,
-      } : undefined,
+      action: retryFn ? (
+        <ToastAction onClick={retryFn}>
+          Retry
+        </ToastAction>
+      ) : undefined,
     });
   }
   
