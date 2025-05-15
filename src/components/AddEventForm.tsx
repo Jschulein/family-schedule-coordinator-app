@@ -34,9 +34,13 @@ interface Event {
 
 interface AddEventFormProps {
   onSubmit: (event: Event) => void;
-  isSubmitting?: boolean;
+  isSubmitting?: boolean; // This is passed from the parent and represents actual submission
 }
 
+/**
+ * Form component for adding new events
+ * Manages its own form state and validation
+ */
 const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => {
   // Form state
   const [name, setName] = useState('');
@@ -49,7 +53,7 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
   
   // Form status
   const [formError, setFormError] = useState<string | null>(null);
-  const [localSubmitting, setLocalSubmitting] = useState(false);
+  const [localSubmitting, setLocalSubmitting] = useState(false); // Local form submission state
   const [validationChecked, setValidationChecked] = useState(false);
   
   // Refs for debounce and tracking
@@ -71,6 +75,7 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
   
   // Reset local submitting state when parent submitting state changes
   useEffect(() => {
+    // Only handle transition from submitting -> not submitting
     if (!isSubmitting && localSubmitting) {
       setLocalSubmitting(false);
       
@@ -145,6 +150,7 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
     }
     
     try {
+      // Set local submission state
       setLocalSubmitting(true);
       
       // Pre-flight auth check to fail fast if no session
@@ -182,6 +188,7 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
       });
       
       // Safety timeout if the parent never updates isSubmitting
+      // This is a fallback in case the parent component doesn't handle the state properly
       submitTimeoutRef.current = window.setTimeout(() => {
         logEventFlow('AddEventForm', 'Safety timeout triggered - resetting state');
         setLocalSubmitting(false);
@@ -197,7 +204,11 @@ const AddEventForm = ({ onSubmit, isSubmitting = false }: AddEventFormProps) => 
     }
   };
 
+  // Form is valid when name is at least 3 characters and date is selected
   const isFormValid = name && name.length >= 3 && date;
+  
+  // Use both the parent's submission state and our local state
+  // This ensures we catch both scenarios
   const effectiveSubmitting = isSubmitting || localSubmitting;
 
   return (

@@ -1,3 +1,4 @@
+
 import { createContext, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { 
@@ -5,26 +6,37 @@ import {
   deleteEventFromDb as deleteEventFn,
   createEvent
 } from '@/services/events';
-import { fromDbEvent } from '@/utils/events/eventFormatter';
+import { fromDbEvent } from '@/utils/events';
 import { logEventFlow } from '@/utils/events';
 import type { Event, EventContextType } from '@/types/eventTypes';
 import { handleError } from '@/utils/error';
 import { useEventData } from '@/hooks/useEventData';
 
+/**
+ * Context for managing events throughout the application
+ * Handles CRUD operations and manages loading states
+ */
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
 export function EventProvider({ children }: { children: ReactNode }) {
+  // Use the enhanced useEventData hook with improved loading states
   const { 
     events, 
     setEvents, 
-    loading, 
-    initialLoading, 
-    operationLoading, 
+    loading,          // Kept for backward compatibility 
+    initialLoading,   // Only true during first data load
+    operationLoading, // True during data operations
+    isRefreshing,     // True when refreshing existing data
     error, 
     offlineMode, 
     refetchEvents 
   } = useEventData();
 
+  /**
+   * Add a new event
+   * @param newEvent The event to add
+   * @returns The created event or undefined if failed
+   */
   const addEvent = async (newEvent: Event): Promise<Event | undefined> => {
     logEventFlow('EventContext', 'addEvent function called', newEvent);
     try {
@@ -217,16 +229,24 @@ export function EventProvider({ children }: { children: ReactNode }) {
   return (
     <EventContext.Provider 
       value={{ 
+        // Data
         events, 
+        
+        // Actions
         addEvent, 
         updateEvent, 
         deleteEvent, 
-        loading,         // Keep for backward compatibility
-        initialLoading,  // Expose the new loading states
-        operationLoading,
+        refetchEvents,
+        
+        // Loading states - clearly named and exposed
+        loading,          // Kept for backward compatibility
+        initialLoading,   // Only true during first data load
+        operationLoading, // True during data operations
+        isRefreshing,     // True when refreshing existing data
+        
+        // Status
         error, 
-        offlineMode,
-        refetchEvents 
+        offlineMode
       }}
     >
       {children}

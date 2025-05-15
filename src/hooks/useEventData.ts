@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Event } from '@/types/eventTypes';
 import { supabase } from "@/integrations/supabase/client";
@@ -8,16 +7,24 @@ import { logEventFlow } from '@/utils/events';
 
 /**
  * Custom hook for fetching and managing event data
- * Using the optimized security definer functions to avoid recursion
+ * Uses optimized security definer functions to avoid recursion
+ * 
+ * Loading states:
+ * - initialLoading: True when events are being loaded for the first time
+ * - isRefreshing: True when events are being refreshed but we already have data to show
+ * - operationLoading: True when a data operation is in progress (not related to form submission)
  */
 export function useEventData() {
+  // Data state
   const [events, setEvents] = useState<Event[]>([]);
-  const [initialLoading, setInitialLoading] = useState<boolean>(true);
-  const [operationLoading, setOperationLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
   const [offlineMode, setOfflineMode] = useState<boolean>(false);
+  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
+  
+  // Loading states - clearly separated for different purposes
+  const [initialLoading, setInitialLoading] = useState<boolean>(true); // First load only
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);    // Refresh of existing data
+  const [operationLoading, setOperationLoading] = useState<boolean>(false); // General operations
   
   // Check for cached events in localStorage on initial load
   useEffect(() => {
@@ -46,12 +53,16 @@ export function useEventData() {
   const fetchEvents = useCallback(async (showToast = true) => {
     logEventFlow('useEventData', 'Fetching events...');
     
-    // Set refreshing state if we already have data to show a refresh state
-    // rather than a full loading state
+    // Set appropriate loading state based on current data state
     if (events.length > 0) {
+      // We already have data, so we're just refreshing
       setIsRefreshing(true);
+    } else if (initialLoading) {
+      // Keep initialLoading true if we're in initial load
+      // No need to set it again
     } else {
-      setOperationLoading(true); // Use operationLoading instead of initialLoading
+      // Otherwise set operationLoading for other operations
+      setOperationLoading(true);
     }
     
     setError(null);
@@ -102,11 +113,12 @@ export function useEventData() {
         });
       }
     } finally {
-      setInitialLoading(false); // Always set initialLoading to false once we've tried to fetch
+      // Reset all loading states
+      setInitialLoading(false);
       setOperationLoading(false);
       setIsRefreshing(false);
     }
-  }, [events.length]);
+  }, [events.length, initialLoading]);
 
   // Initial fetch and auth state subscription
   useEffect(() => {
@@ -166,14 +178,19 @@ export function useEventData() {
   }, [fetchEvents, lastFetchTime]);
 
   return {
+    // Data
     events,
     setEvents,
-    loading: operationLoading, // Keep the original loading for backwards compatibility
-    initialLoading,
-    operationLoading,
-    isRefreshing,
     error,
     offlineMode,
+    
+    // Loading states - clearly named and separated
+    loading: operationLoading, // Keep this for backward compatibility
+    initialLoading,           // True only during first data load
+    operationLoading,         // True during data operations that are not the initial load
+    isRefreshing,             // True when refreshing existing data
+    
+    // Actions
     refetchEvents: fetchEvents
   };
 }

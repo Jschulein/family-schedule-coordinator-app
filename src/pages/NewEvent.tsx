@@ -10,6 +10,7 @@ import { Event } from "@/types/eventTypes";
 import { useFamilyContext } from "@/contexts/family";
 import { logEventFlow } from "@/utils/events";
 import { performanceTracker } from "@/utils/testing/performanceTracker";
+import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 
 interface EventFormData {
   name: string;
@@ -22,22 +23,29 @@ interface EventFormData {
   all_day: boolean;
 }
 
+/**
+ * NewEvent page component
+ * Handles the creation of new events and manages form submission state
+ */
 const NewEvent = () => {
   const navigate = useNavigate();
   const { 
-    addEvent, 
-    operationLoading,  // Use operationLoading instead of loading
+    addEvent,
+    initialLoading: eventsInitialLoading,
+    operationLoading: eventsOperationLoading,
     refetchEvents 
   } = useEvents();
+  
   const { activeFamilyId, families } = useFamilyContext();
+  const perfMonitor = usePerformanceMonitor('NewEventPage');
   
-  // State for tracking submission and error
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Form submission state - completely separate from data loading
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const mountedRef = useRef(true);
   
-  // Refs for tracking
+  // Refs for tracking and cleanup
+  const mountedRef = useRef(true);
   const submissionStartTime = useRef<number>(0);
   const pageSessionId = useRef<string>(`page-${Date.now()}`);
   const submissionTimeoutRef = useRef<number | null>(null);
@@ -98,6 +106,10 @@ const NewEvent = () => {
     }
   }, [families, activeFamilyId]);
 
+  /**
+   * Handle form submission
+   * This is completely separate from data loading
+   */
   const handleSubmit = async (eventData: EventFormData) => {
     // Start performance tracking
     submissionStartTime.current = performance.now();
@@ -122,15 +134,13 @@ const NewEvent = () => {
     
     try {
       // Track the API call separately
-      const eventCreationData = await performanceTracker.measure(
+      const createdEvent = await performanceTracker.measure(
         'NewEventPage:addEventAPICall',
         async () => {
           return await addEvent(eventData as Event);
         },
         { eventName: eventData.name }
       );
-      
-      const createdEvent = eventCreationData;
       
       if (createdEvent) {
         // Track success and navigation time
@@ -277,7 +287,7 @@ const NewEvent = () => {
         <div className="flex justify-center">
           <AddEventForm 
             onSubmit={handleSubmit} 
-            isSubmitting={isSubmitting || operationLoading} // Only pass operationLoading, not initialLoading
+            isSubmitting={isSubmitting} // ONLY pass our local submission state, not any data loading state
           />
         </div>
       </div>
