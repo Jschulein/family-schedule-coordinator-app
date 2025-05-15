@@ -1,8 +1,38 @@
-# Welcome to your Lovable project
+
+# Family Calendar App
+
+A collaborative calendar application for families to coordinate and share schedules.
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/999d3eee-49b8-4510-ba17-0fa532430221
+
+## Features
+
+- **Family Management**: Create and manage family groups
+- **Event Calendar**: Share and coordinate events with family members
+- **Member Roles**: Assign different roles (admin, member, child) to family members
+- **Invitations**: Invite new members to join your family group
+- **Event Sharing**: Choose which family members can see each event
+- **Calendar Views**: Multiple calendar view options (day, week, month)
+
+## Core Technologies
+
+- **Frontend**: React, TypeScript, Vite
+- **UI Framework**: Tailwind CSS, Shadcn UI
+- **Backend**: Supabase (PostgreSQL, Authentication, Storage)
+- **State Management**: React Context API, Tanstack Query
+- **Routing**: React Router
+
+## Architecture
+
+The application follows a modular architecture with these key components:
+
+- **Authentication**: Supabase authentication with session management
+- **Family Management**: Creation and management of family groups and members
+- **Event System**: Creating, editing, and sharing events
+- **Calendar Interface**: Interactive calendar with multiple views
+- **Notification System**: In-app notifications for events and invitations
 
 ## How can I edit this code?
 
@@ -50,15 +80,20 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## What technologies are used for this project?
+## Recent Improvements
 
-This project is built with:
+- **Error Handling System**: Added centralized error handling with retry capabilities
+- **Performance Optimizations**: Improved family member fetching with parallel loading
+- **UI Component Helpers**: Created toast-helpers.tsx for properly typed toast notifications
+- **Documentation Updates**: Expanded error logging and troubleshooting documentation
+- **Testing Framework**: Enhanced test utilities for performance and reliability testing
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Project Documentation
+
+- **BACKLOG.md**: Current development priorities and upcoming features
+- **ERROR_LOG.md**: Documentation of encountered errors and their solutions
+- **TEST_PLAN.md**: Comprehensive test plan for the application
+- **src/docs/**: Additional technical documentation and guides
 
 ## How can I deploy this project?
 
@@ -71,3 +106,10 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Contributing
+
+Before contributing to this project, please review:
+- **ERROR_LOG.md**: To understand common issues and their solutions
+- **TEST_PLAN.md**: For guidance on testing your changes
+- **BACKLOG.md**: To see current priorities and upcoming features

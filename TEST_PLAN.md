@@ -67,22 +67,6 @@ This document outlines a systematic approach to testing the application's functi
 - [ ] Color coding by family or event type
 - [ ] Responsive layout on different screen sizes
 
-## Navigation Testing
-
-- [ ] All links direct to correct routes
-- [ ] Browser back/forward navigation works properly
-- [ ] Deep linking to specific pages works
-- [ ] Protected routes redirect unauthenticated users
-- [ ] 404 page for invalid routes
-
-## Performance Testing
-
-- [ ] Initial load time
-- [ ] Calendar render performance with many events
-- [ ] Form submission response times
-- [ ] Data fetching efficiency
-- [ ] Memory usage over time
-
 ## Error Handling Testing
 
 - [ ] Form validation errors
@@ -91,6 +75,28 @@ This document outlines a systematic approach to testing the application's functi
 - [ ] Permission error handling
 - [ ] Graceful degradation of features
 - [ ] Functions correctly importing and using exported utilities
+- [ ] Type consistency between UI and database layers
+- [ ] Toast notification error handling
+
+## Performance Testing
+
+- [ ] Initial load time
+- [ ] Calendar render performance with many events
+- [ ] Form submission response times
+- [ ] Data fetching efficiency
+  - [ ] Test sequential vs parallel fetching
+  - [ ] Measure improvement percentage
+- [ ] Memory usage over time
+- [ ] Test realtime connection stability
+- [ ] Test family member fetching performance
+
+## Navigation Testing
+
+- [ ] All links direct to correct routes
+- [ ] Browser back/forward navigation works properly
+- [ ] Deep linking to specific pages works
+- [ ] Protected routes redirect unauthenticated users
+- [ ] 404 page for invalid routes
 
 ## Mobile Responsiveness Testing
 
@@ -199,6 +205,20 @@ This document outlines a systematic approach to testing the application's functi
    - Test with insufficient permissions
    - Test with conflicting updates
 
+### Toast Notification Testing
+
+1. **Basic Toast Functionality:**
+   - Verify toast notifications appear correctly
+   - Test different toast variants (success, error, etc.)
+   - Verify toast action buttons work correctly
+   - Test toast timeout and dismissal
+
+2. **Error Toast Testing:**
+   - Verify error toasts display appropriate messages
+   - Test retry functionality on error toasts
+   - Verify proper error context is included
+   - Test toast display with multiple simultaneous errors
+
 ## Testing Notes
 
 For each test, document:
@@ -210,4 +230,3 @@ For each test, document:
 6. Environment details (browser, device, etc.)
 
 Use this test plan to systematically verify functionality and identify issues that need to be fixed. Update the ERROR_LOG.md document with any issues found during testing.
-

@@ -7,6 +7,7 @@ This document tracks errors found in the application and their solutions. Use th
 - [Authentication Issues](#authentication-issues)
 - [Family Management Issues](#family-management-issues)
 - [Event Management Issues](#event-management-issues)
+- [Type System Issues](#type-system-issues)
 - [Navigation Issues](#navigation-issues)
 - [UI/UX Issues](#uiux-issues)
 - [Performance Issues](#performance-issues)
@@ -210,6 +211,53 @@ const formattedEvent = fromDbEvent({
 }, userMap);
 ```
 
+## Type System Issues
+
+### Error: Type Mismatch in Toast Action Elements
+**Description**: The type mismatch between React.createElement and ToastActionElement caused build errors.
+**Solution**: Implemented a dedicated helper module (toast-helpers.tsx) to create properly typed toast actions:
+```typescript
+// In toast-helpers.tsx
+export function createToastAction(
+  onClick: () => void,
+  altText: string,
+  children: React.ReactNode
+): ToastActionElement {
+  return (
+    <ToastAction onClick={onClick} altText={altText}>
+      {children}
+    </ToastAction>
+  ) as ToastActionElement;
+}
+
+export function createRetryAction(onRetry: () => void): ToastActionElement {
+  return createToastAction(onRetry, "Retry action", "Retry");
+}
+```
+
+### Error: Type Instantiation Is Excessively Deep
+**Description**: Type recursion errors occur in database operation files:
+```
+error TS2589: Type instantiation is excessively deep and possibly infinite.
+```
+
+**Solution**: Break the type recursion by using more direct type assertions:
+```typescript
+// Before
+return {
+  data: (data as unknown) as T[],
+  error: null,
+  status
+};
+
+// After - using 'any' to completely break the type chain
+return {
+  data: (data as any) as T[],
+  error: null,
+  status
+};
+```
+
 ## Navigation Issues
 
 ### Error: Inconsistent Navigation Patterns
@@ -292,6 +340,41 @@ const fetchFilteredEvents = async (filters) => {
 };
 ```
 
+### Error: Family Member Fetching Performance
+**Description**: Family member fetching causes performance bottlenecks, especially with large families.
+**Solution**: Implement batch loading and caching for family members:
+```typescript
+// In useFamilyMembers.ts
+const fetchFamilyMembersWithBatching = async (familyIds: string[]) => {
+  // Use a map to store results by family ID for quick access
+  const resultsMap: Record<string, FamilyMember[]> = {};
+  
+  // Process in batches of 5 to avoid overloading the database
+  const batchSize = 5;
+  for (let i = 0; i < familyIds.length; i += batchSize) {
+    const batch = familyIds.slice(i, i + batchSize);
+    
+    // Fetch in parallel for each batch
+    const results = await Promise.all(
+      batch.map(id => supabase
+        .from('family_members')
+        .select('*')
+        .eq('family_id', id)
+      )
+    );
+    
+    // Store results in the map
+    results.forEach((result, index) => {
+      if (!result.error && result.data) {
+        resultsMap[batch[index]] = result.data;
+      }
+    });
+  }
+  
+  return resultsMap;
+};
+```
+
 ## Database and Type Issues
 
 ### Error: TypeScript Error with Function Call Parameters
@@ -313,29 +396,6 @@ const { data, error } = await (supabase.rpc as any)(
   functionName,
   params
 );
-```
-
-### Error: Type Instantiation Is Excessively Deep
-**Description**: Type recursion errors occur in database operation files:
-```
-error TS2589: Type instantiation is excessively deep and possibly infinite.
-```
-
-**Solution**: Break the type recursion by using more direct type assertions:
-```typescript
-// Before
-return {
-  data: (data as unknown) as T[],
-  error: null,
-  status
-};
-
-// After - using 'any' to completely break the type chain
-return {
-  data: (data as any) as T[],
-  error: null,
-  status
-};
 ```
 
 ### Error: Database Function Return Type Mismatch
@@ -391,3 +451,4 @@ $$;
    - Periodically review this log to identify patterns
    - Refactor components or services that frequently cause issues
    - Update documentation based on recurring problems
+   - Use the insights from this log to inform the project backlog
