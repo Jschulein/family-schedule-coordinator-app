@@ -29,7 +29,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
     isRefreshing,     // True when refreshing existing data
     error, 
     offlineMode, 
-    refetchEvents 
+    refetchEvents,
+    setOperationLoading // Now exposed to allow control from context methods
   } = useEventData();
 
   /**
@@ -53,6 +54,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
       
       logEventFlow('EventContext', 'Starting event creation process', { name: newEvent.name });
       
+      // Set operation loading to true - form submission state is separate
+      setOperationLoading(true);
+      
       // Direct event creation - simplified approach
       const result = await createEvent(newEvent);
       
@@ -63,6 +67,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: result.error || "Failed to create event",
           variant: "destructive"
         });
+        setOperationLoading(false); // Reset loading state on error
         return undefined;
       }
       
@@ -104,6 +109,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
         setEvents(prevEvents => [...prevEvents, optimisticEvent]);
         
         return optimisticEvent;
+      } finally {
+        // Always reset operation loading when done, regardless of success/failure
+        setOperationLoading(false);
       }
       
       return undefined;
@@ -114,6 +122,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
+      setOperationLoading(false); // Ensure loading state is reset even on critical errors
       return undefined;
     }
   };
@@ -130,6 +139,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
         return undefined;
       }
       
+      // Set operation loading to true
+      setOperationLoading(true);
+      
       console.log("Updating event:", updatedEvent);
       const { event: eventResult, error: updateError } = await updateEventFn(updatedEvent);
       
@@ -140,6 +152,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: updateError,
           variant: "destructive"
         });
+        setOperationLoading(false); // Reset loading state on error
         return undefined;
       }
       
@@ -160,10 +173,13 @@ export function EventProvider({ children }: { children: ReactNode }) {
         } catch (refreshError) {
           console.warn("Non-critical error refreshing events after update:", refreshError);
         }
+        
+        setOperationLoading(false); // Reset loading state after success
         return eventResult;
       }
       
       console.warn("No event was updated and no error was returned");
+      setOperationLoading(false); // Reset loading state if no update happened
       return undefined;
     } catch (error: any) {
       console.error("Error in updateEvent:", error);
@@ -172,6 +188,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
+      setOperationLoading(false); // Ensure loading state is reset even on critical errors
       return undefined;
     }
   };
@@ -188,6 +205,9 @@ export function EventProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
+      // Set operation loading to true
+      setOperationLoading(true);
+      
       console.log("Deleting event:", eventId);
       const { success, message, error: deleteError } = await deleteEventFn(eventId);
       
@@ -198,6 +218,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: deleteError,
           variant: "destructive"
         });
+        setOperationLoading(false); // Reset loading state on error
         return false;
       }
       
@@ -210,10 +231,12 @@ export function EventProvider({ children }: { children: ReactNode }) {
           description: message || "Event deleted successfully!"
         });
         
+        setOperationLoading(false); // Reset loading state after success
         return true;
       }
       
       console.warn("Event deletion not successful and no error was returned");
+      setOperationLoading(false); // Reset loading state if no deletion happened
       return false;
     } catch (error: any) {
       console.error("Error in deleteEvent:", error);
@@ -222,6 +245,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         title: "Error",
         showToast: true
       });
+      setOperationLoading(false); // Ensure loading state is reset even on critical errors
       return false;
     }
   };

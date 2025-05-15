@@ -18,17 +18,10 @@ export interface EventContextType {
   updateEvent: (event: Event) => Promise<Event | undefined>;
   deleteEvent: (eventId: string) => Promise<boolean>;
   loading: boolean;
-  initialLoading: boolean; // Add the new loading states
+  initialLoading: boolean; 
   operationLoading: boolean;
-  isRefreshing: boolean; // Added the missing isRefreshing property
+  isRefreshing: boolean;
   error: string | null;
   offlineMode: boolean;
   refetchEvents: (showToast?: boolean) => Promise<void>;
-}
-
-export interface UserProfile {
-  id: string;
-  full_name?: string;
-  avatar_url?: string;
-  email?: string;
 }

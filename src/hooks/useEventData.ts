@@ -197,6 +197,9 @@ export function useEventData() {
     isRefreshing,             // True when refreshing existing data
     
     // Actions
-    refetchEvents: fetchEvents
+    refetchEvents: fetchEvents,
+    
+    // Expose setOperationLoading for use by the EventContext
+    setOperationLoading
   };
 }
