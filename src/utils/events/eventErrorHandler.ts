@@ -38,11 +38,9 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
       title: "Event Error",
       description: errorMessage,
       variant: "destructive",
-      action: retryFn ? (
-        <ToastAction onClick={retryFn}>
-          Retry
-        </ToastAction>
-      ) : undefined,
+      action: retryFn 
+        ? React.createElement(ToastAction, { onClick: retryFn }, "Retry")
+        : undefined,
     });
   }
   
