@@ -27,7 +27,7 @@ export async function verifyEventOwnership(eventId: string) {
   }
 
   // Check if the user can access this event using our security definer function
-  const { data: canAccess, error: accessError } = await supabase.rpc(
+  const { data: canAccess, error: accessError } = await (supabase.rpc as any)(
     'user_can_access_event_safe', 
     { event_id_param: eventId }
   );

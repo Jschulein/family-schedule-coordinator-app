@@ -26,21 +26,21 @@ export async function fetchEventsFromDb() {
     }
 
     // Check if the function exists before calling it
-    const functionName = 'get_user_events_safe';
-    const backupFunctionName = 'get_user_accessible_events_safe';
+    const primaryFunction = 'get_user_events_safe';
+    const backupFunction = 'get_user_accessible_events_safe';
     
     // First try to use the function name that exists in the database
-    let useFunction = functionName;
+    let useFunction = primaryFunction;
     
     // Determine which function exists in the database
-    const mainFunctionExists = await checkFunctionExists(functionName);
+    const mainFunctionExists = await checkFunctionExists(primaryFunction);
     if (!mainFunctionExists) {
-      console.log(`Function ${functionName} not found, checking for ${backupFunctionName}`);
-      const backupExists = await checkFunctionExists(backupFunctionName);
+      console.log(`Function ${primaryFunction} not found, checking for ${backupFunction}`);
+      const backupExists = await checkFunctionExists(backupFunction);
       
       if (backupExists) {
-        console.log(`Using backup function ${backupFunctionName}`);
-        useFunction = backupFunctionName;
+        console.log(`Using backup function ${backupFunction}`);
+        useFunction = backupFunction;
       } else {
         console.error("Neither primary nor backup event access functions exist in the database");
         return { 

@@ -482,6 +482,20 @@ export type Database = {
           time: string
         }[]
       }
+      get_user_accessible_events_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          all_day: boolean | null
+          created_at: string
+          creator_id: string
+          date: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          time: string
+        }[]
+      }
       get_user_events_safe: {
         Args: Record<PropertyKey, never>
         Returns: {
