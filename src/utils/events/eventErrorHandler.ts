@@ -1,5 +1,5 @@
 
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { ToastActionElement } from "@/components/ui/toast";
 import { logEventFlow } from "./eventFlow";
 import { handleError } from "@/utils/error";
@@ -23,6 +23,22 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
   
   // Log the error with event flow context
   logEventFlow(context, 'Error occurred', error);
+  
+  // Check for specific recursion errors
+  const errorString = String(error);
+  if (errorString.includes('infinite recursion') || 
+      errorString.includes('maximum stack depth exceeded')) {
+    console.error('Detected recursion error in events policy. Using safe functions instead.');
+    
+    // Provide more detailed error info for debugging
+    if (logDetails) {
+      console.group('Event Policy Recursion Error');
+      console.error('Error details:', error);
+      console.error('Context:', context);
+      console.error('Stack trace:', new Error().stack);
+      console.groupEnd();
+    }
+  }
   
   // Use the global error handler with our context
   const errorMessage = handleError(error, {

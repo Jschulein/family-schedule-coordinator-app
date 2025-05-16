@@ -16,6 +16,7 @@ export const functionExists = checkFunctionExists;
  */
 export const userCanAccessEvent = async (eventId: string): Promise<boolean> => {
   try {
+    // Always use the safe version to avoid recursion
     const { data, error } = await supabase.rpc(
       'user_can_access_event_safe', 
       { event_id_param: eventId }

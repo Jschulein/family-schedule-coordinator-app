@@ -23,8 +23,8 @@ export async function fetchEventsFromDb() {
       return { events: [], error: "You must be logged in to view events" };
     }
 
-    // Use our new get_user_accessible_events function to avoid RLS recursion
-    const { data, error } = await supabase.rpc('get_user_accessible_events');
+    // Use our improved security definer function to avoid recursion
+    const { data, error } = await supabase.rpc('get_user_accessible_events_safe');
     
     if (error) {
       console.error("Error fetching events with security definer function:", error);

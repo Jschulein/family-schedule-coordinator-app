@@ -156,6 +156,40 @@ USING (public.safe_is_family_member(family_id));
 
 ## Event Management Issues
 
+### Error: Infinite Recursion in Events RLS Policy
+**Description**: The Row Level Security (RLS) policy for the events table causes infinite recursion due to recursive function calls between user_can_access_event and family member checks.
+**Solution**: Created security definer functions that bypass RLS and optimized access checks:
+```sql
+-- Create optimized security definer function that doesn't cause recursion
+CREATE OR REPLACE FUNCTION public.user_can_access_event_safe(event_id_param uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  RETURN EXISTS (
+    -- Check if user created the event
+    SELECT 1
+    FROM events e
+    WHERE e.id = event_id_param AND e.creator_id = auth.uid()
+  ) OR EXISTS (
+    -- Check if event is shared with a family the user belongs to
+    SELECT 1
+    FROM event_families ef
+    JOIN family_members fm ON ef.family_id = fm.family_id
+    WHERE ef.event_id = event_id_param AND fm.user_id = auth.uid()
+  );
+END;
+$$;
+
+-- Use this function in RLS policies to avoid recursion
+CREATE POLICY "Users can view accessible events" 
+ON events 
+FOR SELECT 
+USING (public.user_can_access_event_safe(id));
+```
+
 ### Error: Event Creation Fails Without Feedback
 **Description**: Users may submit event forms that fail without clear error messages.
 **Solution**: Implement form validation and better error handling:
