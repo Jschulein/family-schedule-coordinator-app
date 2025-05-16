@@ -25,7 +25,7 @@ export const userCanAccessEvent = async (eventId: string): Promise<boolean> => {
     const hasPrimaryFunction = await checkFunctionExists(standardFunction);
     
     if (hasPrimaryFunction) {
-      const { data, error } = await supabase.rpc(
+      const { data, error } = await (supabase.rpc as any)(
         standardFunction, 
         { event_id_param: eventId }
       );
@@ -41,7 +41,7 @@ export const userCanAccessEvent = async (eventId: string): Promise<boolean> => {
     // Try alternative function if primary failed or doesn't exist
     const hasAltFunction = await checkFunctionExists(altFunction);
     if (hasAltFunction) {
-      const { data, error } = await supabase.rpc(
+      const { data, error } = await (supabase.rpc as any)(
         altFunction, 
         { event_id_param: eventId }
       );
@@ -89,9 +89,9 @@ export const getUserFamilies = async () => {
       const exists = await checkFunctionExists(funcName);
       if (!exists) continue;
       
-      // Try to call the function
+      // Try to call the function - FIXED: use type assertion for dynamic function name
       try {
-        const { data, error } = await supabase.rpc(funcName);
+        const { data, error } = await (supabase.rpc as any)(funcName);
         
         if (!error) {
           return { data, error: null };
