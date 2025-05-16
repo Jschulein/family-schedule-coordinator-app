@@ -48,6 +48,12 @@ const ERROR_MAP: Record<DatabaseErrorCode, ErrorDefinition> = {
     action: 'Please try again or contact support if the problem persists.',
     severity: 'warning',
     recoverable: true
+  },
+  '42883': {
+    message: 'A required database function is missing.',
+    action: 'The system may need maintenance. Please try again later.',
+    severity: 'error',
+    recoverable: false
   }
 };
 
@@ -85,6 +91,13 @@ export function handleDatabaseError(
       severity = mappedError.severity;
     } else if (error.message) {
       errorMessage = error.message;
+      
+      // Function not found error
+      if (error.message.includes('function') && error.message.includes('does not exist')) {
+        errorMessage = 'A required database function is not available.';
+        errorAction = 'The system may need maintenance. Please try again later.';
+        severity = 'error';
+      }
     }
     
     // Special case for infinite recursion errors
@@ -105,7 +118,7 @@ export function handleDatabaseError(
     toast({
       title: severity === 'error' ? 'Error' : (severity === 'warning' ? 'Warning' : 'Notice'),
       description: fullMessage + (errorAction ? ` ${errorAction}` : ''),
-      variant: severity === 'error' ? 'destructive' : 'default'  // Changed from 'secondary' to 'default'
+      variant: severity === 'error' ? 'destructive' : 'default'
     });
   }
   
@@ -135,6 +148,11 @@ export function isRecoverableError(error: PostgrestError | null | undefined | an
   // Consider specific errors as recoverable
   if (mappedError) {
     return mappedError.recoverable;
+  }
+  
+  // Function not found errors are generally not recoverable
+  if (error.message && error.message.includes('function') && error.message.includes('does not exist')) {
+    return false;
   }
   
   // Infinite recursion errors can usually be retried

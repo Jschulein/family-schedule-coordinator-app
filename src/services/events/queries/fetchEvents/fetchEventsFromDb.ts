@@ -3,6 +3,8 @@ import { Event } from "@/types/eventTypes";
 import { handleError } from "@/utils/error";
 import { supabase } from "@/integrations/supabase/client";
 import { processEventsWithProfiles } from "../helpers";
+import { checkFunctionExists } from "@/services/database/functions";
+import { handleEventError } from "@/utils/events";
 
 /**
  * Fetches events from the database that the current user has access to
@@ -23,16 +25,39 @@ export async function fetchEventsFromDb() {
       return { events: [], error: "You must be logged in to view events" };
     }
 
-    // Use our improved security definer function to avoid recursion
-    // Note: Using as any to bypass TypeScript's RPC function name checking
-    // since the function was just created in a migration
-    const { data, error } = await supabase.rpc('get_user_accessible_events_safe') as { 
+    // Check if the function exists before calling it
+    const functionName = 'get_user_events_safe';
+    const backupFunctionName = 'get_user_accessible_events_safe';
+    
+    // First try to use the function name that exists in the database
+    let useFunction = functionName;
+    
+    // Determine which function exists in the database
+    const mainFunctionExists = await checkFunctionExists(functionName);
+    if (!mainFunctionExists) {
+      console.log(`Function ${functionName} not found, checking for ${backupFunctionName}`);
+      const backupExists = await checkFunctionExists(backupFunctionName);
+      
+      if (backupExists) {
+        console.log(`Using backup function ${backupFunctionName}`);
+        useFunction = backupFunctionName;
+      } else {
+        console.error("Neither primary nor backup event access functions exist in the database");
+        return { 
+          events: [], 
+          error: "Database configuration issue: Required function not found. Please contact support." 
+        };
+      }
+    }
+
+    // Call the appropriate function with type assertion for safety
+    const { data, error } = await (supabase.rpc as any)(useFunction) as { 
       data: any[] | null; 
       error: any;
     };
     
     if (error) {
-      console.error("Error fetching events with security definer function:", error);
+      console.error(`Error fetching events with function ${useFunction}:`, error);
       return { events: [], error: "Failed to load events: " + error.message };
     }
     
@@ -48,7 +73,7 @@ export async function fetchEventsFromDb() {
     
     return { events: mappedEvents, error: null };
   } catch (error: any) {
-    const errorMessage = handleError(error, { 
+    const errorMessage = handleEventError(error, { 
       context: "Fetching events",
       showToast: false 
     });

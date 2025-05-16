@@ -24,11 +24,21 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
   // Log the error with event flow context
   logEventFlow(context, 'Error occurred', error);
   
-  // Check for specific recursion errors
+  // Extract the error string for pattern matching
   const errorString = String(error);
+  
+  // Handle specific error types
+  let errorMessage = '';
+  let severity: 'error' | 'warning' = 'error';
+  let isRecoverable = false;
+  
+  // Check for specific recursion errors
   if (errorString.includes('infinite recursion') || 
       errorString.includes('maximum stack depth exceeded')) {
     console.error('Detected recursion error in events policy. Using safe functions instead.');
+    errorMessage = 'A database security policy issue occurred. Try again in a moment.';
+    severity = 'warning';
+    isRecoverable = true;
     
     // Provide more detailed error info for debugging
     if (logDetails) {
@@ -39,10 +49,12 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
       console.groupEnd();
     }
   }
-  
   // Check for RPC function not found errors
-  if (errorString.includes('function') && errorString.includes('does not exist')) {
-    console.error('Database function not found error. This may indicate the migration has not been applied correctly.');
+  else if (errorString.includes('function') && errorString.includes('does not exist')) {
+    console.error('Database function not found error. The migration may not have been applied correctly.');
+    errorMessage = 'A system configuration issue occurred. Please try again later or contact support.';
+    severity = 'error';
+    isRecoverable = false;
     
     if (logDetails) {
       console.group('Database Function Error');
@@ -52,26 +64,48 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
       console.groupEnd();
     }
   }
+  // Check for connection errors
+  else if (errorString.includes('network') || errorString.includes('connection')) {
+    errorMessage = 'Network connection issue. Please check your internet connection and try again.';
+    severity = 'warning';
+    isRecoverable = true;
+  }
+  // Check for permission errors
+  else if (errorString.includes('permission') || errorString.includes('not allowed')) {
+    errorMessage = 'You don\'t have permission to perform this action.';
+    severity = 'error';
+    isRecoverable = false;
+  }
   
-  // Use the global error handler with our context
-  const errorMessage = handleError(error, {
-    title: "Event Error",
-    context,
-    showToast: false,
-    logDetails
-  });
+  // If we didn't identify a specific error type, use the global error handler
+  if (!errorMessage) {
+    errorMessage = handleError(error, {
+      title: "Event Error",
+      context,
+      showToast: false,
+      logDetails
+    });
+  } else if (logDetails) {
+    // If we did identify the error but still want standard logging
+    handleError(error, {
+      title: "Event Error",
+      context,
+      showToast: false,
+      logDetails: false // No need to log again
+    });
+  }
   
-  // Show toast if enabled with retry functionality
+  // Show toast if enabled with retry functionality for recoverable errors
   if (showToast) {
     // Create action element using our helper function
-    const actionElement: ToastActionElement | undefined = retryFn 
+    const actionElement: ToastActionElement | undefined = (retryFn && isRecoverable)
       ? createRetryAction(retryFn)
       : undefined;
     
     toast({
-      title: "Event Error",
+      title: severity === 'error' ? "Event Error" : "Event Warning",
       description: errorMessage,
-      variant: "destructive",
+      variant: severity === 'error' ? "destructive" : "default",
       action: actionElement,
     });
   }
