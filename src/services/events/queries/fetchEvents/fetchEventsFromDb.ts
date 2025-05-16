@@ -24,14 +24,20 @@ export async function fetchEventsFromDb() {
     }
 
     // Use our improved security definer function to avoid recursion
-    const { data, error } = await supabase.rpc('get_user_accessible_events_safe');
+    // Note: Using as any to bypass TypeScript's RPC function name checking
+    // since the function was just created in a migration
+    const { data, error } = await supabase.rpc('get_user_accessible_events_safe') as { 
+      data: any[] | null; 
+      error: any;
+    };
     
     if (error) {
       console.error("Error fetching events with security definer function:", error);
       return { events: [], error: "Failed to load events: " + error.message };
     }
     
-    if (!data || data.length === 0) {
+    // Check if data is an array and has items
+    if (!data || !Array.isArray(data) || data.length === 0) {
       console.log("No events found for user");
       return { events: [], error: null };
     }

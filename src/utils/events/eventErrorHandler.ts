@@ -40,6 +40,19 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
     }
   }
   
+  // Check for RPC function not found errors
+  if (errorString.includes('function') && errorString.includes('does not exist')) {
+    console.error('Database function not found error. This may indicate the migration has not been applied correctly.');
+    
+    if (logDetails) {
+      console.group('Database Function Error');
+      console.error('Error details:', error);
+      console.error('Context:', context);
+      console.error('Required function may not be deployed yet. Check migrations.');
+      console.groupEnd();
+    }
+  }
+  
   // Use the global error handler with our context
   const errorMessage = handleError(error, {
     title: "Event Error",

@@ -58,6 +58,7 @@ FOR INSERT
 WITH CHECK (auth.uid() IS NOT NULL);
 
 -- 4. Create a function to get all accessible events efficiently
+-- Using the same name as referenced in the code
 CREATE OR REPLACE FUNCTION public.get_user_accessible_events_safe()
 RETURNS SETOF events
 LANGUAGE plpgsql
