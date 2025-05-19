@@ -28,7 +28,7 @@ export function useNewEventPage() {
       toast({
         title: "Authentication Issue",
         description: "There may be issues with your authentication session. If you encounter problems creating events, please try refreshing the page.",
-        variant: "warning",
+        variant: "default", // Changed from "warning" to "default"
         duration: 5000
       });
     }
