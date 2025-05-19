@@ -4,6 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -22,7 +23,7 @@ const ProtectedRoute = ({
   // Check for stalled authentication
   useEffect(() => {
     const stallCheckInterval = setInterval(() => {
-      if (loading && Date.now() - authStartTime > 15000) {
+      if (loading && Date.now() - authStartTime > 10000) {
         setIsStalled(true);
       }
     }, 5000);
@@ -54,13 +55,14 @@ const ProtectedRoute = ({
               <AlertDescription>
                 <div className="flex flex-col space-y-2">
                   <p>Authentication check is taking longer than expected.</p>
-                  <button 
+                  <Button 
                     onClick={() => window.location.reload()}
+                    variant="outline"
                     className="flex items-center text-primary text-sm"
                   >
                     <RefreshCw className="h-4 w-4 mr-1" />
                     Refresh page
-                  </button>
+                  </Button>
                 </div>
               </AlertDescription>
             </Alert>

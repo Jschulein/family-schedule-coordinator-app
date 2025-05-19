@@ -24,6 +24,7 @@ export function SignUpForm() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+      
       <div className="space-y-2">
         <Label htmlFor="signup-email">Email</Label>
         <Input
@@ -40,6 +41,7 @@ export function SignUpForm() {
           className="bg-background"
         />
       </div>
+      
       <div className="space-y-2">
         <Label htmlFor="signup-password">Password</Label>
         <Input
@@ -55,6 +57,7 @@ export function SignUpForm() {
           className="bg-background"
         />
       </div>
+      
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? (
           <>

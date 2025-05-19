@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader } from "lucide-react";
 
 interface SignInFormValues {
@@ -24,7 +25,7 @@ export function SignInForm() {
   // Monitor authentication state changes to redirect after successful login
   useEffect(() => {
     if (!loading && user && isSessionReady) {
-      console.log("Auth successful and session ready - redirecting to home");
+      console.log("Authentication successful and session ready - redirecting to home");
       resetAuthError();
       navigate("/");
     }
@@ -32,18 +33,14 @@ export function SignInForm() {
 
   // Simple check for stuck authentication attempts
   useEffect(() => {
-    if (loading && !signInStartTime) {
-      setSignInStartTime(Date.now());
-    } else if (!loading) {
-      setSignInStartTime(null);
-      setIsStalled(false);
-    }
-
-    let checkTimer: number | undefined;
-    if (signInStartTime) {
-      checkTimer = window.setTimeout(() => {
-        // If still loading after 10 seconds, consider it stalled
-        if (loading && signInStartTime && (Date.now() - signInStartTime > 10000)) {
+    if (loading) {
+      if (!signInStartTime) {
+        setSignInStartTime(Date.now());
+      }
+      
+      const checkTimer = setTimeout(() => {
+        // If still loading after 8 seconds, consider it stalled
+        if (loading && signInStartTime && (Date.now() - signInStartTime > 8000)) {
           setIsStalled(true);
           
           toast({
@@ -53,24 +50,14 @@ export function SignInForm() {
             duration: 4000,
           });
         }
-      }, 10000);
+      }, 8000);
+      
+      return () => clearTimeout(checkTimer);
+    } else {
+      setSignInStartTime(null);
+      setIsStalled(false);
     }
-
-    return () => {
-      if (checkTimer) clearTimeout(checkTimer);
-    };
   }, [loading, signInStartTime]);
-
-  // Show error messages
-  useEffect(() => {
-    if (error && !loading) {
-      toast({
-        title: "Authentication Error",
-        description: error,
-        variant: "destructive",
-      });
-    }
-  }, [error, loading]);
 
   // Handle form submission
   const onSubmit = async (data: SignInFormValues) => {
@@ -86,6 +73,12 @@ export function SignInForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -98,6 +91,7 @@ export function SignInForm() {
           <p className="text-sm text-red-500">{errors.email.message}</p>
         )}
       </div>
+      
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input

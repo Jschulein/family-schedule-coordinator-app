@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuthForm } from "@/components/AuthForm";
 import { useAuth } from "@/contexts/AuthContext";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 const Auth = () => {
   const { user, loading, isSessionReady } = useAuth();
@@ -16,7 +17,7 @@ const Auth = () => {
   // Simple check for stalled authentication
   useEffect(() => {
     const stallCheckInterval = setInterval(() => {
-      if (loading && Date.now() - authStartTime > 15000) {
+      if (loading && Date.now() - authStartTime > 10000) {
         setIsStalled(true);
       }
     }, 5000);
@@ -52,11 +53,22 @@ const Auth = () => {
                 <span className="text-sm text-muted-foreground">Checking authentication status...</span>
                 
                 {isStalled && (
-                  <Alert variant="default" className="mt-4 border-yellow-300 bg-yellow-50">
-                    <AlertDescription>
-                      Authentication check is taking longer than expected. If this persists, please refresh the page.
-                    </AlertDescription>
-                  </Alert>
+                  <div className="mt-4 space-y-4">
+                    <Alert className="border-yellow-300 bg-yellow-50">
+                      <AlertDescription>
+                        Authentication check is taking longer than expected.
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <Button 
+                      onClick={() => window.location.reload()}
+                      variant="outline"
+                      className="flex items-center justify-center w-full"
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Refresh page
+                    </Button>
+                  </div>
                 )}
               </div>
             ) : (

@@ -7,7 +7,6 @@ import { toast } from "@/components/ui/use-toast";
 type AuthErrorOptions = {
   showToast?: boolean;
   redirectTo?: string | null;
-  maxWaitTime?: number;
 };
 
 /**
@@ -34,7 +33,7 @@ export function formatAuthError(error: any): string {
       return 'Your session has expired. Please sign in again.';
     }
     if (errorMessage.includes('not found') || errorMessage.includes('invalid')) {
-      return 'Authentication session issue. You may need to sign in again.';
+      return 'Authentication session issue. Please sign in again.';
     }
   } else if (errorMessage.includes('token')) {
     if (errorMessage.includes('expired')) {
@@ -72,16 +71,6 @@ export function handleAuthError(error: any, options: AuthErrorOptions = {}): str
   }
   
   return formattedMessage;
-}
-
-/**
- * Detects if an authentication session is likely stuck
- * @param startTime The time when auth process started
- * @param maxWaitTime Maximum acceptable wait time in ms
- * @returns True if the session appears to be stuck
- */
-export function isAuthSessionStuck(startTime: number, maxWaitTime = 10000): boolean {
-  return Date.now() - startTime > maxWaitTime;
 }
 
 /**
