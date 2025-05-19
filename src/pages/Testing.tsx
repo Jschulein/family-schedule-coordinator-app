@@ -31,6 +31,42 @@ const TestingPage = () => {
         return;
       }
       
+      // Check if the user has a profile
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+        
+      if (profileError) {
+        setTestResult({
+          success: false,
+          message: "Error checking user profile",
+          details: profileError
+        });
+        return;
+      }
+      
+      if (!userProfile) {
+        // Create profile if it doesn't exist
+        const { error: createProfileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: session.user.id,
+            full_name: session.user.user_metadata.full_name || session.user.email,
+            Email: session.user.email
+          });
+          
+        if (createProfileError) {
+          setTestResult({
+            success: false,
+            message: "Failed to create user profile",
+            details: createProfileError
+          });
+          return;
+        }
+      }
+      
       // First check if function exists
       const { data: canCreate, error: funcError } = await supabase.rpc('can_create_event');
       

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -22,6 +21,7 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
   const abortControllerRef = useRef<AbortController | null>(null);
   const { isSessionReady } = useAuth();
   const [canCreateEvents, setCanCreateEvents] = useState<boolean | null>(null);
+  const [userProfileChecked, setUserProfileChecked] = useState(false);
   
   // Get submission tracking utilities
   const {
@@ -31,6 +31,55 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     setupSubmissionTimeout,
     endSubmissionTracking
   } = useSubmissionTracking();
+
+  // Check if user has a profile
+  useEffect(() => {
+    const checkUserProfile = async () => {
+      try {
+        // Get current user
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          // Not logged in, nothing to check
+          setUserProfileChecked(true);
+          return;
+        }
+        
+        // Check for profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', session.user.id)
+          .maybeSingle();
+          
+        if (profileError) {
+          console.error("Error checking user profile:", profileError);
+        }
+        
+        if (!profile) {
+          // Create profile if it doesn't exist
+          const { error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: session.user.id,
+              full_name: session.user.user_metadata.full_name || session.user.email,
+              Email: session.user.email
+            });
+            
+          if (createError) {
+            console.error("Error creating user profile:", createError);
+          }
+        }
+        
+        setUserProfileChecked(true);
+      } catch (err) {
+        console.error("Error in profile check:", err);
+        setUserProfileChecked(true);
+      }
+    };
+    
+    checkUserProfile();
+  }, []);
 
   // Check if secure event creation is available
   useEffect(() => {
@@ -79,6 +128,16 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
         title: "Event Creation Error",
         description: "Secure event creation is not available. Database migration may not be complete.",
         variant: "destructive"
+      });
+      return;
+    }
+    
+    // If user profile check hasn't completed, wait a moment
+    if (!userProfileChecked) {
+      toast({
+        title: "Preparation",
+        description: "Still preparing your account. Please try again in a moment.",
+        variant: "default"
       });
       return;
     }
@@ -233,6 +292,7 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     handleSubmit,
     cancelSubmission,
     isSessionReady,
-    canCreateEvents
+    canCreateEvents,
+    userProfileChecked
   };
 }

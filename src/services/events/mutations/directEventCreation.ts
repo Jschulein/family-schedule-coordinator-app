@@ -27,6 +27,45 @@ export async function createEvent(eventData: Event): Promise<{
       logEventFlow("directEventCreation", "No active session found");
       return { success: false, error: "You must be logged in to create events" };
     }
+
+    // Verify that the user profile exists in the profiles table
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      logEventFlow("directEventCreation", "Error checking user profile", profileError);
+      return { 
+        success: false, 
+        error: `Failed to verify user profile: ${profileError.message}`,
+        details: profileError 
+      };
+    }
+
+    if (!userProfile) {
+      logEventFlow("directEventCreation", "User profile not found, attempting to create one");
+      // If profile doesn't exist, try to create it
+      const { error: createProfileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: session.user.id,
+          full_name: session.user.user_metadata.full_name || session.user.email,
+          Email: session.user.email
+        });
+        
+      if (createProfileError) {
+        logEventFlow("directEventCreation", "Failed to create user profile", createProfileError);
+        return { 
+          success: false, 
+          error: `Failed to create user profile: ${createProfileError.message}`,
+          details: createProfileError
+        };
+      }
+      
+      logEventFlow("directEventCreation", "Created user profile successfully");
+    }
     
     // Prepare the event data for our function call
     const functionParams = {

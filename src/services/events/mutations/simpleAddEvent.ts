@@ -34,6 +34,37 @@ export async function simpleAddEvent(eventData: Event) {
       throw new Error("No active session. User must be logged in");
     }
     
+    // Verify the user has a profile
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', session.user.id)
+      .maybeSingle();
+    
+    if (profileError) {
+      logEventFlow('simpleAddEvent', 'Error checking user profile', profileError);
+      throw new Error(`Error checking user profile: ${profileError.message}`);
+    }
+    
+    if (!userProfile) {
+      logEventFlow('simpleAddEvent', 'User profile not found, attempting to create one');
+      // If profile doesn't exist, try to create it
+      const { error: createProfileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: session.user.id,
+          full_name: session.user.user_metadata.full_name || session.user.email,
+          Email: session.user.email
+        });
+        
+      if (createProfileError) {
+        logEventFlow('simpleAddEvent', 'Failed to create user profile', createProfileError);
+        throw new Error(`Failed to create user profile: ${createProfileError.message}`);
+      }
+      
+      logEventFlow('simpleAddEvent', 'Created user profile successfully');
+    }
+    
     logEventFlow('simpleAddEvent', 'Auth verified, preparing database format', { userId: session.user.id });
     
     // Prepare database format

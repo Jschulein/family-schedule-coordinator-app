@@ -27,6 +27,37 @@ export async function testEventCreation() {
       userEmail: user.email
     });
     
+    // Check if user has a profile
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+      
+    if (profileError) {
+      testLogger.error('EVENT_CREATE', 'Error checking user profile', profileError);
+      return false;
+    }
+    
+    if (!userProfile) {
+      testLogger.info('EVENT_CREATE', 'Creating missing user profile');
+      
+      const { error: createProfileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          full_name: user.user_metadata.full_name || user.email,
+          Email: user.email
+        });
+        
+      if (createProfileError) {
+        testLogger.error('EVENT_CREATE', 'Failed to create user profile', createProfileError);
+        return false;
+      }
+      
+      testLogger.info('EVENT_CREATE', 'User profile created successfully');
+    }
+    
     // Generate a unique event name using timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, '');
     const eventName = `Test Event ${timestamp}`;

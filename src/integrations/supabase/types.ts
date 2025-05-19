@@ -164,7 +164,7 @@ export type Database = {
             foreignKeyName: "events_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
