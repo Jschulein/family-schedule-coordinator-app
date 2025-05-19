@@ -27,81 +27,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Function to safely refresh token if needed
-  const refreshTokenIfNeeded = async (currentSession: Session | null) => {
-    if (!currentSession) return null;
-    
-    const tokenExpirationTime = currentSession.expires_at ? currentSession.expires_at * 1000 : null;
-    // If token expires in less than 5 minutes, refresh it
-    if (tokenExpirationTime && Date.now() > tokenExpirationTime - 300000) {
-      try {
-        console.log("Token expiring soon, refreshing...");
-        const { data, error } = await supabase.auth.refreshSession();
-        if (error) throw error;
-        return data.session;
-      } catch (err) {
-        console.error("Token refresh failed:", err);
-        return currentSession;
-      }
-    }
-    return currentSession;
-  };
-
+  // Initialize auth and set up listener for auth state changes
   useEffect(() => {
     // Track whether component is mounted
     let isMounted = true;
     
-    const checkSessionValidity = async () => {
-      try {
-        // Verify that the session is valid
-        const validationResult = await validateSession();
-        
-        if (isMounted) {
-          setIsSessionReady(validationResult.valid);
-          
-          if (!validationResult.valid && validationResult.error && session) {
-            console.warn(`Session validation failed: ${validationResult.error}`);
-          }
-        }
-      } catch (e) {
-        console.error("Error checking session validity:", e);
-        if (isMounted) {
-          setIsSessionReady(false);
-        }
-      }
-    };
-    
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
+      async (event, currentSession) => {
         if (!isMounted) return;
         
-        if (event) {
-          console.log(`Auth event: ${event}`);
-        }
+        console.log(`Auth event: ${event}`);
         
         // Update session and user state
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
-        // Reset session ready state when auth changes
-        setIsSessionReady(false);
-        
-        // For sign-in events, verify session validity after a short delay
-        if (currentSession?.user && event === 'SIGNED_IN') {
-          console.log("Sign in event detected, verifying session validity...");
-          
-          // Short delay to allow session propagation
-          setTimeout(async () => {
+        // For sign-in events, verify session validity
+        if (currentSession?.user) {
+          try {
+            const validationResult = await validateSession();
             if (isMounted) {
-              await checkSessionValidity();
+              setIsSessionReady(validationResult.valid);
+              
+              if (!validationResult.valid && validationResult.error) {
+                console.warn(`Session validation issue: ${validationResult.error}`);
+              }
             }
-          }, 500); // Increased from 300
+          } catch (err) {
+            console.error("Error validating session:", err);
+            if (isMounted) {
+              setIsSessionReady(false);
+            }
+          }
+        } else {
+          setIsSessionReady(false);
         }
+        
+        // Ensure we clear loading state
+        setLoading(false);
       }
     );
 
-    // Check for existing session - with proper error handling
+    // Check for existing session
     const initializeAuth = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
@@ -115,18 +83,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
-        const currentSession = data.session;
-        
         if (isMounted) {
-          // Try to refresh the token if needed before setting session
-          const refreshedSession = await refreshTokenIfNeeded(currentSession);
+          const currentSession = data.session;
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
           
-          setSession(refreshedSession);
-          setUser(refreshedSession?.user ?? null);
-          
-          // Check session validity
-          if (refreshedSession) {
-            await checkSessionValidity();
+          // Check session validity if we have one
+          if (currentSession?.user) {
+            try {
+              const validationResult = await validateSession();
+              setIsSessionReady(validationResult.valid);
+            } catch (err) {
+              console.error("Error validating initial session:", err);
+              setIsSessionReady(false);
+            }
           }
           
           setLoading(false);
@@ -142,26 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     initializeAuth();
     
-    // Set up periodic session validation and token refresh
-    const validationInterval = setInterval(async () => {
-      if (session) {
-        // First try to refresh token if needed
-        const refreshedSession = await refreshTokenIfNeeded(session);
-        if (refreshedSession !== session) {
-          setSession(refreshedSession);
-        }
-        // Then check session validity
-        checkSessionValidity();
-      }
-    }, 60000); // Check once per minute
-
-    // Cleanup subscription and interval
+    // Cleanup function
     return () => {
       isMounted = false;
       subscription.unsubscribe();
-      clearInterval(validationInterval);
     };
-  }, [session]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -181,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // No need for navigate here - we'll handle redirects in components
+      // Auth state change listener will handle the rest
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
       toast({
@@ -244,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // We'll handle navigation after sign-out in the component that calls signOut
+      // Auth state listener will handle updating the state
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred');
       toast({

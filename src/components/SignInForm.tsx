@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { Loader } from "lucide-react";
-import { isAuthSessionStuck } from "@/utils/error/authErrorHandler";
 
 interface SignInFormValues {
   email: string;
@@ -19,59 +18,50 @@ export function SignInForm() {
   const { register, handleSubmit, formState: { errors } } = useForm<SignInFormValues>();
   const { signIn, loading, error, resetAuthError, user, isSessionReady } = useAuth();
   const navigate = useNavigate();
-  const [authStartTime, setAuthStartTime] = useState<number | null>(null);
-  const [isStuck, setIsStuck] = useState(false);
+  const [signInStartTime, setSignInStartTime] = useState<number | null>(null);
+  const [isStalled, setIsStalled] = useState(false);
 
   // Monitor authentication state changes to redirect after successful login
   useEffect(() => {
-    // Only redirect when authentication is complete and valid
     if (!loading && user && isSessionReady) {
       console.log("Auth successful and session ready - redirecting to home");
-      // Clear any previous error
       resetAuthError();
-      // Navigate to home page
       navigate("/");
     }
   }, [user, loading, isSessionReady, navigate, resetAuthError]);
 
-  // Check for stuck authentication attempts with more generous timeout
+  // Simple check for stuck authentication attempts
   useEffect(() => {
-    if (loading && !authStartTime) {
-      // Set the start time when loading begins
-      setAuthStartTime(Date.now());
+    if (loading && !signInStartTime) {
+      setSignInStartTime(Date.now());
     } else if (!loading) {
-      // Reset when loading stops
-      setAuthStartTime(null);
-      setIsStuck(false);
+      setSignInStartTime(null);
+      setIsStalled(false);
     }
 
-    // Check if auth might be stuck after a reasonable timeout
     let checkTimer: number | undefined;
-    if (authStartTime) {
+    if (signInStartTime) {
       checkTimer = window.setTimeout(() => {
-        // If still loading after 15 seconds (increased from 10), consider it stuck
-        if (loading && authStartTime) {
-          const isStalled = isAuthSessionStuck(authStartTime, 15000);
-          setIsStuck(isStalled);
+        // If still loading after 10 seconds, consider it stalled
+        if (loading && signInStartTime && (Date.now() - signInStartTime > 10000)) {
+          setIsStalled(true);
           
-          if (isStalled) {
-            toast({
-              title: "Authentication Taking Longer Than Expected",
-              description: "Your sign-in attempt is taking longer than expected. The system is still trying to authenticate. Please wait a moment longer.",
-              variant: "default",
-              duration: 8000,
-            });
-          }
+          toast({
+            title: "Still working...",
+            description: "Sign-in is taking longer than expected. Please wait a moment.",
+            variant: "default",
+            duration: 4000,
+          });
         }
-      }, 15000); // Increased from 10000
+      }, 10000);
     }
 
     return () => {
       if (checkTimer) clearTimeout(checkTimer);
     };
-  }, [loading, authStartTime]);
+  }, [loading, signInStartTime]);
 
-  // Show error messages in toast
+  // Show error messages
   useEffect(() => {
     if (error && !loading) {
       toast({
@@ -82,19 +72,14 @@ export function SignInForm() {
     }
   }, [error, loading]);
 
-  // Handle form submission with improved error handling
+  // Handle form submission
   const onSubmit = async (data: SignInFormValues) => {
     try {
-      // Reset any previous errors
       resetAuthError();
-      // Start auth process time tracking
-      setAuthStartTime(Date.now());
-      setIsStuck(false);
-      // Attempt sign in
+      setSignInStartTime(Date.now());
+      setIsStalled(false);
       await signIn(data.email, data.password);
-      // Let the useEffect handle navigation after successful auth
     } catch (err) {
-      // This shouldn't happen as errors are handled in the signIn function
       console.error("Unexpected error during sign in submission:", err);
     }
   };
@@ -134,16 +119,16 @@ export function SignInForm() {
         {loading ? (
           <>
             <Loader className="mr-2 h-4 w-4 animate-spin" />
-            {isStuck ? "Still trying..." : "Signing in..."}
+            {isStalled ? "Still trying..." : "Signing in..."}
           </>
         ) : (
           "Sign In"
         )}
       </Button>
       
-      {isStuck && (
+      {isStalled && (
         <p className="text-sm text-amber-600 mt-2">
-          Sign in is taking longer than expected. Please be patient while the system completes authentication.
+          Sign in is taking longer than expected. Please be patient.
         </p>
       )}
     </form>
