@@ -6,7 +6,7 @@ import { useEventSubmission } from "./useEventSubmission";
 import { usePageTracking } from "./usePageTracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Custom hook for managing the New Event page state and logic
@@ -16,6 +16,7 @@ export function useNewEventPage() {
   const navigate = useNavigate();
   const { addEvent, refetchEvents } = useEvents();
   const { isSessionReady } = useAuth();
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   
   // Page tracking and navigation
   const { handleReturn } = usePageTracking();
@@ -38,6 +39,19 @@ export function useNewEventPage() {
   const error = submissionError || refreshError || 
                 (!isSessionReady ? "Authentication session is not fully established" : null);
   
+  // Check session status and update the checking state
+  useEffect(() => {
+    // Initial state is checking
+    setIsCheckingSession(true);
+    
+    // Set a short timeout to simulate checking process
+    const timer = setTimeout(() => {
+      setIsCheckingSession(false);
+    }, 1000); // Short delay to give authentication a chance to establish
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
   // If there are session readiness issues, notify the user
   useEffect(() => {
     if (!isSessionReady) {
@@ -55,6 +69,7 @@ export function useNewEventPage() {
     isRefreshing,
     error,
     isSessionReady,
+    isCheckingSession, // Add the missing state
     
     // Handlers
     handleSubmit,
