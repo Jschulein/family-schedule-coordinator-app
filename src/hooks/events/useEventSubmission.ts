@@ -30,8 +30,11 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     endSubmissionTracking
   } = useSubmissionTracking();
   
-  // Use our session ready hook to ensure auth is established
-  const { isSessionReady, isCheckingSession } = useSessionReady({ pollInterval: 500 });
+  // Use our session ready hook to ensure auth is established - with polling
+  const { isSessionReady, isCheckingSession } = useSessionReady({ 
+    debugMode: true, 
+    pollInterval: 500 
+  });
   
   // Set up submission timeout whenever submission state changes
   useEffect(() => {

@@ -8,10 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface UseSessionReadyOptions {
   debugMode?: boolean;
+  pollInterval?: number; // Added pollInterval option for periodic session checking
 }
 
 export function useSessionReady(options: UseSessionReadyOptions = {}) {
-  const { debugMode = false } = options;
+  const { debugMode = false, pollInterval = 0 } = options;
   
   const [isReady, setIsReady] = useState<boolean>(false);
   const [isChecking, setIsChecking] = useState<boolean>(true);
@@ -95,11 +96,22 @@ export function useSessionReady(options: UseSessionReadyOptions = {}) {
       }
     );
     
+    // Set up polling if interval is provided
+    let pollTimer: number | undefined;
+    if (pollInterval > 0) {
+      pollTimer = window.setInterval(() => {
+        if (!isReady) {
+          checkSession();
+        }
+      }, pollInterval);
+    }
+    
     // Cleanup
     return () => {
       subscription.unsubscribe();
+      if (pollTimer) clearInterval(pollTimer);
     };
-  }, [checkSession, debugMode]);
+  }, [checkSession, debugMode, pollInterval, isReady]);
   
   return {
     isSessionReady: isReady,

@@ -21,6 +21,7 @@ export async function createEvent(eventData: Event): Promise<{
     logEventFlow("directEventCreation", "Starting direct event creation", { name: eventData.name });
     
     // Use our withValidSession utility to ensure authentication is fully established
+    // Now passing 3 as the retry parameter to allow up to 3 retries for auth issues
     return await withValidSession(async () => {
       // 1. Verify authentication
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();

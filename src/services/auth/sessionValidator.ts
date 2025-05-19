@@ -1,3 +1,4 @@
+
 /**
  * Session validation service - simplified to reduce complexity and redundancy
  */
@@ -97,9 +98,12 @@ export async function waitForValidSession(maxWaitTime = 5000): Promise<SessionVa
 
 /**
  * Utility for operations that require authentication
+ * @param operation The operation to perform with a valid session
+ * @param retries Optional number of retries if auth issues occur (default: 0)
  */
 export async function withValidSession<T>(
-  operation: () => Promise<T>
+  operation: () => Promise<T>,
+  retries: number = 0
 ): Promise<T> {
   const validation = await validateSession();
   
@@ -110,7 +114,7 @@ export async function withValidSession<T>(
   try {
     return await operation();
   } catch (error: any) {
-    // If this looks like an auth error, we should invalidate our session
+    // If this looks like an auth error, we should attempt to refresh and retry
     if (
       error.message?.includes?.("not authorized") ||
       error.message?.includes?.("JWT") ||
@@ -118,6 +122,12 @@ export async function withValidSession<T>(
     ) {
       // Attempt to refresh the session
       await supabase.auth.refreshSession();
+      
+      // If we have retries left, try again
+      if (retries > 0) {
+        console.log(`Auth error detected, retrying operation (${retries} retries left)...`);
+        return withValidSession(operation, retries - 1);
+      }
     }
     
     throw error;
