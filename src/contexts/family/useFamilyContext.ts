@@ -1,6 +1,6 @@
 
 /**
- * Hook for accessing the family context
+ * Primary hook for accessing the family context
  * Provides safe access to family context with error handling
  */
 import { useContext } from 'react';
