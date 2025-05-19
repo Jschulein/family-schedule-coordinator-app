@@ -49,16 +49,16 @@ export async function validateSession(): Promise<SessionValidationResult> {
 }
 
 /**
- * Simplified helper to wrap operations that need valid authentication
- * Reduces reliance on retry logic to avoid deadlocks
+ * Enhanced helper to wrap operations that need valid authentication
+ * Uses exponential backoff to avoid deadlocks and handle transient auth issues
  * 
  * @param operation Function to execute if session is valid
- * @param maxRetries Optional number of retries (default: 1)
+ * @param maxRetries Optional number of retries (default: 3)
  * @returns Result of the operation
  */
 export async function withValidSession<T>(
   operation: () => Promise<T>,
-  maxRetries: number = 1
+  maxRetries: number = 3
 ): Promise<T> {
   // First check if session is valid before attempting operation
   const sessionCheck = await validateSession();
@@ -67,29 +67,43 @@ export async function withValidSession<T>(
     throw new Error(`Authentication required: ${sessionCheck.error}`);
   }
   
-  try {
-    // Session is valid, execute operation
-    return await operation();
-  } catch (error: any) {
-    // Only retry if it's clearly a session-related error and we have retries left
-    if (maxRetries > 0 && 
-        (String(error).includes('authentication') || 
-         String(error).includes('policy') || 
-         String(error).includes('permission') ||  
-         String(error).includes('not authorized'))) {
+  let lastError: any = null;
+  
+  // Try the operation with exponential backoff
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Session is valid, execute operation
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
       
-      console.log(`Operation failed with auth error, retrying...`);
+      // Only retry if it's clearly a session-related error and we have retries left
+      const isAuthError = String(error).includes('authentication') || 
+                          String(error).includes('policy') || 
+                          String(error).includes('permission') ||
+                          String(error).includes('not authorized') ||
+                          String(error).includes('violates row-level security');
       
-      // Simple delay before retry
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (attempt < maxRetries && isAuthError) {
+        // Calculate exponential backoff with jitter
+        const baseDelay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s, 8s...
+        const jitter = Math.random() * 500; // Add up to 500ms of random jitter
+        const delay = baseDelay + jitter;
+        
+        console.log(`Operation failed with auth error, retry ${attempt + 1}/${maxRetries} in ${delay}ms`);
+        
+        // Wait with exponential backoff before retry
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
       
-      // Recursive retry with one fewer retry attempt
-      return withValidSession(operation, maxRetries - 1);
+      // Not a session error or out of retries, rethrow
+      throw error;
     }
-    
-    // Not a session error or out of retries, rethrow
-    throw error;
   }
+  
+  // If we get here, we've exhausted all retries
+  throw lastError || new Error("Operation failed after multiple retries");
 }
 
 /**

@@ -10,13 +10,14 @@ import { useEffect, useState, useRef } from "react";
 
 /**
  * Custom hook for managing the New Event page state and logic
- * Enhanced session management with improved timeout handling
+ * Enhanced authentication handling with improved error recovery
  */
 export function useNewEventPage() {
   const navigate = useNavigate();
   const { addEvent, refetchEvents } = useEvents();
-  const { isSessionReady } = useAuth();
+  const { isSessionReady, validateAuthSession } = useAuth();
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [sessionCheckAttempts, setSessionCheckAttempts] = useState(0);
   const sessionCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Page tracking and navigation
@@ -40,7 +41,7 @@ export function useNewEventPage() {
   const error = submissionError || refreshError || 
                 (!isSessionReady && !isCheckingSession ? "Authentication session is not fully established" : null);
   
-  // Enhanced session check with longer timeout and synchronization with isSessionReady
+  // Enhanced session check with longer timeout and validation attempts
   useEffect(() => {
     // Initial state is checking
     setIsCheckingSession(true);
@@ -50,18 +51,42 @@ export function useNewEventPage() {
       clearTimeout(sessionCheckTimeoutRef.current);
     }
     
-    // Wait for isSessionReady to become true or timeout after a reasonable period
+    // Function to validate the session
+    const validateSession = async () => {
+      try {
+        // Perform a validation check against the auth API
+        const isValid = await validateAuthSession();
+        
+        if (isValid || isSessionReady) {
+          // Session is valid, stop checking
+          setIsCheckingSession(false);
+        } else if (sessionCheckAttempts < 3) {
+          // Increment attempt counter
+          setSessionCheckAttempts(prev => prev + 1);
+          
+          // Schedule another check with exponential backoff
+          const delay = Math.pow(2, sessionCheckAttempts) * 2000; // 2s, 4s, 8s
+          console.log(`Session not ready, retry attempt ${sessionCheckAttempts + 1} in ${delay}ms`);
+          
+          sessionCheckTimeoutRef.current = setTimeout(validateSession, delay);
+        } else {
+          // We've reached max attempts, proceed anyway
+          console.log('Max session validation attempts reached, proceeding with available auth state');
+          setIsCheckingSession(false);
+        }
+      } catch (error) {
+        console.error("Error validating session:", error);
+        setIsCheckingSession(false);
+      }
+    };
+    
+    // Start validation process
     if (isSessionReady) {
       // If session is already ready, no need to wait
       setIsCheckingSession(false);
     } else {
-      // Set a longer timeout to give authentication more time to establish
-      sessionCheckTimeoutRef.current = setTimeout(() => {
-        if (!isSessionReady) {
-          console.log('Session check timeout reached, proceeding with available auth state');
-          setIsCheckingSession(false);
-        }
-      }, 8000); // Extended timeout (8 seconds) to give auth more time
+      // Validate session with initial delay to allow auth context to initialize
+      sessionCheckTimeoutRef.current = setTimeout(validateSession, 1000);
     }
     
     // Cleanup function
@@ -70,7 +95,7 @@ export function useNewEventPage() {
         clearTimeout(sessionCheckTimeoutRef.current);
       }
     };
-  }, [isSessionReady]);
+  }, [isSessionReady, sessionCheckAttempts, validateAuthSession]);
   
   // If there are session readiness issues, notify the user once checking is complete
   useEffect(() => {
@@ -83,6 +108,22 @@ export function useNewEventPage() {
     }
   }, [isSessionReady, isCheckingSession]);
   
+  // Custom retry handler that also checks auth session
+  const handleRetryWithAuth = async () => {
+    setIsCheckingSession(true);
+    setSessionCheckAttempts(0);
+    
+    // First try to validate the auth session
+    try {
+      await validateAuthSession();
+    } catch (error) {
+      console.error("Error validating session during retry:", error);
+    }
+    
+    // Then refresh events
+    handleRetry();
+  };
+  
   return {
     // State
     isSubmitting,
@@ -94,6 +135,6 @@ export function useNewEventPage() {
     // Handlers
     handleSubmit,
     handleReturn,
-    handleRetry
+    handleRetry: handleRetryWithAuth
   };
 }

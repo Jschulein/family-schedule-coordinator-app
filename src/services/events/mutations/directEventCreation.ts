@@ -19,7 +19,7 @@ export async function createEvent(eventData: Event): Promise<{
   try {
     logEventFlow("directEventCreation", "Starting direct event creation", { name: eventData.name });
     
-    // Use simplified withValidSession utility function
+    // Use enhanced withValidSession utility with exponential backoff (5 retries)
     return await withValidSession(async () => {
       // 1. Verify authentication 
       const { data: { session } } = await supabase.auth.getSession();
@@ -29,7 +29,7 @@ export async function createEvent(eventData: Event): Promise<{
         return { success: false, error: "You must be logged in to create events" };
       }
       
-      // 2. Prepare event data
+      // 2. Prepare event data with explicit user ID from session
       const dbEvent = {
         name: eventData.name,
         date: eventData.date instanceof Date ? eventData.date.toISOString() : eventData.date,
@@ -40,7 +40,11 @@ export async function createEvent(eventData: Event): Promise<{
         all_day: eventData.all_day || false
       };
       
-      logEventFlow("directEventCreation", "Inserting event", dbEvent);
+      logEventFlow("directEventCreation", "Inserting event with user ID", {
+        event: dbEvent,
+        userId: session.user.id,
+        tokenExpiry: session.expires_at
+      });
       
       // 3. Create the event - direct database operation
       const { data: createdEvent, error: insertError } = await supabase
@@ -52,16 +56,18 @@ export async function createEvent(eventData: Event): Promise<{
       if (insertError) {
         logEventFlow("directEventCreation", "Error creating event", insertError);
         
-        // Special handling for auth-related errors
+        // Enhanced error handling for RLS issues
         if (insertError.message.includes('policy') || 
             insertError.message.includes('permission') ||
-            insertError.message.includes('not authorized')) {
+            insertError.message.includes('not authorized') ||
+            insertError.message.includes('violates row-level security')) {
           return { 
             success: false, 
-            error: `Authentication error: ${insertError.message}. Please try again in a moment.`,
+            error: `Authentication error: ${insertError.message}. Please try again in a moment or log out and log back in.`,
             details: {
               isAuthError: true,
-              originalError: insertError
+              originalError: insertError,
+              userIdUsed: session.user.id
             }
           };
         }
@@ -143,7 +149,7 @@ export async function createEvent(eventData: Event): Promise<{
       }
       
       return { success: true, eventId: createdEvent.id };
-    }, 2);  // Allow up to 2 retries for auth issues
+    }, 5);  // Allow up to 5 retries for auth issues with exponential backoff
   } catch (error: any) {
     logEventFlow("directEventCreation", "Unexpected error", error);
     return { 
