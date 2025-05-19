@@ -8,7 +8,6 @@ import { withValidSession } from "@/services/auth/authUtils";
 /**
  * A direct, simplified event creation function with minimal complexity
  * Uses session validation to prevent race conditions with authentication
- * Focuses only on creating the event and associating it with family members
  * Returns a structured response object with consistent error handling
  */
 export async function createEvent(eventData: Event): Promise<{ 
@@ -20,20 +19,10 @@ export async function createEvent(eventData: Event): Promise<{
   try {
     logEventFlow("directEventCreation", "Starting direct event creation", { name: eventData.name });
     
-    // Use our withValidSession utility to ensure authentication is fully established
-    // Now passing 3 as the retry parameter to allow up to 3 retries for auth issues
+    // Use simplified withValidSession utility function
     return await withValidSession(async () => {
-      // 1. Verify authentication
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        logEventFlow("directEventCreation", "Authentication error", sessionError);
-        return { 
-          success: false, 
-          error: `Authentication error: ${sessionError.message}`,
-          details: sessionError
-        };
-      }
+      // 1. Verify authentication 
+      const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         logEventFlow("directEventCreation", "No active session found");
@@ -97,7 +86,7 @@ export async function createEvent(eventData: Event): Promise<{
           count: eventData.familyMembers.length 
         });
 
-        // First, get family information for these members
+        // Get family information for these members
         const { data: familyMembers, error: membersError } = await supabase
           .from("family_members")
           .select("id, family_id")
@@ -105,14 +94,12 @@ export async function createEvent(eventData: Event): Promise<{
         
         if (membersError) {
           logEventFlow("directEventCreation", "Error fetching family members", membersError);
-          // Note: We don't fail the whole operation here, just log it
           toast({
             title: "Warning",
             description: "Event created, but there was an issue associating family members",
             variant: "default"
           });
           
-          // Return partial success
           return { 
             success: true, 
             eventId: createdEvent.id,
@@ -145,7 +132,6 @@ export async function createEvent(eventData: Event): Promise<{
                 variant: "default"
               });
               
-              // Return partial success
               return { 
                 success: true, 
                 eventId: createdEvent.id,
@@ -157,7 +143,7 @@ export async function createEvent(eventData: Event): Promise<{
       }
       
       return { success: true, eventId: createdEvent.id };
-    }, 3);  // Allow up to 3 retries for auth issues
+    }, 2);  // Allow up to 2 retries for auth issues
   } catch (error: any) {
     logEventFlow("directEventCreation", "Unexpected error", error);
     return { 

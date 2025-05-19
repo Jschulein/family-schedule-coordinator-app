@@ -3,7 +3,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { validateSession } from '@/services/auth/authUtils';
 
 interface AuthContextType {
   session: Session | null;
@@ -35,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (event, currentSession) => {
         if (!isMounted) return;
         
         console.log(`Auth event: ${event}`);
@@ -44,26 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
-        // For sign-in events, verify session validity
-        if (currentSession?.user) {
-          try {
-            const validationResult = await validateSession();
-            if (isMounted) {
-              setIsSessionReady(validationResult.valid);
-              
-              if (!validationResult.valid && validationResult.error) {
-                console.warn(`Session validation issue: ${validationResult.error}`);
-              }
-            }
-          } catch (err) {
-            console.error("Error validating session:", err);
-            if (isMounted) {
-              setIsSessionReady(false);
-            }
-          }
-        } else {
-          setIsSessionReady(false);
-        }
+        // Simplified session readiness check - if we have a session with a user, it's ready
+        setIsSessionReady(!!currentSession?.user);
         
         // Ensure we clear loading state
         setLoading(false);
@@ -89,16 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           
-          // Check session validity if we have one
-          if (currentSession?.user) {
-            try {
-              const validationResult = await validateSession();
-              setIsSessionReady(validationResult.valid);
-            } catch (err) {
-              console.error("Error validating initial session:", err);
-              setIsSessionReady(false);
-            }
-          }
+          // Simplified session readiness check - if we have a session with a user, it's ready
+          setIsSessionReady(!!currentSession?.user);
           
           setLoading(false);
         }
@@ -121,13 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Validates the current authentication session directly
-   * @returns Promise resolving to a boolean indicating if session is valid
+   * Simplified session validation - just checks if we have a valid user session
    */
   const validateAuthSession = async (): Promise<boolean> => {
     try {
-      const result = await validateSession();
-      return result.valid;
+      const { data } = await supabase.auth.getSession();
+      return !!data.session?.user;
     } catch (err) {
       console.error("Error in validateAuthSession:", err);
       return false;
@@ -169,7 +141,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      setIsSessionReady(false);
       
       const { error } = await supabase.auth.signUp({ email, password });
       

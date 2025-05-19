@@ -19,8 +19,6 @@ export function SignInForm() {
   const { register, handleSubmit, formState: { errors } } = useForm<SignInFormValues>();
   const { signIn, loading, error, resetAuthError, user, isSessionReady } = useAuth();
   const navigate = useNavigate();
-  const [signInStartTime, setSignInStartTime] = useState<number | null>(null);
-  const [isStalled, setIsStalled] = useState(false);
 
   // Monitor authentication state changes to redirect after successful login
   useEffect(() => {
@@ -31,40 +29,10 @@ export function SignInForm() {
     }
   }, [user, loading, isSessionReady, navigate, resetAuthError]);
 
-  // Simple check for stuck authentication attempts
-  useEffect(() => {
-    if (loading) {
-      if (!signInStartTime) {
-        setSignInStartTime(Date.now());
-      }
-      
-      const checkTimer = setTimeout(() => {
-        // If still loading after 8 seconds, consider it stalled
-        if (loading && signInStartTime && (Date.now() - signInStartTime > 8000)) {
-          setIsStalled(true);
-          
-          toast({
-            title: "Still working...",
-            description: "Sign-in is taking longer than expected. Please wait a moment.",
-            variant: "default",
-            duration: 4000,
-          });
-        }
-      }, 8000);
-      
-      return () => clearTimeout(checkTimer);
-    } else {
-      setSignInStartTime(null);
-      setIsStalled(false);
-    }
-  }, [loading, signInStartTime]);
-
   // Handle form submission
   const onSubmit = async (data: SignInFormValues) => {
     try {
       resetAuthError();
-      setSignInStartTime(Date.now());
-      setIsStalled(false);
       await signIn(data.email, data.password);
     } catch (err) {
       console.error("Unexpected error during sign in submission:", err);
@@ -113,18 +81,12 @@ export function SignInForm() {
         {loading ? (
           <>
             <Loader className="mr-2 h-4 w-4 animate-spin" />
-            {isStalled ? "Still trying..." : "Signing in..."}
+            Signing in...
           </>
         ) : (
           "Sign In"
         )}
       </Button>
-      
-      {isStalled && (
-        <p className="text-sm text-amber-600 mt-2">
-          Sign in is taking longer than expected. Please be patient.
-        </p>
-      )}
     </form>
   );
 }

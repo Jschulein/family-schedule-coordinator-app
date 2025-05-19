@@ -6,57 +6,21 @@ import { useEventSubmission } from "./useEventSubmission";
 import { usePageTracking } from "./usePageTracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 /**
  * Custom hook for managing the New Event page state and logic
- * Now uses the consolidated AuthContext for session management
+ * Simplified approach that relies on AuthContext isSessionReady state
  */
 export function useNewEventPage() {
   const navigate = useNavigate();
   const { addEvent, refetchEvents } = useEvents();
   const { isSessionReady } = useAuth();
   
-  // Local state for session checking
-  const [isCheckingSession, setIsCheckingSession] = useState(false);
-  const [sessionError, setSessionError] = useState<string | null>(null);
-  
   // Page tracking and navigation
   const { handleReturn } = usePageTracking();
   
-  // Validate session on mount
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        setIsCheckingSession(true);
-        // Session info is already available in AuthContext
-        // We just use this for UI feedback
-        setIsCheckingSession(false);
-      } catch (err: any) {
-        console.error("Error checking session:", err);
-        setSessionError(err?.message || "Unable to validate authentication session");
-        setIsCheckingSession(false);
-      }
-    };
-    
-    if (!isSessionReady) {
-      checkSession();
-    }
-  }, [isSessionReady]);
-  
-  // Notify user if there are session readiness issues
-  useEffect(() => {
-    if (sessionError && !isCheckingSession) {
-      toast({
-        title: "Authentication Issue",
-        description: "There may be issues with your authentication session. If you encounter problems creating events, please try refreshing the page.",
-        variant: "default", // Changed from "warning" to "default"
-        duration: 5000
-      });
-    }
-  }, [sessionError, isCheckingSession]);
-  
-  // Event submission handling
+  // Event submission handling - passing isSessionReady directly
   const { 
     isSubmitting,
     error: submissionError,
@@ -72,7 +36,18 @@ export function useNewEventPage() {
   
   // Combine errors from all sources
   const error = submissionError || refreshError || 
-                (!isSessionReady && !isCheckingSession ? "Authentication session is not fully established" : null);
+                (!isSessionReady ? "Authentication session is not fully established" : null);
+  
+  // If there are session readiness issues, notify the user
+  useEffect(() => {
+    if (!isSessionReady) {
+      toast({
+        title: "Authentication Status",
+        description: "Your authentication session is being established. You may need to wait a moment before creating events.",
+        duration: 5000
+      });
+    }
+  }, [isSessionReady]);
   
   return {
     // State
@@ -80,7 +55,6 @@ export function useNewEventPage() {
     isRefreshing,
     error,
     isSessionReady,
-    isCheckingSession,
     
     // Handlers
     handleSubmit,

@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Custom hook for handling event submission logic with improved error recovery
- * Now uses the consolidated AuthContext for session management
+ * Simplified approach that relies on AuthContext
  * @param addEvent Function to add a new event
  * @returns State and handler for event submission
  */
@@ -20,7 +20,7 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const { isSessionReady, validateAuthSession } = useAuth();
+  const { isSessionReady } = useAuth();
   
   // Get submission tracking utilities
   const {
@@ -30,9 +30,6 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     setupSubmissionTimeout,
     endSubmissionTracking
   } = useSubmissionTracking();
-  
-  // State for tracking session validation in progress
-  const [isCheckingSession, setIsCheckingSession] = useState(false);
   
   // Set up submission timeout whenever submission state changes
   useEffect(() => {
@@ -60,23 +57,8 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
       return;
     }
     
-    // Check session readiness or validate explicitly
-    let sessionValid = isSessionReady;
-    
-    if (!sessionValid) {
-      setIsCheckingSession(true);
-      try {
-        // Direct session validation as fallback
-        sessionValid = await validateAuthSession();
-      } catch (err) {
-        console.error("Session validation error:", err);
-      } finally {
-        setIsCheckingSession(false);
-      }
-    }
-    
-    // If session isn't valid, show an error
-    if (!sessionValid) {
+    // If session isn't ready, show an error
+    if (!isSessionReady) {
       logEventFlow('NewEvent', 'Submission prevented - authentication not fully established');
       setError("Your authentication session is not fully established. Please wait a moment and try again.");
       toast({
@@ -223,7 +205,6 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     setError,
     handleSubmit,
     cancelSubmission,
-    isSessionReady,
-    isCheckingSession
+    isSessionReady
   };
 }

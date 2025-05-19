@@ -35,13 +35,6 @@ export function formatAuthError(error: any): string {
     if (errorMessage.includes('not found') || errorMessage.includes('invalid')) {
       return 'Authentication session issue. Please sign in again.';
     }
-  } else if (errorMessage.includes('token')) {
-    if (errorMessage.includes('expired')) {
-      return 'Your authentication token has expired. Please sign in again.';
-    }
-    if (errorMessage.includes('invalid') || errorMessage.includes('malformed')) {
-      return 'Invalid authentication token. Please try signing in again.';
-    }
   }
   
   // Return the original message if no specific mapping is found
@@ -49,10 +42,7 @@ export function formatAuthError(error: any): string {
 }
 
 /**
- * Handles authentication errors consistently
- * @param error The auth error object or message string
- * @param options Configuration options for handling the error
- * @returns The formatted error message
+ * Simplified handler for auth errors
  */
 export function handleAuthError(error: any, options: AuthErrorOptions = {}): string {
   const { showToast = true } = options;
@@ -75,8 +65,6 @@ export function handleAuthError(error: any, options: AuthErrorOptions = {}): str
 
 /**
  * Checks if the error might be due to a network connectivity issue
- * @param error The error object or message
- * @returns True if it's likely a network issue
  */
 export function isNetworkAuthError(error: any): boolean {
   if (!error) return false;
@@ -90,8 +78,6 @@ export function isNetworkAuthError(error: any): boolean {
 
 /**
  * Checks if the error might be due to a session token issue
- * @param error The error object or message 
- * @returns True if it's likely a token issue
  */
 export function isTokenError(error: any): boolean {
   if (!error) return false;

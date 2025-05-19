@@ -1,9 +1,9 @@
+
 import { toast } from "@/hooks/use-toast";
 import { ToastActionElement } from "@/components/ui/toast";
 import { logEventFlow } from "./eventFlow";
 import { handleError } from "@/utils/error";
 import { createRetryAction } from "@/components/ui/toast-helpers";
-import { validateSession } from "@/services/auth/authUtils";
 
 type EventErrorOptions = {
   context: string;
@@ -15,13 +15,13 @@ type EventErrorOptions = {
 
 /**
  * Specialized error handler for event-related operations
- * Enhanced with authentication state checking for better error diagnosis
+ * Simplified to avoid causing auth validation loops
  * @param error The error that occurred
  * @param options Configuration options for error handling
  * @returns Formatted error message
  */
 export function handleEventError(error: unknown, options: EventErrorOptions): string {
-  const { context, showToast = true, retryFn, logDetails = true, checkAuth = true } = options;
+  const { context, showToast = true, retryFn, logDetails = true } = options;
   
   // Log the error with event flow context
   logEventFlow(context, 'Error occurred', error);
@@ -46,22 +46,6 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
     errorMessage = "Authentication error: You may not be properly authenticated. Please try again in a moment.";
     severity = 'warning';
     isRecoverable = true;
-    
-    // Trigger a session validation check if requested
-    if (checkAuth) {
-      validateSession().then(result => {
-        if (!result.valid) {
-          console.warn(`Session invalid during operation: ${result.error}`);
-          toast({
-            title: "Authentication Issue",
-            description: "There may be an issue with your authentication. Try refreshing the page if problems persist.",
-            variant: "destructive",
-          });
-        }
-      }).catch(e => {
-        console.error("Error checking session during error handling:", e);
-      });
-    }
   }
   // Check for specific recursion errors
   else if (errorString.includes('infinite recursion') || 
@@ -151,9 +135,6 @@ export function handleEventError(error: unknown, options: EventErrorOptions): st
 
 /**
  * Creates a wrapped function with event error handling
- * @param fn Function to wrap with error handling
- * @param options Error handling options
- * @returns Wrapped function with error handling
  */
 export function withEventErrorHandling<T, Args extends any[]>(
   fn: (...args: Args) => Promise<T>,
@@ -170,16 +151,12 @@ export function withEventErrorHandling<T, Args extends any[]>(
 }
 
 /**
- * Attempts to execute an event operation with automatic retries for auth errors
- * @param operation Function to execute
- * @param context Context for error reporting
- * @param maxRetries Maximum number of retries
- * @returns Result of the operation
+ * Simplified retry function that avoids session validation
  */
 export async function withEventRetry<T>(
   operation: () => Promise<T>,
   context: string,
-  maxRetries = 2
+  maxRetries = 1
 ): Promise<T> {
   let lastError: any = null;
   
@@ -190,12 +167,10 @@ export async function withEventRetry<T>(
       lastError = error;
       
       // Check if this is an auth error that might be fixed with a retry
-      const errorStr = String(error);
-      const isAuthError = 
-        errorStr.includes("policy") || 
-        errorStr.includes("permission") || 
-        errorStr.includes("auth") || 
-        errorStr.includes("JWT");
+      const isAuthError = String(error).includes("policy") || 
+                         String(error).includes("permission") || 
+                         String(error).includes("auth") || 
+                         String(error).includes("JWT");
       
       if (isAuthError && attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 300;
@@ -203,14 +178,6 @@ export async function withEventRetry<T>(
         
         // Wait before retry
         await new Promise(resolve => setTimeout(resolve, delay));
-        
-        // Check session before retry
-        try {
-          await validateSession();
-        } catch (e) {
-          // Ignore validation errors, just proceed with retry
-        }
-        
         continue;
       }
       

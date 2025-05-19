@@ -17,7 +17,7 @@ export type SessionValidationResult = {
  */
 export async function validateSession(): Promise<SessionValidationResult> {
   try {
-    // Get current session
+    // Get current session - simplified approach
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
@@ -49,8 +49,8 @@ export async function validateSession(): Promise<SessionValidationResult> {
 }
 
 /**
- * Helper to wrap operations that need valid authentication
- * Simpler replacement for the previous withValidSession function
+ * Simplified helper to wrap operations that need valid authentication
+ * Reduces reliance on retry logic to avoid deadlocks
  * 
  * @param operation Function to execute if session is valid
  * @param maxRetries Optional number of retries (default: 1)
@@ -60,53 +60,40 @@ export async function withValidSession<T>(
   operation: () => Promise<T>,
   maxRetries: number = 1
 ): Promise<T> {
-  let attempts = 0;
-  let lastError: any = null;
-
-  while (attempts <= maxRetries) {
-    try {
-      // Validate session before operation
-      const sessionCheck = await validateSession();
+  // First check if session is valid before attempting operation
+  const sessionCheck = await validateSession();
       
-      if (!sessionCheck.valid) {
-        // If session is invalid and we have retries left, wait and retry
-        if (attempts < maxRetries) {
-          console.log(`Session validation failed (attempt ${attempts + 1}/${maxRetries + 1}): ${sessionCheck.error}`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts)));
-          attempts++;
-          continue;
-        }
-        
-        // Out of retries, throw error
-        throw new Error(`Authentication required: ${sessionCheck.error}`);
-      }
-      
-      // Session is valid, execute operation
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      
-      // Only retry if it's a session-related error
-      if (attempts < maxRetries && 
-          (String(error).includes('authentication') || 
-           String(error).includes('session') || 
-           String(error).includes('auth'))) {
-        console.log(`Operation failed with auth error (attempt ${attempts + 1}/${maxRetries + 1}):`, error);
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts)));
-        attempts++;
-      } else {
-        // Not a session error or out of retries, rethrow
-        throw error;
-      }
-    }
+  if (!sessionCheck.valid) {
+    throw new Error(`Authentication required: ${sessionCheck.error}`);
   }
   
-  throw lastError;
+  try {
+    // Session is valid, execute operation
+    return await operation();
+  } catch (error: any) {
+    // Only retry if it's clearly a session-related error and we have retries left
+    if (maxRetries > 0 && 
+        (String(error).includes('authentication') || 
+         String(error).includes('policy') || 
+         String(error).includes('permission') ||  
+         String(error).includes('not authorized'))) {
+      
+      console.log(`Operation failed with auth error, retrying...`);
+      
+      // Simple delay before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Recursive retry with one fewer retry attempt
+      return withValidSession(operation, maxRetries - 1);
+    }
+    
+    // Not a session error or out of retries, rethrow
+    throw error;
+  }
 }
 
 /**
- * Custom hook for accessing session readiness state
- * A lightweight replacement for useSessionReady
+ * Simplified hook for accessing session status
  */
 export function useSessionStatus() {
   const [isSessionChecked, setIsSessionChecked] = useState(false);
@@ -148,5 +135,5 @@ export function useSessionStatus() {
   };
 }
 
-// We need to import useState and useEffect at the top of the file
+// Import useState and useEffect at the top of the file
 import { useState, useEffect } from 'react';
