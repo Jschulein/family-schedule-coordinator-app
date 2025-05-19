@@ -65,7 +65,7 @@ const Auth = () => {
                 <span className="text-sm text-muted-foreground">Checking authentication status...</span>
                 
                 {isStalled && (
-                  <Alert variant="warning" className="mt-4">
+                  <Alert variant="default" className="mt-4 border-yellow-300 bg-yellow-50">
                     <AlertDescription>
                       Authentication check is taking longer than expected. If this persists, please refresh the page.
                     </AlertDescription>
