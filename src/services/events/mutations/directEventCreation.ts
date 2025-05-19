@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { toast } from "@/components/ui/use-toast";
 import { logEventFlow } from "@/utils/events";
-import { withValidSession } from "@/services/auth/sessionValidator";
+import { withValidSession } from "@/services/auth/authUtils";
 
 /**
  * A direct, simplified event creation function with minimal complexity

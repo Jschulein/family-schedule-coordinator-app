@@ -1,10 +1,9 @@
-
 import { toast } from "@/hooks/use-toast";
 import { ToastActionElement } from "@/components/ui/toast";
 import { logEventFlow } from "./eventFlow";
 import { handleError } from "@/utils/error";
 import { createRetryAction } from "@/components/ui/toast-helpers";
-import { validateSession } from "@/services/auth/sessionValidator";
+import { validateSession } from "@/services/auth/authUtils";
 
 type EventErrorOptions = {
   context: string;

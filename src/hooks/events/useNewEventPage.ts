@@ -4,23 +4,45 @@ import { useEvents } from "@/contexts/EventContext";
 import { useRefreshEvents } from "./useRefreshEvents";
 import { useEventSubmission } from "./useEventSubmission";
 import { usePageTracking } from "./usePageTracking";
-import { useSessionReady } from "@/hooks/auth/useSessionReady";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Custom hook for managing the New Event page state and logic
- * Enhanced with session readiness checking
+ * Now uses the consolidated AuthContext for session management
  */
 export function useNewEventPage() {
   const navigate = useNavigate();
   const { addEvent, refetchEvents } = useEvents();
+  const { isSessionReady } = useAuth();
+  
+  // Local state for session checking
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   
   // Page tracking and navigation
   const { handleReturn } = usePageTracking();
   
-  // Session readiness check
-  const { isSessionReady, isCheckingSession, sessionError } = useSessionReady();
+  // Validate session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        setIsCheckingSession(true);
+        // Session info is already available in AuthContext
+        // We just use this for UI feedback
+        setIsCheckingSession(false);
+      } catch (err: any) {
+        console.error("Error checking session:", err);
+        setSessionError(err?.message || "Unable to validate authentication session");
+        setIsCheckingSession(false);
+      }
+    };
+    
+    if (!isSessionReady) {
+      checkSession();
+    }
+  }, [isSessionReady]);
   
   // Notify user if there are session readiness issues
   useEffect(() => {
@@ -34,7 +56,7 @@ export function useNewEventPage() {
     }
   }, [sessionError, isCheckingSession]);
   
-  // Event submission handling, now with session awareness
+  // Event submission handling
   const { 
     isSubmitting,
     error: submissionError,

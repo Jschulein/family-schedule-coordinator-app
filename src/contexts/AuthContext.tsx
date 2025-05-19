@@ -1,8 +1,9 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { validateSession } from '@/services/auth/sessionValidator';
+import { validateSession } from '@/services/auth/authUtils';
 
 interface AuthContextType {
   session: Session | null;
@@ -14,6 +15,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetAuthError: () => void;
+  validateAuthSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -117,6 +119,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  /**
+   * Validates the current authentication session directly
+   * @returns Promise resolving to a boolean indicating if session is valid
+   */
+  const validateAuthSession = async (): Promise<boolean> => {
+    try {
+      const result = await validateSession();
+      return result.valid;
+    } catch (err) {
+      console.error("Error in validateAuthSession:", err);
+      return false;
+    }
+  };
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -227,7 +243,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
-        resetAuthError
+        resetAuthError,
+        validateAuthSession
       }}
     >
       {children}
