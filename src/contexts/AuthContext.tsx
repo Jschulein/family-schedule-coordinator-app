@@ -27,6 +27,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Function to safely refresh token if needed
+  const refreshTokenIfNeeded = async (currentSession: Session | null) => {
+    if (!currentSession) return null;
+    
+    const tokenExpirationTime = currentSession.expires_at ? currentSession.expires_at * 1000 : null;
+    // If token expires in less than 5 minutes, refresh it
+    if (tokenExpirationTime && Date.now() > tokenExpirationTime - 300000) {
+      try {
+        console.log("Token expiring soon, refreshing...");
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error) throw error;
+        return data.session;
+      } catch (err) {
+        console.error("Token refresh failed:", err);
+        return currentSession;
+      }
+    }
+    return currentSession;
+  };
+
   useEffect(() => {
     // Track whether component is mounted
     let isMounted = true;
@@ -53,62 +73,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        if (isMounted) {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
+      (event, currentSession) => {
+        if (!isMounted) return;
+        
+        if (event) {
+          console.log(`Auth event: ${event}`);
+        }
+        
+        // Update session and user state
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        // Reset session ready state when auth changes
+        setIsSessionReady(false);
+        
+        // For sign-in events, verify session validity after a short delay
+        if (currentSession?.user && event === 'SIGNED_IN') {
+          console.log("Sign in event detected, verifying session validity...");
           
-          // Reset session ready state when auth changes
-          setIsSessionReady(false);
-  
-          // For debugging
-          if (event) {
-            console.log(`Auth event: ${event}`);
-          }
-  
-          // Verify session validity after a short delay
-          // This addresses the race condition between client and server auth
-          if (currentSession?.user && event === 'SIGNED_IN') {
-            console.log("Sign in event detected, verifying session validity...");
-            
-            // Short delay to allow session propagation
-            setTimeout(async () => {
-              if (isMounted) {
-                await checkSessionValidity();
-              }
-            }, 300);
-          }
+          // Short delay to allow session propagation
+          setTimeout(async () => {
+            if (isMounted) {
+              await checkSessionValidity();
+            }
+          }, 500); // Increased from 300
         }
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: currentSession }, error: sessionError }) => {
-      if (sessionError) {
-        console.error('Error getting session:', sessionError);
+    // Check for existing session - with proper error handling
+    const initializeAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          if (isMounted) {
+            setError(error.message);
+            setLoading(false);
+          }
+          return;
+        }
+        
+        const currentSession = data.session;
+        
         if (isMounted) {
-          setError(sessionError.message);
+          // Try to refresh the token if needed before setting session
+          const refreshedSession = await refreshTokenIfNeeded(currentSession);
+          
+          setSession(refreshedSession);
+          setUser(refreshedSession?.user ?? null);
+          
+          // Check session validity
+          if (refreshedSession) {
+            await checkSessionValidity();
+          }
+          
           setLoading(false);
         }
-        return;
-      }
-      
-      if (isMounted) {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        
-        // Check session validity
-        if (currentSession) {
-          await checkSessionValidity();
+      } catch (err: any) {
+        console.error('Unexpected error during auth initialization:', err);
+        if (isMounted) {
+          setError(err.message || 'Failed to initialize authentication');
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
-    });
+    };
     
-    // Set up periodic session validation for long-lived pages
-    const validationInterval = setInterval(() => {
+    initializeAuth();
+    
+    // Set up periodic session validation and token refresh
+    const validationInterval = setInterval(async () => {
       if (session) {
+        // First try to refresh token if needed
+        const refreshedSession = await refreshTokenIfNeeded(session);
+        if (refreshedSession !== session) {
+          setSession(refreshedSession);
+        }
+        // Then check session validity
         checkSessionValidity();
       }
     }, 60000); // Check once per minute

@@ -15,10 +15,10 @@ const Auth = () => {
   const [authStartTime] = useState<number>(Date.now());
   const [isStalled, setIsStalled] = useState(false);
   
-  // Check for stalled authentication
+  // Check for stalled authentication with increased timeout
   useEffect(() => {
     const stallCheckInterval = setInterval(() => {
-      if (loading && Date.now() - authStartTime > 15000) {
+      if (loading && Date.now() - authStartTime > 20000) { // Increased from 15000
         setIsStalled(true);
       }
     }, 5000);

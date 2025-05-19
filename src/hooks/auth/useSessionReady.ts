@@ -5,7 +5,6 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { validateSession } from '@/services/auth/sessionValidator';
 
 interface UseSessionReadyOptions {
   pollInterval?: number;
@@ -32,39 +31,82 @@ export function useSessionReady(options: UseSessionReadyOptions = {}) {
         console.log(`Checking session readiness (attempt ${attempt + 1})...`);
       }
       
-      const result = await validateSession(attempt);
+      // Get current session from Supabase
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (result.valid) {
-        if (debugMode) {
-          console.log('Session validation successful:', result);
-        }
-        setIsReady(true);
-        setUserId(result.userId || null);
-      } else {
+      if (sessionError) {
+        throw sessionError;
+      }
+      
+      if (!session) {
         setIsReady(false);
-        
-        // Only set error if this was the final attempt or if we have a critical error
-        if (attempt >= 2 || result.error?.includes('critical')) {
-          setError(result.error || "Session validation failed");
-          if (debugMode) {
-            console.warn('Session validation failed:', result.error);
-          }
-        } else if (debugMode) {
-          console.log(`Session not ready yet (attempt ${attempt + 1}): ${result.error}`);
+        setError("No active session found");
+        setIsChecking(false);
+        return;
+      }
+      
+      // Verify access token hasn't expired
+      const tokenExpirationTime = session.expires_at ? session.expires_at * 1000 : null;
+      if (tokenExpirationTime && Date.now() > tokenExpirationTime - 60000) { // 1 min buffer
+        if (debugMode) {
+          console.log("Token expiring soon, refreshing");
         }
         
-        // Implement exponential backoff for retries
+        // Refresh the session
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          throw refreshError;
+        }
+      }
+      
+      // Make a simple authenticated request to verify the session
+      // Use user() instead of complex RPC calls
+      const { error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        if (debugMode) {
+          console.warn("Session validation failed:", userError.message);
+        }
+        
+        // If we're still within retry limits and it looks like an auth error,
+        // we might be dealing with timing issues
         if (attempt < 3) {
-          const backoffDelay = Math.min(Math.pow(2, attempt) * 300, 2000);
-          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          if (debugMode) {
+            console.log(`Session not fully established yet, retry ${attempt + 1}/3...`);
+          }
+          
+          // Wait with exponential backoff
+          const delay = Math.pow(2, attempt) * 300;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          // Retry validation
           return checkSession(attempt + 1);
+        }
+        
+        setError(userError.message);
+        setIsReady(false);
+      } else {
+        // Session is valid
+        setIsReady(true);
+        setUserId(session.user.id);
+        
+        if (debugMode) {
+          console.log('Session validation successful, user ID:', session.user.id);
         }
       }
     } catch (e: any) {
-      setIsReady(false);
-      setError(e.message || "Session validation failed");
       if (debugMode) {
         console.error("Session validation error:", e);
+      }
+      
+      setIsReady(false);
+      setError(e.message || "Session validation failed");
+      
+      // Attempt retry for auth errors if within limit
+      if (attempt < 3) {
+        const delay = Math.pow(2, attempt) * 300;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return checkSession(attempt + 1);
       }
     } finally {
       setIsChecking(false);
@@ -88,7 +130,7 @@ export function useSessionReady(options: UseSessionReadyOptions = {}) {
         }
         
         if (event === 'SIGNED_IN') {
-          // On sign in, we want to wait a moment for the session to be fully established
+          // On sign in, we wait a moment for the session to be fully established
           setIsChecking(true);
           setIsReady(false);
           

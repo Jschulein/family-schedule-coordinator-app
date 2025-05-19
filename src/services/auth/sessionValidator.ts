@@ -1,7 +1,6 @@
 
 /**
  * Session validation service to ensure authentication is fully established
- * Addresses the race condition between client-side auth state and Supabase session
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,8 +40,8 @@ export async function validateSession(retryCount = 0): Promise<SessionValidation
     
     // Verify the access token hasn't expired
     const tokenExpirationTime = session.expires_at ? session.expires_at * 1000 : null;
-    if (tokenExpirationTime && Date.now() > tokenExpirationTime) {
-      console.log("Token appears expired, attempting refresh");
+    if (tokenExpirationTime && Date.now() > tokenExpirationTime - 60000) { // 1 min buffer
+      console.log("Token expiring soon, attempting refresh");
       const { error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError) {
         return {
@@ -53,23 +52,20 @@ export async function validateSession(retryCount = 0): Promise<SessionValidation
       }
     }
     
-    // Check if the token is valid by making a lightweight RPC call
-    // This verifies that the session is fully established at the Supabase level
-    const { error: rpcError } = await supabase.rpc(
-      'function_exists',
-      { function_name: 'get_user_events_safe' }
-    );
+    // Check if the session is valid by making a simple user request
+    // This is more reliable than RPC calls for checking auth status
+    const { data: userData, error: userError } = await supabase.auth.getUser();
     
-    if (rpcError) {
-      console.error("Token validation error:", rpcError);
+    if (userError) {
+      console.error("User validation error:", userError);
       
       // If we're still within retry limits and it looks like an auth error,
       // we might be dealing with timing issues
-      if (retryCount < 3 && rpcError.message.includes("JWT")) {
+      if (retryCount < 3 && userError.message.includes("JWT")) {
         console.log(`Session not fully established yet, retry ${retryCount + 1}/3...`);
         
         // Wait with exponential backoff
-        const delay = Math.pow(2, retryCount) * 300;
+        const delay = Math.pow(2, retryCount) * 500; // Increased delay
         await new Promise(resolve => setTimeout(resolve, delay));
         
         // Retry validation
@@ -78,7 +74,7 @@ export async function validateSession(retryCount = 0): Promise<SessionValidation
       
       return {
         valid: false,
-        error: `Token validation error: ${rpcError.message}`,
+        error: `Token validation error: ${userError.message}`,
         timestamp: Date.now()
       };
     }
@@ -106,8 +102,8 @@ export async function validateSession(retryCount = 0): Promise<SessionValidation
  * @returns Promise that resolves when session is valid or rejects after timeout
  */
 export async function waitForValidSession(
-  maxWaitTime = 5000,
-  interval = 200
+  maxWaitTime = 10000, // Increased from 5000
+  interval = 300 // Increased from 200
 ): Promise<SessionValidationResult> {
   const startTime = Date.now();
   
@@ -156,7 +152,7 @@ export async function withValidSession<T>(
   if (!validation.valid) {
     // Try waiting for a valid session if initial validation failed
     try {
-      await waitForValidSession(3000);
+      await waitForValidSession(5000); // Increased from 3000
     } catch (e: any) {
       throw new Error(`Cannot proceed - authentication not established: ${validation.error}`);
     }
@@ -182,7 +178,7 @@ export async function withValidSession<T>(
         console.log(`Operation failed with auth error, retry ${attempt + 1}/${maxRetries}`);
         
         // Wait with exponential backoff
-        const delay = Math.pow(2, attempt) * 300;
+        const delay = Math.pow(2, attempt) * 500; // Increased from 300
         await new Promise(resolve => setTimeout(resolve, delay));
         
         // Refresh token before retry

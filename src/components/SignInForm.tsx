@@ -34,7 +34,7 @@ export function SignInForm() {
     }
   }, [user, loading, isSessionReady, navigate, resetAuthError]);
 
-  // Check for stuck authentication attempts
+  // Check for stuck authentication attempts with more generous timeout
   useEffect(() => {
     if (loading && !authStartTime) {
       // Set the start time when loading begins
@@ -49,20 +49,21 @@ export function SignInForm() {
     let checkTimer: number | undefined;
     if (authStartTime) {
       checkTimer = window.setTimeout(() => {
-        // If still loading after 10 seconds, consider it stuck
+        // If still loading after 15 seconds (increased from 10), consider it stuck
         if (loading && authStartTime) {
-          const isStalled = isAuthSessionStuck(authStartTime, 10000);
+          const isStalled = isAuthSessionStuck(authStartTime, 15000);
           setIsStuck(isStalled);
           
           if (isStalled) {
             toast({
-              title: "Authentication Taking Too Long",
-              description: "Your sign-in attempt is taking longer than expected. You may try refreshing the page or try again later.",
-              variant: "destructive",
+              title: "Authentication Taking Longer Than Expected",
+              description: "Your sign-in attempt is taking longer than expected. The system is still trying to authenticate. Please wait a moment longer.",
+              variant: "default",
+              duration: 8000,
             });
           }
         }
-      }, 10000);
+      }, 15000); // Increased from 10000
     }
 
     return () => {
@@ -81,13 +82,21 @@ export function SignInForm() {
     }
   }, [error, loading]);
 
-  // Handle form submission
+  // Handle form submission with improved error handling
   const onSubmit = async (data: SignInFormValues) => {
-    // Start auth process time tracking
-    setAuthStartTime(Date.now());
-    setIsStuck(false);
-    await signIn(data.email, data.password);
-    // Let the useEffect handle navigation after successful auth
+    try {
+      // Reset any previous errors
+      resetAuthError();
+      // Start auth process time tracking
+      setAuthStartTime(Date.now());
+      setIsStuck(false);
+      // Attempt sign in
+      await signIn(data.email, data.password);
+      // Let the useEffect handle navigation after successful auth
+    } catch (err) {
+      // This shouldn't happen as errors are handled in the signIn function
+      console.error("Unexpected error during sign in submission:", err);
+    }
   };
 
   return (
@@ -125,7 +134,7 @@ export function SignInForm() {
         {loading ? (
           <>
             <Loader className="mr-2 h-4 w-4 animate-spin" />
-            {isStuck ? "Taking longer than expected..." : "Signing in..."}
+            {isStuck ? "Still trying..." : "Signing in..."}
           </>
         ) : (
           "Sign In"
@@ -134,7 +143,7 @@ export function SignInForm() {
       
       {isStuck && (
         <p className="text-sm text-amber-600 mt-2">
-          Sign in is taking longer than expected. You may need to refresh the page if this continues.
+          Sign in is taking longer than expected. Please be patient while the system completes authentication.
         </p>
       )}
     </form>
