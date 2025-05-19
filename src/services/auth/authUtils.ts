@@ -34,7 +34,22 @@ export async function validateSession(): Promise<SessionValidationResult> {
       };
     }
     
-    // If we have a session with a user, consider it valid
+    // Verify the session with the server by making a simple data request
+    const { error: testError } = await supabase.rpc('can_create_event');
+    
+    // If we get an auth error on this test request, the session isn't fully ready
+    if (testError && (
+      testError.message.includes('JWT') || 
+      testError.message.includes('auth') || 
+      testError.message.includes('permission'))) {
+      return {
+        valid: false,
+        error: "Session not fully established on server",
+        user: session.user
+      };
+    }
+    
+    // If we have a session with a user and can access functions, consider it valid
     return {
       valid: true,
       user: session.user

@@ -370,6 +370,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_create_event: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      create_event_securely: {
+        Args: {
+          p_name: string
+          p_date: string
+          p_end_date: string
+          p_time: string
+          p_description: string
+          p_creator_id: string
+          p_all_day: boolean
+          p_family_members?: string[]
+        }
+        Returns: string
+      }
       create_notification: {
         Args: {
           p_user_id: string

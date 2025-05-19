@@ -7,6 +7,7 @@ import { usePageTracking } from "./usePageTracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { useEffect, useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Custom hook for managing the New Event page state and logic
@@ -19,6 +20,7 @@ export function useNewEventPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [sessionCheckAttempts, setSessionCheckAttempts] = useState(0);
   const sessionCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [canCreateEvents, setCanCreateEvents] = useState<boolean | null>(null);
   
   // Page tracking and navigation
   const { handleReturn } = usePageTracking();
@@ -41,6 +43,26 @@ export function useNewEventPage() {
   const error = submissionError || refreshError || 
                 (!isSessionReady && !isCheckingSession ? "Authentication session is not fully established" : null);
   
+  // Check if the secure event creation function is available
+  useEffect(() => {
+    const checkEventCreation = async () => {
+      try {
+        const { data, error } = await supabase.rpc('can_create_event');
+        if (error) {
+          console.error("Error checking event creation capability:", error);
+          setCanCreateEvents(false);
+        } else {
+          setCanCreateEvents(!!data);
+        }
+      } catch (err) {
+        console.error("Exception checking event creation capability:", err);
+        setCanCreateEvents(false);
+      }
+    };
+    
+    checkEventCreation();
+  }, []);
+
   // Enhanced session check with longer timeout and validation attempts
   useEffect(() => {
     // Initial state is checking
@@ -99,14 +121,25 @@ export function useNewEventPage() {
   
   // If there are session readiness issues, notify the user once checking is complete
   useEffect(() => {
-    if (!isSessionReady && !isCheckingSession) {
-      toast({
-        title: "Authentication Status",
-        description: "Your authentication session is still being established. You may need to wait a moment before creating events.",
-        duration: 5000
-      });
+    if (!isCheckingSession) {
+      // Show specific message if the secure event creation function is not available
+      if (canCreateEvents === false) {
+        toast({
+          title: "Event Creation",
+          description: "Secure event creation is not available. Your database migrations may not be complete.",
+          duration: 5000
+        });
+      }
+      // Only show session message if we know secure event creation is available
+      else if (canCreateEvents === true && !isSessionReady) {
+        toast({
+          title: "Authentication Status",
+          description: "Your authentication session is still being established. You may need to wait a moment before creating events.",
+          duration: 5000
+        });
+      }
     }
-  }, [isSessionReady, isCheckingSession]);
+  }, [isSessionReady, isCheckingSession, canCreateEvents]);
   
   // Custom retry handler that also checks auth session
   const handleRetryWithAuth = async () => {
@@ -131,6 +164,7 @@ export function useNewEventPage() {
     error,
     isSessionReady,
     isCheckingSession,
+    canCreateEvents,
     
     // Handlers
     handleSubmit,

@@ -8,6 +8,7 @@ import { performanceTracker } from "@/utils/testing/performanceTracker";
 import { useSubmissionTracking } from "./useSubmissionTracking";
 import { handleError } from "@/utils/error";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Custom hook for handling event submission logic with improved error recovery and session handling
@@ -20,6 +21,7 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const { isSessionReady } = useAuth();
+  const [canCreateEvents, setCanCreateEvents] = useState<boolean | null>(null);
   
   // Get submission tracking utilities
   const {
@@ -29,6 +31,21 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     setupSubmissionTimeout,
     endSubmissionTracking
   } = useSubmissionTracking();
+
+  // Check if secure event creation is available
+  useEffect(() => {
+    const checkEventCreation = async () => {
+      try {
+        const { data, error } = await supabase.rpc('can_create_event');
+        setCanCreateEvents(error ? false : !!data);
+      } catch (err) {
+        console.error("Failed to check event creation capability:", err);
+        setCanCreateEvents(false);
+      }
+    };
+    
+    checkEventCreation();
+  }, []);
   
   // Set up submission timeout whenever submission state changes
   useEffect(() => {
@@ -56,12 +73,22 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
       return;
     }
     
+    // Check if secure event creation is available
+    if (canCreateEvents === false) {
+      toast({
+        title: "Event Creation Error",
+        description: "Secure event creation is not available. Database migration may not be complete.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // If session isn't ready, allow submission but warn user
     if (!isSessionReady) {
       logEventFlow('NewEvent', 'Submission proceeding with unconfirmed authentication - may require retry');
       toast({
         title: "Authentication Notice",
-        description: "Your authentication session may not be fully established. If submission fails, please wait a moment and try again.",
+        description: "Your authentication session may not be fully established. If submission fails, please try again in a moment.",
         variant: "default"
       });
     }
@@ -148,14 +175,17 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
             // Add more helpful information for auth errors
             if (isAuthError) {
               errorMessage += " This may be due to an authentication synchronization issue. Please try again in a moment.";
+              
+              // Specifically suggest testing the security definer function
+              toast({
+                title: "Authentication Error",
+                description: "Try logging out and back in if this persists. The secure event creation feature should bypass this issue.",
+                variant: "destructive",
+                duration: 8000
+              });
             }
             
             setError(errorMessage);
-            toast({
-              title: "Error",
-              description: errorMessage,
-              variant: "destructive"
-            });
           }
         }
       );
@@ -202,6 +232,7 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     setError,
     handleSubmit,
     cancelSubmission,
-    isSessionReady
+    isSessionReady,
+    canCreateEvents
   };
 }
