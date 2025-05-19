@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, RefreshCw, ShieldAlert } from "lucide-react";
+import { ArrowLeft, RefreshCw, ShieldAlert, Loader } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { useState, useEffect, useRef } from "react";
@@ -16,7 +16,7 @@ import { useNewEventPage } from "@/hooks/events/useNewEventPage";
 /**
  * NewEvent page component
  * Handles the creation of new events and manages form submission state
- * Now with enhanced session readiness checking
+ * With enhanced session readiness handling
  */
 const NewEvent = () => {
   // Get navigation and context hooks
@@ -63,21 +63,40 @@ const NewEvent = () => {
           </Button>
         </div>
         
-        {/* Authentication status indicator */}
-        {!isSessionReady && (
+        {/* Authentication status indicator with loading state */}
+        {isCheckingSession && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+            <div className="flex items-center">
+              <Loader className="h-5 w-5 text-blue-600 mr-2 animate-spin" />
+              <p className="font-medium text-blue-800">
+                Verifying authentication status...
+              </p>
+            </div>
+            <p className="text-sm text-blue-700 mt-1">
+              Please wait while we establish your authentication session.
+            </p>
+          </div>
+        )}
+        
+        {/* Authentication warning - only shown after checking completes */}
+        {!isSessionReady && !isCheckingSession && (
           <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
             <div className="flex items-center">
               <ShieldAlert className="h-5 w-5 text-amber-600 mr-2" />
               <p className="font-medium text-amber-800">
-                {isCheckingSession 
-                  ? "Verifying authentication status..." 
-                  : "Authentication session not fully established"}
+                Authentication session not fully established
               </p>
             </div>
             <p className="text-sm text-amber-700 mt-1">
-              {isCheckingSession 
-                ? "Please wait while we verify your authentication status." 
-                : "The system is still establishing your authentication session. Creating events may fail until this process completes."}
+              The system is still establishing your authentication session. Creating events may fail until this process completes.
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="ml-2 text-amber-800 border-amber-300 hover:bg-amber-100"
+                onClick={handleRetry}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" /> Retry
+              </Button>
             </p>
           </div>
         )}

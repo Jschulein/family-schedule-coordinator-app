@@ -6,17 +6,18 @@ import { useEventSubmission } from "./useEventSubmission";
 import { usePageTracking } from "./usePageTracking";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 /**
  * Custom hook for managing the New Event page state and logic
- * Simplified approach that relies on AuthContext isSessionReady state
+ * Enhanced session management with improved timeout handling
  */
 export function useNewEventPage() {
   const navigate = useNavigate();
   const { addEvent, refetchEvents } = useEvents();
   const { isSessionReady } = useAuth();
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const sessionCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Page tracking and navigation
   const { handleReturn } = usePageTracking();
@@ -37,31 +38,50 @@ export function useNewEventPage() {
   
   // Combine errors from all sources
   const error = submissionError || refreshError || 
-                (!isSessionReady ? "Authentication session is not fully established" : null);
+                (!isSessionReady && !isCheckingSession ? "Authentication session is not fully established" : null);
   
-  // Check session status and update the checking state
+  // Enhanced session check with longer timeout and synchronization with isSessionReady
   useEffect(() => {
     // Initial state is checking
     setIsCheckingSession(true);
     
-    // Set a short timeout to simulate checking process
-    const timer = setTimeout(() => {
-      setIsCheckingSession(false);
-    }, 1000); // Short delay to give authentication a chance to establish
+    // Clear any existing timeout
+    if (sessionCheckTimeoutRef.current) {
+      clearTimeout(sessionCheckTimeoutRef.current);
+    }
     
-    return () => clearTimeout(timer);
-  }, []);
+    // Wait for isSessionReady to become true or timeout after a reasonable period
+    if (isSessionReady) {
+      // If session is already ready, no need to wait
+      setIsCheckingSession(false);
+    } else {
+      // Set a longer timeout to give authentication more time to establish
+      sessionCheckTimeoutRef.current = setTimeout(() => {
+        if (!isSessionReady) {
+          console.log('Session check timeout reached, proceeding with available auth state');
+          setIsCheckingSession(false);
+        }
+      }, 8000); // Extended timeout (8 seconds) to give auth more time
+    }
+    
+    // Cleanup function
+    return () => {
+      if (sessionCheckTimeoutRef.current) {
+        clearTimeout(sessionCheckTimeoutRef.current);
+      }
+    };
+  }, [isSessionReady]);
   
-  // If there are session readiness issues, notify the user
+  // If there are session readiness issues, notify the user once checking is complete
   useEffect(() => {
-    if (!isSessionReady) {
+    if (!isSessionReady && !isCheckingSession) {
       toast({
         title: "Authentication Status",
-        description: "Your authentication session is being established. You may need to wait a moment before creating events.",
+        description: "Your authentication session is still being established. You may need to wait a moment before creating events.",
         duration: 5000
       });
     }
-  }, [isSessionReady]);
+  }, [isSessionReady, isCheckingSession]);
   
   return {
     // State
@@ -69,7 +89,7 @@ export function useNewEventPage() {
     isRefreshing,
     error,
     isSessionReady,
-    isCheckingSession, // Add the missing state
+    isCheckingSession,
     
     // Handlers
     handleSubmit,

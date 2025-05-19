@@ -10,8 +10,7 @@ import { handleError } from "@/utils/error";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
- * Custom hook for handling event submission logic with improved error recovery
- * Simplified approach that relies on AuthContext
+ * Custom hook for handling event submission logic with improved error recovery and session handling
  * @param addEvent Function to add a new event
  * @returns State and handler for event submission
  */
@@ -57,16 +56,14 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
       return;
     }
     
-    // If session isn't ready, show an error
+    // If session isn't ready, allow submission but warn user
     if (!isSessionReady) {
-      logEventFlow('NewEvent', 'Submission prevented - authentication not fully established');
-      setError("Your authentication session is not fully established. Please wait a moment and try again.");
+      logEventFlow('NewEvent', 'Submission proceeding with unconfirmed authentication - may require retry');
       toast({
-        title: "Not Ready",
-        description: "Your authentication session is not fully established. Please wait a moment and try again.",
-        variant: "destructive"
+        title: "Authentication Notice",
+        description: "Your authentication session may not be fully established. If submission fails, please wait a moment and try again.",
+        variant: "default"
       });
-      return;
     }
     
     // Create a new AbortController for this submission
