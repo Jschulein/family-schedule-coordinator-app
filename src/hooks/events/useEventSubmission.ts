@@ -7,9 +7,11 @@ import { logEventFlow } from "@/utils/events";
 import { performanceTracker } from "@/utils/testing/performanceTracker";
 import { useSubmissionTracking } from "./useSubmissionTracking";
 import { handleError } from "@/utils/error";
+import { useSessionReady } from "@/hooks/auth/useSessionReady";
 
 /**
  * Custom hook for handling event submission logic with improved error recovery
+ * Now includes session readiness checks to prevent auth race conditions
  * @param addEvent Function to add a new event
  * @returns State and handler for event submission
  */
@@ -27,6 +29,9 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     setupSubmissionTimeout,
     endSubmissionTracking
   } = useSubmissionTracking();
+  
+  // Use our session ready hook to ensure auth is established
+  const { isSessionReady, isCheckingSession } = useSessionReady({ pollInterval: 500 });
   
   // Set up submission timeout whenever submission state changes
   useEffect(() => {
@@ -51,6 +56,28 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     // Prevent double-submissions with a guard
     if (isSubmitting) {
       logEventFlow('NewEvent', 'Submission prevented - already submitting');
+      return;
+    }
+    
+    // Check session readiness
+    if (!isSessionReady) {
+      // If session is still being checked, show a "checking" toast
+      if (isCheckingSession) {
+        toast({
+          title: "Preparing",
+          description: "Verifying your authentication status...",
+        });
+        return;
+      }
+      
+      // If session check is done but session isn't ready, show an error
+      logEventFlow('NewEvent', 'Submission prevented - authentication not fully established');
+      setError("Your authentication session is not fully established. Please wait a moment and try again.");
+      toast({
+        title: "Not Ready",
+        description: "Your authentication session is not fully established. Please wait a moment and try again.",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -116,16 +143,27 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
         return;
       }
     
+      // Check if this is an authentication error
+      const isAuthError = error.message?.includes?.('authentication') || 
+                          error.message?.includes?.('policy') ||
+                          error.message?.includes?.('permission') ||
+                          error.message?.includes?.('auth');
+      
       // Track and log error details
       performanceTracker.measure('NewEventPage:eventCreationError', 
         () => {
           logEventFlow('NewEvent', 'Error during submission', error);
           
           if (mountedRef.current) {
-            const errorMessage = handleError(error, {
+            let errorMessage = handleError(error, {
               context: 'Event Creation',
               showToast: false
             });
+            
+            // Add more helpful information for auth errors
+            if (isAuthError) {
+              errorMessage += " This may be due to an authentication synchronization issue. Please try again in a moment.";
+            }
             
             setError(errorMessage);
             toast({
@@ -178,6 +216,8 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
     error,
     setError,
     handleSubmit,
-    cancelSubmission
+    cancelSubmission,
+    isSessionReady,
+    isCheckingSession
   };
 }

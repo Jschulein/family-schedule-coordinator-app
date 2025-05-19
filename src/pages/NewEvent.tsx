@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, ShieldAlert } from "lucide-react";
 import AddEventForm from "@/components/AddEventForm";
 import { useEvents } from "@/contexts/EventContext";
 import { useState, useEffect, useRef } from "react";
@@ -11,11 +11,12 @@ import { useFamilyContext } from "@/contexts/family";
 import { logEventFlow } from "@/utils/events";
 import { performanceTracker } from "@/utils/testing/performanceTracker";
 import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
-import { useNewEventPage } from "@/hooks/events/useNewEventPage"; // New hook
+import { useNewEventPage } from "@/hooks/events/useNewEventPage"; 
 
 /**
  * NewEvent page component
  * Handles the creation of new events and manages form submission state
+ * Now with enhanced session readiness checking
  */
 const NewEvent = () => {
   // Get navigation and context hooks
@@ -28,6 +29,8 @@ const NewEvent = () => {
     isSubmitting,
     isRefreshing, 
     error,
+    isSessionReady,
+    isCheckingSession,
     handleSubmit,
     handleReturn,
     handleRetry
@@ -59,6 +62,25 @@ const NewEvent = () => {
             Refresh Data
           </Button>
         </div>
+        
+        {/* Authentication status indicator */}
+        {!isSessionReady && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
+            <div className="flex items-center">
+              <ShieldAlert className="h-5 w-5 text-amber-600 mr-2" />
+              <p className="font-medium text-amber-800">
+                {isCheckingSession 
+                  ? "Verifying authentication status..." 
+                  : "Authentication session not fully established"}
+              </p>
+            </div>
+            <p className="text-sm text-amber-700 mt-1">
+              {isCheckingSession 
+                ? "Please wait while we verify your authentication status." 
+                : "The system is still establishing your authentication session. Creating events may fail until this process completes."}
+            </p>
+          </div>
+        )}
         
         {!activeFamilyId && families.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">

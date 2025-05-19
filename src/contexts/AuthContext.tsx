@@ -3,12 +3,14 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { validateSession } from '@/services/auth/sessionValidator';
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
   error: string | null;
+  isSessionReady: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -21,52 +23,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSessionReady, setIsSessionReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Track whether component is mounted
+    let isMounted = true;
+    
+    const checkSessionValidity = async () => {
+      try {
+        // Verify that the session is valid
+        const validationResult = await validateSession();
+        
+        if (isMounted) {
+          setIsSessionReady(validationResult.valid);
+          
+          if (!validationResult.valid && validationResult.error && session) {
+            console.warn(`Session validation failed: ${validationResult.error}`);
+          }
+        }
+      } catch (e) {
+        console.error("Error checking session validity:", e);
+        if (isMounted) {
+          setIsSessionReady(false);
+        }
+      }
+    };
+    
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-
-        // For debugging
-        if (event) {
-          console.log(`Auth event: ${event}`);
-        }
-
-        // Use setTimeout to defer non-critical operations
-        if (currentSession?.user && event === 'SIGNED_IN') {
-          setTimeout(() => {
-            // Fetch additional user data if needed
-          }, 0);
+      async (event, currentSession) => {
+        if (isMounted) {
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          
+          // Reset session ready state when auth changes
+          setIsSessionReady(false);
+  
+          // For debugging
+          if (event) {
+            console.log(`Auth event: ${event}`);
+          }
+  
+          // Verify session validity after a short delay
+          // This addresses the race condition between client and server auth
+          if (currentSession?.user && event === 'SIGNED_IN') {
+            console.log("Sign in event detected, verifying session validity...");
+            
+            // Short delay to allow session propagation
+            setTimeout(async () => {
+              if (isMounted) {
+                await checkSessionValidity();
+              }
+            }, 300);
+          }
         }
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession }, error: sessionError }) => {
+    supabase.auth.getSession().then(async ({ data: { session: currentSession }, error: sessionError }) => {
       if (sessionError) {
         console.error('Error getting session:', sessionError);
-        setError(sessionError.message);
+        if (isMounted) {
+          setError(sessionError.message);
+          setLoading(false);
+        }
+        return;
       }
       
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
+      if (isMounted) {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        // Check session validity
+        if (currentSession) {
+          await checkSessionValidity();
+        }
+        
+        setLoading(false);
+      }
     });
+    
+    // Set up periodic session validation for long-lived pages
+    const validationInterval = setInterval(() => {
+      if (session) {
+        checkSessionValidity();
+      }
+    }, 60000); // Check once per minute
 
-    // Cleanup subscription
+    // Cleanup subscription and interval
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
+      clearInterval(validationInterval);
     };
-  }, []);
+  }, [session]);
 
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
+      setIsSessionReady(false);
       
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
@@ -97,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
+      setIsSessionReady(false);
       
       const { error } = await supabase.auth.signUp({ email, password });
       
@@ -129,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
+      setIsSessionReady(false);
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -165,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         loading,
         error,
+        isSessionReady,
         signIn,
         signUp,
         signOut,

@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Event } from "@/types/eventTypes";
 import { toast } from "@/components/ui/use-toast";
 import { logEventFlow } from "@/utils/events";
+import { withValidSession } from "@/services/auth/sessionValidator";
 
 /**
  * A direct, simplified event creation function with minimal complexity
+ * Uses session validation to prevent race conditions with authentication
  * Focuses only on creating the event and associating it with family members
  * Returns a structured response object with consistent error handling
  */
@@ -18,126 +20,143 @@ export async function createEvent(eventData: Event): Promise<{
   try {
     logEventFlow("directEventCreation", "Starting direct event creation", { name: eventData.name });
     
-    // 1. Verify authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      logEventFlow("directEventCreation", "Authentication error", sessionError);
-      return { 
-        success: false, 
-        error: `Authentication error: ${sessionError.message}`,
-        details: sessionError
-      };
-    }
-    
-    if (!session) {
-      logEventFlow("directEventCreation", "No active session found");
-      return { success: false, error: "You must be logged in to create events" };
-    }
-    
-    // 2. Prepare event data
-    const dbEvent = {
-      name: eventData.name,
-      date: eventData.date instanceof Date ? eventData.date.toISOString() : eventData.date,
-      end_date: eventData.end_date instanceof Date ? eventData.end_date.toISOString() : eventData.end_date || eventData.date,
-      time: eventData.time || "12:00",
-      description: eventData.description || "",
-      creator_id: session.user.id,
-      all_day: eventData.all_day || false
-    };
-    
-    logEventFlow("directEventCreation", "Inserting event", dbEvent);
-    
-    // 3. Create the event - direct database operation
-    const { data: createdEvent, error: insertError } = await supabase
-      .from("events")
-      .insert(dbEvent)
-      .select("*")
-      .single();
-    
-    if (insertError) {
-      logEventFlow("directEventCreation", "Error creating event", insertError);
-      return { 
-        success: false, 
-        error: `Failed to create event: ${insertError.message}`,
-        details: insertError
-      };
-    }
-    
-    if (!createdEvent) {
-      logEventFlow("directEventCreation", "No event data returned after creation");
-      return { success: false, error: "No event data returned after creation" };
-    }
-    
-    logEventFlow("directEventCreation", "Event created successfully", { id: createdEvent.id });
-    
-    // 4. Associate with family members if needed
-    if (eventData.familyMembers && eventData.familyMembers.length > 0) {
-      logEventFlow("directEventCreation", "Associating with family members", { 
-        count: eventData.familyMembers.length 
-      });
-
-      // First, get family information for these members
-      const { data: familyMembers, error: membersError } = await supabase
-        .from("family_members")
-        .select("id, family_id")
-        .in("id", eventData.familyMembers);
+    // Use our withValidSession utility to ensure authentication is fully established
+    return await withValidSession(async () => {
+      // 1. Verify authentication
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (membersError) {
-        logEventFlow("directEventCreation", "Error fetching family members", membersError);
-        // Note: We don't fail the whole operation here, just log it
-        toast({
-          title: "Warning",
-          description: "Event created, but there was an issue associating family members",
-          variant: "default"
-        });
-        
-        // Return partial success
+      if (sessionError) {
+        logEventFlow("directEventCreation", "Authentication error", sessionError);
         return { 
-          success: true, 
-          eventId: createdEvent.id,
-          error: "Event created, but family member association failed"
+          success: false, 
+          error: `Authentication error: ${sessionError.message}`,
+          details: sessionError
         };
-      } 
-      else if (familyMembers && familyMembers.length > 0) {
-        // Create a unique set of family IDs
-        const familyIds = [...new Set(familyMembers.map(m => m.family_id).filter(Boolean))];
+      }
+      
+      if (!session) {
+        logEventFlow("directEventCreation", "No active session found");
+        return { success: false, error: "You must be logged in to create events" };
+      }
+      
+      // 2. Prepare event data
+      const dbEvent = {
+        name: eventData.name,
+        date: eventData.date instanceof Date ? eventData.date.toISOString() : eventData.date,
+        end_date: eventData.end_date instanceof Date ? eventData.end_date.toISOString() : eventData.end_date || eventData.date,
+        time: eventData.time || "12:00",
+        description: eventData.description || "",
+        creator_id: session.user.id,
+        all_day: eventData.all_day || false
+      };
+      
+      logEventFlow("directEventCreation", "Inserting event", dbEvent);
+      
+      // 3. Create the event - direct database operation
+      const { data: createdEvent, error: insertError } = await supabase
+        .from("events")
+        .insert(dbEvent)
+        .select("*")
+        .single();
+      
+      if (insertError) {
+        logEventFlow("directEventCreation", "Error creating event", insertError);
         
-        if (familyIds.length > 0) {
-          logEventFlow("directEventCreation", "Associating with families", { familyIds });
+        // Special handling for auth-related errors
+        if (insertError.message.includes('policy') || 
+            insertError.message.includes('permission') ||
+            insertError.message.includes('not authorized')) {
+          return { 
+            success: false, 
+            error: `Authentication error: ${insertError.message}. Please try again in a moment.`,
+            details: {
+              isAuthError: true,
+              originalError: insertError
+            }
+          };
+        }
+        
+        return { 
+          success: false, 
+          error: `Failed to create event: ${insertError.message}`,
+          details: insertError
+        };
+      }
+      
+      if (!createdEvent) {
+        logEventFlow("directEventCreation", "No event data returned after creation");
+        return { success: false, error: "No event data returned after creation" };
+      }
+      
+      logEventFlow("directEventCreation", "Event created successfully", { id: createdEvent.id });
+      
+      // 4. Associate with family members if needed
+      if (eventData.familyMembers && eventData.familyMembers.length > 0) {
+        logEventFlow("directEventCreation", "Associating with family members", { 
+          count: eventData.familyMembers.length 
+        });
+
+        // First, get family information for these members
+        const { data: familyMembers, error: membersError } = await supabase
+          .from("family_members")
+          .select("id, family_id")
+          .in("id", eventData.familyMembers);
+        
+        if (membersError) {
+          logEventFlow("directEventCreation", "Error fetching family members", membersError);
+          // Note: We don't fail the whole operation here, just log it
+          toast({
+            title: "Warning",
+            description: "Event created, but there was an issue associating family members",
+            variant: "default"
+          });
           
-          // Create family associations
-          const familyAssociations = familyIds.map(familyId => ({
-            event_id: createdEvent.id,
-            family_id: familyId,
-            shared_by: session.user.id
-          }));
+          // Return partial success
+          return { 
+            success: true, 
+            eventId: createdEvent.id,
+            error: "Event created, but family member association failed"
+          };
+        } 
+        else if (familyMembers && familyMembers.length > 0) {
+          // Create a unique set of family IDs
+          const familyIds = [...new Set(familyMembers.map(m => m.family_id).filter(Boolean))];
           
-          const { error: associationError } = await supabase
-            .from("event_families")
-            .insert(familyAssociations);
-          
-          if (associationError) {
-            logEventFlow("directEventCreation", "Error associating families", associationError);
-            toast({
-              title: "Warning",
-              description: "Event created, but there was an issue with family associations",
-              variant: "default"
-            });
+          if (familyIds.length > 0) {
+            logEventFlow("directEventCreation", "Associating with families", { familyIds });
             
-            // Return partial success
-            return { 
-              success: true, 
-              eventId: createdEvent.id,
-              error: "Event created, but family association failed"
-            };
+            // Create family associations
+            const familyAssociations = familyIds.map(familyId => ({
+              event_id: createdEvent.id,
+              family_id: familyId,
+              shared_by: session.user.id
+            }));
+            
+            const { error: associationError } = await supabase
+              .from("event_families")
+              .insert(familyAssociations);
+            
+            if (associationError) {
+              logEventFlow("directEventCreation", "Error associating families", associationError);
+              toast({
+                title: "Warning",
+                description: "Event created, but there was an issue with family associations",
+                variant: "default"
+              });
+              
+              // Return partial success
+              return { 
+                success: true, 
+                eventId: createdEvent.id,
+                error: "Event created, but family association failed"
+              };
+            }
           }
         }
       }
-    }
-    
-    return { success: true, eventId: createdEvent.id };
-    
+      
+      return { success: true, eventId: createdEvent.id };
+    }, 3);  // Allow up to 3 retries for auth issues
   } catch (error: any) {
     logEventFlow("directEventCreation", "Unexpected error", error);
     return { 
