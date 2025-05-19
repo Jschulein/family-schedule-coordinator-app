@@ -1,11 +1,12 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/components/ui/use-toast";
 
 interface SignInFormValues {
   email: string;
@@ -14,20 +15,36 @@ interface SignInFormValues {
 
 export function SignInForm() {
   const { register, handleSubmit, formState: { errors } } = useForm<SignInFormValues>();
-  const { signIn, loading, error, resetAuthError } = useAuth();
+  const { signIn, loading, error, resetAuthError, user, isSessionReady } = useAuth();
   const navigate = useNavigate();
 
+  // Monitor authentication state changes to redirect after successful login
+  useEffect(() => {
+    // Only redirect when authentication is complete and valid
+    if (!loading && user && isSessionReady) {
+      // Clear any previous error
+      resetAuthError();
+      // Navigate to home page
+      navigate("/");
+    }
+  }, [user, loading, isSessionReady, navigate, resetAuthError]);
+
+  // Handle form submission
   const onSubmit = async (data: SignInFormValues) => {
     await signIn(data.email, data.password);
-    
-    // Check if sign in was successful by looking for error
-    setTimeout(() => {
-      const { error, user } = useAuth();
-      if (!error && user) {
-        navigate("/");
-      }
-    }, 100);
+    // Don't navigate here, let the useEffect handle navigation
   };
+
+  // Show error messages in toast
+  useEffect(() => {
+    if (error && !loading) {
+      toast({
+        title: "Authentication Error",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error, loading]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
