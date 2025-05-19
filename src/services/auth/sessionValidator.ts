@@ -39,9 +39,23 @@ export async function validateSession(retryCount = 0): Promise<SessionValidation
       };
     }
     
+    // Verify the access token hasn't expired
+    const tokenExpirationTime = session.expires_at ? session.expires_at * 1000 : null;
+    if (tokenExpirationTime && Date.now() > tokenExpirationTime) {
+      console.log("Token appears expired, attempting refresh");
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        return {
+          valid: false,
+          error: `Token expired and refresh failed: ${refreshError.message}`,
+          timestamp: Date.now()
+        };
+      }
+    }
+    
     // Check if the token is valid by making a lightweight RPC call
     // This verifies that the session is fully established at the Supabase level
-    const { data: isAuthenticated, error: rpcError } = await supabase.rpc(
+    const { error: rpcError } = await supabase.rpc(
       'function_exists',
       { function_name: 'get_user_events_safe' }
     );
@@ -55,7 +69,7 @@ export async function validateSession(retryCount = 0): Promise<SessionValidation
         console.log(`Session not fully established yet, retry ${retryCount + 1}/3...`);
         
         // Wait with exponential backoff
-        const delay = Math.pow(2, retryCount) * 200;
+        const delay = Math.pow(2, retryCount) * 300;
         await new Promise(resolve => setTimeout(resolve, delay));
         
         // Retry validation
@@ -170,6 +184,9 @@ export async function withValidSession<T>(
         // Wait with exponential backoff
         const delay = Math.pow(2, attempt) * 300;
         await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Refresh token before retry
+        await supabase.auth.refreshSession();
         
         // Re-validate session before retry
         await validateSession();

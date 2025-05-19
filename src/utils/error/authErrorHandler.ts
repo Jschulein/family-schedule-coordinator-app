@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/use-toast";
 type AuthErrorOptions = {
   showToast?: boolean;
   redirectTo?: string | null;
+  maxWaitTime?: number;
 };
 
 /**
@@ -28,6 +29,20 @@ export function formatAuthError(error: any): string {
     return 'Too many login attempts. Please try again later.';
   } else if (errorMessage.includes('network')) {
     return 'Network error. Please check your connection and try again.';
+  } else if (errorMessage.includes('session')) {
+    if (errorMessage.includes('expired')) {
+      return 'Your session has expired. Please sign in again.';
+    }
+    if (errorMessage.includes('not found') || errorMessage.includes('invalid')) {
+      return 'Authentication session issue. You may need to sign in again.';
+    }
+  } else if (errorMessage.includes('token')) {
+    if (errorMessage.includes('expired')) {
+      return 'Your authentication token has expired. Please sign in again.';
+    }
+    if (errorMessage.includes('invalid') || errorMessage.includes('malformed')) {
+      return 'Invalid authentication token. Please try signing in again.';
+    }
   }
   
   // Return the original message if no specific mapping is found
@@ -67,4 +82,34 @@ export function handleAuthError(error: any, options: AuthErrorOptions = {}): str
  */
 export function isAuthSessionStuck(startTime: number, maxWaitTime = 10000): boolean {
   return Date.now() - startTime > maxWaitTime;
+}
+
+/**
+ * Checks if the error might be due to a network connectivity issue
+ * @param error The error object or message
+ * @returns True if it's likely a network issue
+ */
+export function isNetworkAuthError(error: any): boolean {
+  if (!error) return false;
+  
+  const errorMessage = typeof error === 'string' ? error : error.message || '';
+  return errorMessage.includes('network') || 
+         errorMessage.includes('connection') || 
+         errorMessage.includes('offline') ||
+         errorMessage.includes('timeout');
+}
+
+/**
+ * Checks if the error might be due to a session token issue
+ * @param error The error object or message 
+ * @returns True if it's likely a token issue
+ */
+export function isTokenError(error: any): boolean {
+  if (!error) return false;
+  
+  const errorMessage = typeof error === 'string' ? error : error.message || '';
+  return errorMessage.includes('token') || 
+         errorMessage.includes('JWT') ||
+         errorMessage.includes('expired') ||
+         errorMessage.includes('session');
 }
