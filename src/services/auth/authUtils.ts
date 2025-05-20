@@ -67,12 +67,12 @@ export async function validateSession(): Promise<SessionValidationResult> {
  * Enhanced helper to wrap operations that need valid authentication
  * Uses exponential backoff to avoid deadlocks and handle transient auth issues
  * 
- * @param operation Function to execute if session is valid
+ * @param operation Function to execute if session is valid, receives session object
  * @param maxRetries Optional number of retries (default: 3)
  * @returns Result of the operation
  */
 export async function withValidSession<T>(
-  operation: () => Promise<T>,
+  operation: (session: { user: User | null }) => Promise<T>,
   maxRetries: number = 3
 ): Promise<T> {
   // First check if session is valid before attempting operation
@@ -82,13 +82,15 @@ export async function withValidSession<T>(
     throw new Error(`Authentication required: ${sessionCheck.error}`);
   }
   
+  // Create a session object to pass to the operation
+  const session = { user: sessionCheck.user };
   let lastError: any = null;
   
   // Try the operation with exponential backoff
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // Session is valid, execute operation
-      return await operation();
+      // Session is valid, execute operation with session
+      return await operation(session);
     } catch (error: any) {
       lastError = error;
       
@@ -120,6 +122,9 @@ export async function withValidSession<T>(
   // If we get here, we've exhausted all retries
   throw lastError || new Error("Operation failed after multiple retries");
 }
+
+// Import useState and useEffect at the top of the file
+import { useState, useEffect } from 'react';
 
 /**
  * Simplified hook for accessing session status
@@ -163,6 +168,3 @@ export function useSessionStatus() {
     sessionError
   };
 }
-
-// Import useState and useEffect at the top of the file
-import { useState, useEffect } from 'react';
