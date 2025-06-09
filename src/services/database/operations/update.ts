@@ -17,7 +17,7 @@ export async function updateRecord<T extends Record<string, any>>(
     console.log(`Updating record in ${table} with id ${id}`, data);
     
     // Use type assertion to handle the generic constraint
-    const { data: updatedData, error, status } = await supabase
+    const { data: updatedData, error, status } = await (supabase as any)
       .from(table)
       .update(data as any)
       .eq('id', id)

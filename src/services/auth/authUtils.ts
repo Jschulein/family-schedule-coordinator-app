@@ -35,7 +35,7 @@ export async function validateSession(): Promise<SessionValidationResult> {
     }
     
     // Verify the session with the server by making a simple data request
-    const { error: testError } = await supabase.rpc('can_create_event');
+    const { error: testError } = await (supabase.rpc as any)('can_create_event');
     
     // If we get an auth error on this test request, the session isn't fully ready
     if (testError && (

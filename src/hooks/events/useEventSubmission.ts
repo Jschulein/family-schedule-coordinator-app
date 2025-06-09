@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -46,7 +47,7 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
         }
         
         // Check for profile
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await (supabase as any)
           .from('profiles')
           .select('id')
           .eq('id', session.user.id)
@@ -58,7 +59,7 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
         
         if (!profile) {
           // Create profile if it doesn't exist
-          const { error: createError } = await supabase
+          const { error: createError } = await (supabase as any)
             .from('profiles')
             .insert({
               id: session.user.id,
@@ -85,7 +86,7 @@ export function useEventSubmission(addEvent: (event: Event) => Promise<Event | u
   useEffect(() => {
     const checkEventCreation = async () => {
       try {
-        const { data, error } = await supabase.rpc('can_create_event');
+        const { data, error } = await (supabase.rpc as any)('can_create_event');
         setCanCreateEvents(error ? false : !!data);
       } catch (err) {
         console.error("Failed to check event creation capability:", err);

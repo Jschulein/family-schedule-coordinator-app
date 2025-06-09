@@ -1,171 +1,193 @@
 
-import React, { useState } from 'react';
-import { TestRunner } from "@/tests";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Check, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/components/ui/use-toast";
 
-const TestingPage = () => {
-  const [isTestingEvent, setIsTestingEvent] = useState(false);
-  const [testResult, setTestResult] = useState<{
-    success: boolean;
-    message: string;
-    details?: any;
-  } | null>(null);
+export default function Testing() {
+  const { user, isSessionReady } = useAuth();
+  const [testResults, setTestResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const testSecureEventCreation = async () => {
-    setIsTestingEvent(true);
-    setTestResult(null);
-    
+  useEffect(() => {
+    if (isSessionReady && user) {
+      runBasicTests();
+    }
+  }, [isSessionReady, user]);
+
+  const runBasicTests = async () => {
+    setLoading(true);
+    const results: any[] = [];
+
     try {
-      // Check if the user is authenticated
-      const { data: { session } } = await supabase.auth.getSession();
+      // Test 1: Check if user profile exists
+      results.push(await testUserProfile());
       
-      if (!session) {
-        setTestResult({
-          success: false,
-          message: "You must be logged in to test event creation"
-        });
-        return;
-      }
+      // Test 2: Test database connection
+      results.push(await testDatabaseConnection());
       
-      // Check if the user has a profile
-      const { data: userProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', session.user.id)
-        .maybeSingle();
-        
-      if (profileError) {
-        setTestResult({
-          success: false,
-          message: "Error checking user profile",
-          details: profileError
-        });
-        return;
-      }
-      
-      if (!userProfile) {
-        // Create profile if it doesn't exist
-        const { error: createProfileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: session.user.id,
-            full_name: session.user.user_metadata.full_name || session.user.email,
-            Email: session.user.email
-          });
-          
-        if (createProfileError) {
-          setTestResult({
-            success: false,
-            message: "Failed to create user profile",
-            details: createProfileError
-          });
-          return;
-        }
-      }
-      
-      // First check if function exists
-      const { data: canCreate, error: funcError } = await supabase.rpc('can_create_event');
-      
-      if (funcError) {
-        setTestResult({
-          success: false,
-          message: "Secure event creation function is not available",
-          details: funcError
-        });
-        return;
-      }
-      
-      // Generate a test event name
-      const testName = `Test Event ${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}`;
-      
-      // Try to create an event using the secure function
-      const { data: eventId, error: createError } = await supabase.rpc('create_event_securely', {
-        p_name: testName,
-        p_date: new Date().toISOString(),
-        p_end_date: new Date().toISOString(),
-        p_time: '12:00',
-        p_description: 'Test event created via security definer function',
-        p_creator_id: session.user.id,
-        p_all_day: false,
-        p_family_members: null
-      });
-      
-      if (createError) {
-        setTestResult({
-          success: false,
-          message: "Failed to create event using secure function",
-          details: createError
-        });
-        return;
-      }
-      
-      setTestResult({
-        success: true,
-        message: `Event created successfully with ID: ${eventId}`,
-        details: { eventId }
-      });
+      // Test 3: Test RPC functions
+      results.push(await testRPCFunctions());
+
+      setTestResults(results);
     } catch (error) {
-      setTestResult({
-        success: false,
-        message: "An unexpected error occurred",
-        details: error
+      console.error("Error running tests:", error);
+      toast({
+        title: "Test Error",
+        description: "Failed to run some tests",
+        variant: "destructive"
       });
     } finally {
-      setIsTestingEvent(false);
+      setLoading(false);
     }
   };
-  
+
+  const testUserProfile = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .maybeSingle();
+
+      if (error) {
+        return {
+          name: "User Profile Check",
+          status: "failed",
+          message: error.message,
+          details: error
+        };
+      }
+
+      if (!data) {
+        // Try to create profile
+        const { error: createError } = await (supabase as any)
+          .from('profiles')
+          .insert({
+            id: user?.id,
+            full_name: user?.user_metadata?.full_name || user?.email,
+            Email: user?.email
+          });
+
+        if (createError) {
+          return {
+            name: "User Profile Creation",
+            status: "failed",
+            message: createError.message,
+            details: createError
+          };
+        }
+
+        return {
+          name: "User Profile Check",
+          status: "success",
+          message: "Profile created successfully",
+          details: { created: true }
+        };
+      }
+
+      return {
+        name: "User Profile Check",
+        status: "success",
+        message: "Profile exists",
+        details: data
+      };
+    } catch (error: any) {
+      return {
+        name: "User Profile Check",
+        status: "failed",
+        message: error.message,
+        details: error
+      };
+    }
+  };
+
+  const testDatabaseConnection = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('families')
+        .select('count')
+        .limit(1);
+
+      return {
+        name: "Database Connection",
+        status: error ? "failed" : "success",
+        message: error ? error.message : "Connection successful",
+        details: { data, error }
+      };
+    } catch (error: any) {
+      return {
+        name: "Database Connection",
+        status: "failed",
+        message: error.message,
+        details: error
+      };
+    }
+  };
+
+  const testRPCFunctions = async () => {
+    try {
+      const { data, error } = await (supabase.rpc as any)('can_create_event');
+
+      return {
+        name: "RPC Functions Test",
+        status: error ? "failed" : "success",
+        message: error ? error.message : "RPC functions working",
+        details: { data, error }
+      };
+    } catch (error: any) {
+      return {
+        name: "RPC Functions Test",
+        status: "failed",
+        message: error.message,
+        details: error
+      };
+    }
+  };
+
   return (
-    <div className="container mx-auto p-4 space-y-8">
-      <h1 className="text-3xl font-bold">Testing Page</h1>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Secure Event Creation Test</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p>
-            Test the secure event creation function that bypasses Row Level Security.
-            This can help identify if RLS is causing issues with event creation.
-          </p>
-          
-          <Button 
-            onClick={testSecureEventCreation} 
-            disabled={isTestingEvent}
-          >
-            {isTestingEvent ? 'Creating Test Event...' : 'Create Test Event'}
-          </Button>
-          
-          {testResult && (
-            <Alert variant={testResult.success ? "default" : "destructive"}>
-              {testResult.success ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <AlertCircle className="h-4 w-4" />
-              )}
-              <AlertTitle>
-                {testResult.success ? "Success" : "Error"}
-              </AlertTitle>
-              <AlertDescription>
-                {testResult.message}
-                {testResult.details && (
-                  <pre className="mt-2 text-xs whitespace-pre-wrap bg-muted p-2 rounded-md">
-                    {JSON.stringify(testResult.details, null, 2)}
-                  </pre>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-      
-      <TestRunner />
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Testing Dashboard</h1>
+          <p className="text-muted-foreground">System health and diagnostics</p>
+        </div>
+        <Button onClick={runBasicTests} disabled={loading}>
+          {loading ? "Running Tests..." : "Run Tests"}
+        </Button>
+      </div>
+
+      <div className="grid gap-6">
+        {testResults.map((result, index) => (
+          <Card key={index}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{result.name}</CardTitle>
+                <Badge variant={result.status === "success" ? "default" : "destructive"}>
+                  {result.status}
+                </Badge>
+              </div>
+              <CardDescription>{result.message}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <pre className="text-xs bg-muted p-4 rounded overflow-auto">
+                {JSON.stringify(result.details, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {testResults.length === 0 && !loading && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <p className="text-muted-foreground">No test results yet. Click "Run Tests" to start.</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
-};
-
-export default TestingPage;
+}

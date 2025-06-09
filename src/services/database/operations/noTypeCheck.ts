@@ -20,7 +20,7 @@ export async function fetchDataNoTypeCheck(
     console.log(`NoTypeCheck: Fetching from ${table} with options:`, options);
     
     // Start building the query
-    let query = supabase.from(table).select(options.select || '*');
+    let query = (supabase as any).from(table).select(options.select || '*');
     
     // Apply filters if they exist
     if (options.filters) {
@@ -84,7 +84,7 @@ export async function fetchByIdNoTypeCheck(
   try {
     console.log(`NoTypeCheck: Fetching ${table} with id ${id}`);
     
-    const { data, error, status } = await supabase
+    const { data, error, status } = await (supabase as any)
       .from(table)
       .select(select)
       .eq('id', id)

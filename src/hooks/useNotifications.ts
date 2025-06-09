@@ -1,111 +1,136 @@
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
-import { Json } from '@/integrations/supabase/types';
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
-export type NotificationType = 'info' | 'success' | 'warning' | 'error';
-
-export type Notification = {
+interface Notification {
   id: string;
   title: string;
   message: string;
-  type: NotificationType;
+  type: string;
   read: boolean;
   created_at: string;
   action_url?: string;
-};
+  metadata?: any;
+}
 
-export const useNotifications = () => {
+export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchNotifications();
-    subscribeToNotifications();
-  }, []);
 
   const fetchNotifications = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('notifications')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-      if (error) throw error;
-      
-      // Validate and convert notification types before setting state
-      const validNotifications = (data || []).map(notification => ({
-        ...notification,
-        type: validateNotificationType(notification.type)
-      })) as Notification[];
-      
-      setNotifications(validNotifications);
-    } catch (error: any) {
-      console.error('Error fetching notifications:', error);
-      toast.error('Failed to load notifications');
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return;
+      }
+
+      if (data) {
+        setNotifications(data);
+        setUnreadCount(data.filter((n: Notification) => !n.read).length);
+      }
+    } catch (error) {
+      console.error('Exception fetching notifications:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper function to validate notification type
-  const validateNotificationType = (type: string): NotificationType => {
-    const validTypes: NotificationType[] = ['info', 'success', 'warning', 'error'];
-    return validTypes.includes(type as NotificationType) 
-      ? (type as NotificationType) 
-      : 'info'; // Default to 'info' for any invalid types
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        return;
+      }
+
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+      
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Exception marking notification as read:', error);
+    }
   };
 
-  const subscribeToNotifications = () => {
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications'
-        },
-        (payload) => {
-          const newNotification = payload.new as any;
-          setNotifications(prev => [{
-            ...newNotification,
-            type: validateNotificationType(newNotification.type)
-          } as Notification, ...prev]);
+  const markAllAsRead = async () => {
+    try {
+      const unreadIds = notifications
+        .filter(n => !n.read)
+        .map(n => n.id);
+
+      if (unreadIds.length === 0) return;
+
+      const { error } = await (supabase as any)
+        .from('notifications')
+        .update({ read: true })
+        .in('id', unreadIds);
+
+      if (error) {
+        console.error('Error marking all notifications as read:', error);
+        return;
+      }
+
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, read: true }))
+      );
+      
+      setUnreadCount(0);
+
+      toast({
+        title: "Success",
+        description: "All notifications marked as read"
+      });
+    } catch (error) {
+      console.error('Exception marking all notifications as read:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('notifications')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'notifications' 
+        }, 
+        () => {
+          fetchNotifications();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      subscription.unsubscribe();
     };
-  };
-
-  const markAsRead = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === id ? { ...notif, read: true } : notif
-        )
-      );
-    } catch (error: any) {
-      console.error('Error marking notification as read:', error);
-      toast.error('Failed to update notification');
-    }
-  };
+  }, []);
 
   return {
     notifications,
+    unreadCount,
     loading,
     markAsRead,
+    markAllAsRead,
     refetch: fetchNotifications
   };
-};
+}

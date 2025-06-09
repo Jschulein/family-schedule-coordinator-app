@@ -47,7 +47,7 @@ export function useNewEventPage() {
   useEffect(() => {
     const checkEventCreation = async () => {
       try {
-        const { data, error } = await supabase.rpc('can_create_event');
+        const { data, error } = await (supabase.rpc as any)('can_create_event');
         if (error) {
           console.error("Error checking event creation capability:", error);
           setCanCreateEvents(false);

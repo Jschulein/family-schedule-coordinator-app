@@ -14,7 +14,7 @@ export async function getData<T>(
 ): Promise<DbResponse<T[]>> {
   try {
     // Use type assertion to avoid TypeScript recursive type issues
-    let query = supabase.from(table as any).select(options.select || '*');
+    let query = (supabase as any).from(table).select(options.select || '*');
     
     // Apply filters
     if (options.filters) {
@@ -60,8 +60,8 @@ export async function getById<T>(
   select?: string
 ): Promise<DbResponse<T>> {
   try {
-    const { data, error } = await supabase
-      .from(table as any)
+    const { data, error } = await (supabase as any)
+      .from(table)
       .select(select || '*')
       .eq('id', id)
       .maybeSingle();
