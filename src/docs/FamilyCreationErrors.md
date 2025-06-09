@@ -3,123 +3,152 @@
 
 This document tracks errors found in the family creation flow and their solutions.
 
+## Recent Security and Performance Improvements
+
+### Database Function Security Fixes (2025-06-09)
+**Fixed "Function Search Path Mutable" Warnings:**
+- Updated `user_is_family_member` function with proper search path
+- Fixed `notify_on_family_invite` trigger function security
+- Enhanced `can_create_event` function with search path setting
+- Applied security fixes to profile management functions
+
+**Impact**: Resolved all Supabase security warnings related to mutable search paths in SECURITY DEFINER functions.
+
+### Authentication System Enhancements
+**Session Management Improvements:**
+- Enhanced `withValidSession` helper to pass session object to operations
+- Improved session validation with better error handling
+- Added exponential backoff for transient auth issues
+- Implemented comprehensive session status tracking hook
+
+**Error Handling Improvements:**
+- Created centralized auth error handling utilities
+- Added specific formatting for authentication errors
+- Implemented network error detection and handling
+- Enhanced token error identification and recovery
+
 ## Common Errors
 
 ### Authentication Related
 
 1. **Error: "You must be logged in to create a family"**
    - **Cause**: User's session has expired or user is not authenticated
-   - **Solution**: Redirect to login page and create proper authentication guards on family creation pages
-   - **Implementation**: Added authentication checks in the `createFamily` and `createFamilyWithMembers` functions
+   - **Solution**: Enhanced session validation in `authUtils.ts` with retry logic
+   - **Implementation**: Added `withValidSession` wrapper with exponential backoff
 
 2. **Error: "Unauthorized access to family data"**
-   - **Cause**: Row-Level Security (RLS) policies preventing access to family data after creation
-   - **Solution**: Ensure RLS policies are correctly set for the authenticated user
+   - **Cause**: Row-Level Security (RLS) policies preventing access to family data
+   - **Solution**: Fixed with security definer functions that have proper search paths
+   - **Recent Fix**: Applied `SET search_path TO 'public'` to all security functions
+
+3. **Error: "Authentication session issue"**
+   - **Cause**: Session token problems or JWT issues
+   - **Solution**: Implemented comprehensive session status monitoring
+   - **Implementation**: Added `useSessionStatus` hook with proper cleanup
 
 ### Family Creation Related
 
 1. **Error: "No data returned when creating family"**
-   - **Cause**: The `safe_create_family` function did not return the expected data
-   - **Solution**: Enhanced error handling and logging in the function
-   - **Implementation**: Added more detailed error logging to track the function's execution
+   - **Cause**: The `safe_create_family` function execution issues
+   - **Solution**: Enhanced error logging and function path security
+   - **Recent Fix**: Added search path security to prevent function hijacking
 
 2. **Error: "duplicate key value violates unique constraint"**
    - **Cause**: Attempting to insert a family member that already exists
-   - **Solution**: Added conflict handling with `ON CONFLICT DO NOTHING` in the `safe_create_family` function and improved error handling in the client-side functions
-   - **Implementation**: Updated the functions to detect this specific error and continue execution when appropriate
-   - **Important**: Increased wait time after constraint violations to ensure database operations complete
+   - **Solution**: Enhanced conflict handling in family creation functions
+   - **Implementation**: Improved error detection and wait time after constraint violations
 
-### Invitation Related
+3. **Error: "Function does not exist" or "Permission denied for function"**
+   - **Cause**: Database function availability or permission issues
+   - **Solution**: Implemented function existence checking and fallback patterns
+   - **Recent Fix**: Secured all functions with proper search paths
 
-1. **Error: "Failed to send invitations"**
-   - **Cause**: Issues inserting invitation records
-   - **Solution**: Better error handling around the invitation process
-   - **Implementation**: Added robust error handling in the invitation creation process
+### Security and Performance Related
 
-2. **Error: "Current user included in invitations"**
-   - **Cause**: Attempting to invite the user who is creating the family
-   - **Solution**: Filter out the current user from the invitation list
-   - **Implementation**: Added filtering based on email address comparison
+1. **Error: "infinite recursion detected in policy"**
+   - **Cause**: RLS policies calling functions that query the same table
+   - **Solution**: Use security definer functions to bypass RLS in helper functions
+   - **Status**: Previously fixed, monitored for new occurrences
 
-## Code Organization
+2. **Error: "Function Search Path Mutable" (Security Warning)**
+   - **Cause**: SECURITY DEFINER functions without fixed search paths
+   - **Solution**: Added `SET search_path TO 'public'` to all affected functions
+   - **Status**: ✅ RESOLVED (2025-06-09)
 
-The family creation code has been refactored into smaller, more focused modules:
+## Code Organization Improvements
 
-1. **createFamilyWithMembers.ts**: Main entry point that orchestrates the family creation process
-2. **validators.ts**: Handles input validation for family names and members
-3. **familyExistenceChecker.ts**: Manages checking for existing families and retrieving family data
-4. **errorHandlers.ts**: Provides consistent error response handling
-5. **familyCreator.ts**: Core logic for creating new families
-6. **familyInvitationUtils.ts**: Logic for sending invitations to family members
+The family creation code has been enhanced with better error handling:
 
-This modular approach improves maintainability, testability, and makes the code easier to understand.
+### Enhanced Modules:
+1. **authUtils.ts**: Improved session management and validation
+2. **errorHandler.ts**: Centralized error handling with context awareness
+3. **databaseErrorHandler.ts**: Specific database error formatting
+4. **authErrorHandler.ts**: Authentication-specific error handling
+5. **apiErrorHandler.ts**: Supabase API error management
 
-## Testing Workflow
+### Performance Enhancements:
+- Added performance tracking to family operations
+- Implemented batched loading for large family member lists
+- Enhanced caching strategies for family data
+- Added memory usage monitoring
 
-1. **Login Process**
-   - Check if user is already logged in
-   - If not, redirect to login page or use test credentials
-   - Verify session is active
+## Testing Workflow Updates
 
-2. **Family Creation**
-   - Validate input parameters (name, members)
-   - Submit family creation request
-   - Verify response contains expected data
+### Security Testing:
+1. **Function Security Validation**
+   - Test all security definer functions work with search path fixes
+   - Verify no privilege escalation vulnerabilities
+   - Confirm RLS policies function correctly
 
-3. **Data Verification**
-   - Check families table for new entry
-   - Check family_members table for creator's entry
-   - Check invitations table for invited members
+2. **Authentication Flow Testing**
+   - Test session persistence across page reloads
+   - Verify token refresh mechanisms
+   - Test authentication error recovery
 
-4. **Error Handling**
-   - Document all errors encountered
-   - Implement solutions for each error
-   - Verify solutions resolve the issues
+3. **Performance Testing**
+   - Monitor family creation performance with large member lists
+   - Test concurrent family operations
+   - Validate error handling under load
 
-## Fixed Issues
+### Error Scenario Testing:
+1. **Network Issues**
+   - Test offline/online transitions
+   - Verify retry mechanisms work correctly
+   - Test timeout handling
 
-### Infinite Recursion in RLS Policies
+2. **Permission Issues**
+   - Test RLS policy enforcement
+   - Verify proper error messages for permission denials
+   - Test function permission scenarios
 
-**Error**: 
-```
-ERROR: infinite recursion detected in policy for relation "family_members"
-```
+## Fixed Issues Summary
 
-**Cause**:
-The RLS policy for the family_members table was recursively calling itself because it was using the `is_family_member` function which itself queried the family_members table.
+### ✅ Recently Resolved (2025-06-09):
+1. **Database Function Security**: All SECURITY DEFINER functions now have proper search paths
+2. **Session Management**: Enhanced session validation and retry mechanisms
+3. **Error Handling**: Comprehensive error handling utilities implemented
+4. **Performance Monitoring**: Added tracking for family operations performance
 
-**Solution**:
-Created a new security definer function `safe_is_family_member` that bypasses RLS to avoid the recursion.
+### ✅ Previously Fixed:
+1. **Infinite Recursion in RLS Policies**: Resolved with security definer helper functions
+2. **Duplicate Family Member Creation**: Enhanced conflict handling and verification
+3. **Toast Notification Types**: Standardized toast helpers with proper typing
+4. **Family Member Performance**: Implemented batch loading for large families
 
-### Duplicate Family Member Creation
+## Future Improvements Needed
 
-**Error**:
-```
-ERROR: duplicate key value violates unique constraint "family_members_family_id_user_id_key"
-```
+### High Priority:
+1. **Comprehensive Security Audit**: Full review of all database functions and RLS policies
+2. **Performance Optimization**: Implement pagination and virtualization for large datasets
+3. **Error Recovery**: Enhanced automatic recovery mechanisms for transient failures
+4. **Testing Automation**: Automated security and performance regression testing
 
-**Cause**:
-When creating a family, both the trigger and the direct insertion attempted to add the creator as a family member.
+### Medium Priority:
+1. **Notification System**: Real-time notifications for family events
+2. **RSVP Management**: Full invitation and response workflow
+3. **Advanced Permissions**: Granular family member permissions
+4. **Data Export**: Family data backup and export capabilities
 
-**Solution**:
-1. Added conflict handling with `ON CONFLICT DO NOTHING` in the family creation function.
-2. Enhanced error handling in client-side functions to detect this specific error and continue execution.
-3. Implemented checks to verify if the family was created despite the constraint violation.
-4. Increased timeout after error to ensure database operations complete before verification.
+---
 
-### Recent Improvements
-
-1. **Better Toast Notifications**
-   - Added a dedicated toast-helpers.tsx module for creating properly typed toast notifications
-   - Created a standardized approach to showing error and success messages
-   - Fixed type mismatches between React components and toast action elements
-
-2. **Enhanced Family Member Performance**
-   - Implemented batch loading for family members to improve performance with large families
-   - Added parallel fetching capabilities in test functions to demonstrate performance improvements
-   - Documented performance gains with real metrics from testing
-
-3. **Standardized Error Handling**
-   - Created eventErrorHandler.ts to provide consistent error handling for event-related operations
-   - Implemented withEventErrorHandling wrapper function to simplify error handling in async operations
-   - Added retry functionality to critical operations via toast notifications
+*Last Updated: 2025-06-09 - Post-security fixes and authentication system improvements*
