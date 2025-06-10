@@ -66,9 +66,42 @@ Complete testing infrastructure improvements started in recent updates.
 - Implement automated security testing
 - Create comprehensive test data generation
 
-## Upcoming Features
+## Upcoming Features (Medium Priority)
 
-### 5. Notification System Implementation (MEDIUM PRIORITY)
+### 5. Enhanced User Registration & Identity Management (MEDIUM PRIORITY)
+#### Description
+Improve user onboarding and identity management with enhanced registration options.
+
+**Features:**
+- **Required Username Field**: Make username mandatory for account sign-up and family creation
+- **Phone Number Support**: Add option to sign-up and invite family members by phone number (either phone or email)
+- **Enhanced Profile Management**: Improve user profile completeness and validation
+
+**Technical Considerations:**
+- Update authentication schemas to include required username field
+- Implement phone number validation and verification system
+- Add dual contact method support (email/phone) for invitations
+- Update existing user flows to accommodate new required fields
+- Ensure backward compatibility with existing accounts
+
+### 6. Developer Role & Advanced Access Management (MEDIUM PRIORITY)
+#### Description
+Implement advanced role-based access control with specialized developer privileges.
+
+**Features:**
+- **Developer Role Creation**: New role strictly for feature development, monitoring, and troubleshooting
+- **Privilege Switching**: Allow developers to seamlessly change between privileges/roles for testing
+- **Testing Feature Access**: Only developers can access testing and troubleshooting features
+- **Admin Role Preservation**: Maintain admin role capabilities for family settings and administration
+
+**Technical Considerations:**
+- Design role hierarchy system (Developer > Admin > Member > Child)
+- Implement role-based route protection and feature gating
+- Create developer dashboard with testing and monitoring tools
+- Add role switching interface with proper audit logging
+- Ensure clear separation between developer tools and user-facing features
+
+### 7. Notification System Implementation (MEDIUM PRIORITY)
 #### Description
 Implement comprehensive notification system for event-related communications.
 
@@ -84,7 +117,7 @@ Implement comprehensive notification system for event-related communications.
 - Design notification state management
 - Add notification analytics
 
-### 6. RSVP Management System (MEDIUM PRIORITY)
+### 8. RSVP Management System (MEDIUM PRIORITY)
 #### Description
 Full-featured RSVP workflow for event invitations.
 
@@ -100,7 +133,9 @@ Full-featured RSVP workflow for event invitations.
 - Add RSVP analytics and reporting
 - Create RSVP notification workflows
 
-### 7. Advanced Event Features (MEDIUM PRIORITY)
+## Future Enhancements (Low Priority)
+
+### 9. Advanced Event Features (LOW PRIORITY)
 #### Description
 Enhanced event management capabilities.
 
@@ -116,7 +151,7 @@ Enhanced event management capabilities.
 - Add search indexing
 - Create advanced filtering UI
 
-### 8. Calendar Integration & Sync (LOW PRIORITY)
+### 10. Calendar Integration & Sync (LOW PRIORITY)
 #### Description
 External calendar integration capabilities.
 
@@ -169,12 +204,35 @@ External calendar integration capabilities.
 - Enhanced markdown conversion utilities
 - Improved testing infrastructure
 
-## Notes on Implementation Priority
+### ✅ Family Member Hook Consolidation
+- Consolidated duplicate `useFamilyMembers` implementations
+- Standardized hook interfaces and return properties
+- Fixed build errors related to hook inconsistencies
+- Improved family member data fetching reliability
 
-**Priority 1 (Critical)**: Items that affect security, data integrity, or core functionality
-**Priority 2 (High)**: Items that significantly impact user experience or application stability  
-**Priority 3 (Medium)**: New features that enhance functionality
+## Implementation Priority Guidelines
+
+**Priority 1 (Critical)**: Items that affect security, data integrity, or core functionality - **COMPLETE THESE FIRST**
+**Priority 2 (High)**: Items that significantly impact user experience or application stability - **COMPLETE BEFORE NEW FEATURES**
+**Priority 3 (Medium)**: New features that enhance functionality - **IMPLEMENT AFTER FOUNDATION IS SOLID**
 **Priority 4 (Low)**: Nice-to-have features that don't affect core workflows
+
+## Development Strategy
+
+### Phase 1: Foundation Stabilization (Current Focus)
+- Complete all Critical & High Priority items
+- Ensure robust security, error handling, performance, and testing
+- Establish solid technical foundation
+
+### Phase 2: User Experience Enhancement
+- Implement enhanced registration and identity management
+- Add developer role and advanced access management
+- Build upon stabilized foundation
+
+### Phase 3: Feature Expansion
+- Roll out notification system and RSVP management
+- Add advanced event features
+- Implement calendar integration
 
 ## Maintenance Tasks
 
@@ -186,4 +244,4 @@ External calendar integration capabilities.
 
 ---
 
-*Last Updated: 2025-06-09 - Post-database security fixes and authentication improvements*
+*Last Updated: 2025-06-10 - Added proposed user registration, phone support, and developer role features*
