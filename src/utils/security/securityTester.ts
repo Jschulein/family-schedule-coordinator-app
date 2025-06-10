@@ -1,3 +1,4 @@
+
 /**
  * Comprehensive security testing framework for database functions and RLS policies
  */
@@ -597,5 +598,3 @@ export class SecurityTester {
 }
 
 export const securityTester = new SecurityTester();
-
-}
