@@ -15,7 +15,7 @@ interface EventFamilyMembersInputProps {
 
 export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersInputProps) => {
   const { activeFamilyId } = useFamilyContext();
-  const { members, loading, error, refreshMembers } = useFamilyMembers(activeFamilyId);
+  const { members, loading, error, refetch } = useFamilyMembers(activeFamilyId);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [selectableMemberIds, setSelectableMemberIds] = useState<string[]>([]);
@@ -23,9 +23,9 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
   // Refresh family members when the component mounts or active family changes
   useEffect(() => {
     if (activeFamilyId) {
-      refreshMembers();
+      refetch();
     }
-  }, [activeFamilyId, refreshMembers]);
+  }, [activeFamilyId, refetch]);
   
   // Update available member IDs whenever members change
   useEffect(() => {
@@ -55,7 +55,7 @@ export const EventFamilyMembersInput = ({ value, onChange }: EventFamilyMembersI
     
     try {
       console.log("Refreshing family members for family:", activeFamilyId);
-      await refreshMembers();
+      await refetch();
     } catch (err) {
       console.error("Error refreshing family members:", err);
     } finally {
