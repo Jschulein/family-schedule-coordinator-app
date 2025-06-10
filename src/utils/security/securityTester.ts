@@ -1,4 +1,3 @@
-
 /**
  * Comprehensive security testing framework for database functions and RLS policies
  */
@@ -186,7 +185,7 @@ export class SecurityTester {
         testName: 'Family access control',
         passed,
         details: passed ? 
-          `Successfully retrieved ${families?.length || 0} families` : 
+          `Successfully retrieved ${Array.isArray(families) ? families.length : 0} families` : 
           `Failed to retrieve families: ${error?.message}`,
         error
       });
@@ -220,7 +219,7 @@ export class SecurityTester {
         testName: 'Event access control',
         passed,
         details: passed ? 
-          `Successfully retrieved ${events?.length || 0} events` : 
+          `Successfully retrieved ${Array.isArray(events) ? events.length : 0} events` : 
           `Failed to retrieve events: ${error?.message}`,
         error
       });
@@ -366,7 +365,7 @@ export class SecurityTester {
       });
       
       // Should fail gracefully without exposing sensitive information
-      const passed = error && !error.message.includes('DROP') && !error.message.includes('DELETE');
+      const passed = Boolean(error && !error.message.includes('DROP') && !error.message.includes('DELETE'));
       
       this.results.push({
         testName: `SQL injection protection: ${input.substring(0, 20)}...`,
@@ -406,7 +405,7 @@ export class SecurityTester {
         .limit(1);
       
       // This should be controlled by RLS policies
-      const passed = error || (data && data.length === 0);
+      const passed = Boolean(error || (data && Array.isArray(data) && data.length === 0));
       
       this.results.push({
         testName: 'Role escalation protection',
@@ -444,7 +443,7 @@ export class SecurityTester {
       });
       
       // Should return empty or error for non-existent/inaccessible family
-      const passed = error || !data || data.length === 0;
+      const passed = Boolean(error || !data || (Array.isArray(data) && data.length === 0));
       
       this.results.push({
         testName: 'Family permission bypass protection',
@@ -482,7 +481,7 @@ export class SecurityTester {
       });
       
       // Should return false for non-existent/inaccessible event
-      const passed = error || data === false;
+      const passed = Boolean(error || data === false);
       
       this.results.push({
         testName: 'Event permission bypass protection',
@@ -598,3 +597,5 @@ export class SecurityTester {
 }
 
 export const securityTester = new SecurityTester();
+
+}

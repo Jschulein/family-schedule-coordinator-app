@@ -1,12 +1,13 @@
+
 import React from 'react';
 import { Outlet } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useSecurityMonitoring } from '@/hooks/security/useSecurityMonitoring';
-import { AlertTriangle, Shield } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-export const AppLayout = ({ children }: AppLayoutProps) => {
+export const AppLayout = () => {
   const { securityStatus } = useSecurityMonitoring(30); // Check every 30 minutes
 
   return (
@@ -34,7 +35,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           )}
           
           {/* Regular Content */}
-          {children}
+          <Outlet />
         </div>
       </div>
     </SidebarProvider>

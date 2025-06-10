@@ -1,10 +1,9 @@
+
 import React from 'react';
 import {
   createBrowserRouter,
-  RouterProvider,
-  Route,
-  Link,
   createRoutesFromElements,
+  Route,
 } from "react-router-dom";
 import AppLayout from '@/components/AppLayout';
 import Dashboard from '@/pages/Dashboard';
@@ -42,8 +41,4 @@ const router = createBrowserRouter(
   )
 );
 
-function Router() {
-  return <RouterProvider router={router} />;
-}
-
-export default Router;
+export default router;
