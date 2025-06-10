@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Sidebar, 
@@ -16,10 +15,12 @@ import {
   Users, 
   Settings,
   LogOut,
-  Plus
+  Plus,
+  Shield
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -99,6 +100,15 @@ export function AppSidebar() {
               >
                 <Settings />
                 <span>Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link to="/security-audit">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Security Audit
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

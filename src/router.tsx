@@ -1,80 +1,49 @@
-
+import React from 'react';
 import {
   createBrowserRouter,
+  RouterProvider,
+  Route,
+  Link,
+  createRoutesFromElements,
 } from "react-router-dom";
-import AppLayout from "./components/AppLayout"; 
-import Calendar from "./pages/Calendar";
-import NotFound from "./pages/NotFound";
-import Families from "./pages/Families";
-import NewEvent from "./pages/NewEvent"; 
-import EditEvent from "./pages/EditEvent"; 
-import TestingPage from "./pages/Testing";
-import TestFamilyFlowPage from "./pages/TestFamilyFlow";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Events from "./pages/Events";
-import Settings from "./pages/Settings";
-import ProtectedRoute from "./components/ProtectedRoute";
+import AppLayout from '@/components/AppLayout';
+import Dashboard from '@/pages/Dashboard';
+import Families from '@/pages/Families';
+import Events from '@/pages/Events';
+import Calendar from '@/pages/Calendar';
+import Settings from '@/pages/Settings';
+import ErrorPage from '@/pages/ErrorPage';
+import FamilyDetails from '@/pages/FamilyDetails';
+import EventDetails from '@/pages/EventDetails';
+import CreateEvent from '@/pages/CreateEvent';
+import EditEvent from '@/pages/EditEvent';
+import CreateFamily from '@/pages/CreateFamily';
+import SecurityAudit from "@/pages/SecurityAudit";
 
-// Export as a default export to match how it's imported in App.tsx
-const router = createBrowserRouter([
-  {
-    path: "/auth",
-    element: <Auth />,
-    errorElement: <NotFound />
-  },
-  {
-    path: "/",
-    element: (
-      <ProtectedRoute>
-        <AppLayout />
-      </ProtectedRoute>
-    ),
-    errorElement: <NotFound />,
-    children: [
-      {
-        index: true,
-        element: <Index />,
-      },
-      {
-        path: "/calendar",
-        element: <Calendar />,
-      },
-      {
-        path: "/families",
-        element: <Families />,
-      },
-      {
-        path: "/events",
-        element: <Events />,
-      },
-      {
-        path: "/events/new",
-        element: <NewEvent />,
-      },
-      {
-        path: "/events/:eventId/edit",
-        element: <EditEvent />,
-      },
-      {
-        path: "/event/create",
-        element: <NewEvent />,
-      },
-      {
-        path: "/settings",
-        element: <Settings />,
-      },
-      // Add testing routes
-      {
-        path: "/testing",
-        element: <TestingPage />
-      },
-      {
-        path: "/test-family-flow",
-        element: <TestFamilyFlowPage />
-      }
-    ]
-  }
-]);
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <Route 
+      path="/" 
+      element={<AppLayout />} 
+      errorElement={<ErrorPage />}
+    >
+      <Route index element={<Dashboard />} />
+      <Route path="families" element={<Families />} />
+      <Route path="families/create" element={<CreateFamily />} />
+      <Route path="families/:familyId" element={<FamilyDetails />} />
+      <Route path="events" element={<Events />} />
+      <Route path="events/create" element={<CreateEvent />} />
+      <Route path="events/:eventId" element={<EventDetails />} />
+      <Route path="events/:eventId/edit" element={<EditEvent />} />
+      <Route path="calendar" element={<Calendar />} />
+      <Route path="settings" element={<Settings />} />
+      <Route path="/security-audit" element={<SecurityAudit />} />
+    </Route>
+  )
+);
 
-export default router;
+function Router() {
+  return <RouterProvider router={router} />;
+}
+
+export default Router;
