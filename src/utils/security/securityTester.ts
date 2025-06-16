@@ -403,10 +403,12 @@ export class SecurityTester {
         .from('family_members')
         .update({ role: 'admin' })
         .eq('role', 'member')
+        .select()
         .limit(1);
       
       // This should be controlled by RLS policies
-      const passed = Boolean(error || (data && Array.isArray(data) && data.length === 0));
+      // Check if error occurred or no rows were affected
+      const passed = Boolean(error || !data || (Array.isArray(data) && data.length === 0));
       
       this.results.push({
         testName: 'Role escalation protection',
